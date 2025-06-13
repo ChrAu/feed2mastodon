@@ -68,7 +68,7 @@ jobs:
         env:
           QUARKUS_DATASOURCE_USERNAME: quarkus_test
           QUARKUS_DATASOURCE_PASSWORD: quarkus_test
-          QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://localhost:5432/quarkus_test
+          QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://localhost:5439/quarkus_test
         run: |
           chmod +x mvnw
           ./mvnw -B package -Pnative --file pom.xml
