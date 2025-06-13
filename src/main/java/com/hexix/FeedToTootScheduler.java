@@ -33,7 +33,7 @@ public class FeedToTootScheduler {
     // Einfache In-Memory-Lösung zur Vermeidung von Duplikaten.
     // Für eine robuste Lösung eine Datei oder DB verwenden!
 
-//    @Scheduled(every = "10m")
+    @Scheduled(every = "10m")
         // Alle 10 Minuten ausführen
     @Transactional
     void checkFeedAndPost() {

@@ -18,7 +18,9 @@ public class InitialDataSetup {
     void onStart(@Observes StartupEvent ev) {
         LOG.info("Anwendung startet, prüfe initiale Daten...");
 
-        final List<Feed> myBlogFeeds = List.of(new Feed("https://forgejo.org/releases/rss.xml", "Forgejo Release\n\n", "Forgejo hat eine neue Version veröffentlicht: \n\n"));
+        final List<Feed> myBlogFeeds = List.of(new Feed("https://forgejo.org/releases/rss.xml", "Forgejo Release\n\n", "Forgejo hat eine neue Version veröffentlicht: \n\n"),
+                new Feed("https://www.tagesschau.de/infoservices/alle-meldungen-100~rss2.xml", "", ""));
+
 
         for (Feed myBlogFeed : myBlogFeeds) {
             // Prüfe, ob dieser Feed schon in der DB ist
