@@ -103,6 +103,4 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           # Verwendet die im vorherigen Schritt generierten Labels
           labels: ${{ steps.meta.outputs.labels }}
-          # Aktiviert den Cache, um nachfolgende Builds zu beschleunigen
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+
