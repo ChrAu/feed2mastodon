@@ -21,9 +21,28 @@ jobs:
     # Der Typ des Runners, auf dem der Job ausgeführt wird
     runs-on: self-hosted
 
+    # NEU: Service-Container für die Test-Datenbank
+    # Dieser Block startet einen PostgreSQL-Container, der für die Dauer des Jobs verfügbar ist.
+    services:
+      postgres:
+        image: postgres:17
+        # Umgebungsvariablen zum Initialisieren der Test-Datenbank.
+        # Diese Anmeldedaten werden im Build-Schritt unten verwendet.
+        env:
+          POSTGRES_DB: quarkus_test
+          POSTGRES_USER: quarkus_test
+          POSTGRES_PASSWORD: quarkus_test
+        # Mappt den Port 5432 des Containers auf den Host, damit der Build-Prozess ihn erreichen kann.
+        ports:
+          - 5432:5432
+        # Health-Check, um sicherzustellen, dass der Build erst startet, wenn die DB bereit ist.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     # Berechtigungen, die der GITHUB_TOKEN für diesen Job benötigt.
-    # 'contents: read' zum Auschecken des Codes
-    # 'packages: write' zum Hochladen des Docker-Images in die GHCR
     permissions:
       contents: read
       packages: write
@@ -34,17 +53,22 @@ jobs:
         uses: actions/checkout@v4
 
       # Schritt 2: Java JDK 21 (Zulu) einrichten
-      # Richtet die angeforderte Java-Version und Distribution ein und konfiguriert den Maven-Cache
+      # Richtet die angeforderte Java-Version und Distribution ein.
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'zulu'
-          cache: maven
 
       # Schritt 3: Mit Maven Wrapper bauen
       # Stellt sicher, dass die mvnw-Datei ausführbar ist und führt dann den Build aus.
       - name: Build with Maven Wrapper
+        # NEU: Umgebungsvariablen, um Quarkus mit der Test-DB zu verbinden.
+        # Diese überschreiben die Werte aus deiner application.properties nur für diesen Schritt.
+        env:
+          QUARKUS_DATASOURCE_USERNAME: quarkus_test
+          QUARKUS_DATASOURCE_PASSWORD: quarkus_test
+          QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://localhost:5432/quarkus_test
         run: |
           chmod +x mvnw
           ./mvnw -B package -Pnative --file pom.xml

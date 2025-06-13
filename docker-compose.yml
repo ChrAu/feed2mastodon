@@ -11,8 +11,8 @@ services:
     # Diese werden vom PostgreSQL-Image verwendet, um die Datenbank beim ersten Start zu initialisieren.
     # WICHTIG: Diese Werte müssen mit deiner `application.properties` übereinstimmen.
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:dein_db_user} #         # Setzt den Benutzernamen
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:dein_db_passwort} # Setzt das Passwort
+      POSTGRES_USER: ${POSTGRES_USER:quarkus_test} #         # Setzt den Benutzernamen
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:quarkus_test} # Setzt das Passwort
       POSTGRES_DB: ${POSTGRES_DB:feed2toot_db} # Setzt die Datenbank mit diesem Namen
 
     # Port-Mapping: Leitet Anfragen vom Host-Port 5432 an den Container-Port 5432 weiter.
