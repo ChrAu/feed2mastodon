@@ -1,41 +1,67 @@
+version: '3.8'
+
 services:
-  # Unser Datenbank-Service. Du kannst ihn nennen, wie du möchtest, 'db' ist eine gängige Konvention.
+  # Unser Datenbank-Service.
   db:
-    # Das Docker-Image, das verwendet werden soll. Wir nehmen eine aktuelle PostgreSQL-Version.
-    image: postgres:17
-
-    # Name des Containers, der erstellt wird. Dies ist optional, aber hilfreich für die Übersicht.
+    # Das Docker-Image, das verwendet werden soll.
+    image: postgres:16 # Es wird empfohlen, eine spezifischere Version als 'latest' oder '17' zu verwenden, die noch nicht final ist.
+    # Name des Containers, der erstellt wird.
     container_name: feed2toot-postgres-db
-
     # Umgebungsvariablen, die an den Container übergeben werden.
-    # Diese werden vom PostgreSQL-Image verwendet, um die Datenbank beim ersten Start zu initialisieren.
-    # WICHTIG: Diese Werte müssen mit deiner `application.properties` übereinstimmen.
+    # WICHTIG: Diese Werte müssen aus deiner `.env`-Datei kommen.
     environment:
-      # Setzt den Benutzernamen.
       POSTGRES_USER: ${POSTGRES_USER:-dein_db_user}
-
-      # Setzt das Passwort.
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dein_db_passwort}
-
-      # Setzt die Datenbank mit diesem Namen.
       POSTGRES_DB: ${POSTGRES_DB:-feed2toot_db}
-
-    # Port-Mapping: Leitet Anfragen vom Host-Port 5432 an den Container-Port 5432 weiter.
-    # Dadurch kann deine Quarkus-Anwendung, die auf dem Host läuft, die Datenbank im Container erreichen.
-    # Format: "HOST_PORT:CONTAINER_PORT"
+    # Port-Mapping: Leitet Anfragen vom Host an den Container weiter.
+    # Dies ist nur notwendig, wenn du direkt von deinem Host auf die DB zugreifen willst.
     ports:
       - ${POSTGRESQL_PORT:-5432}:5432
-
-    # Volumes: Speichert die Datenbank-Dateien außerhalb des Containers auf deinem Host-System.
-    # Dies ist entscheidend, damit deine Daten erhalten bleiben, auch wenn du den Container stoppst oder neu erstellst.
+    # Speichert die Datenbank-Dateien außerhalb des Containers.
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    # Neustart-Richtlinie.
+    restart: unless-stopped
+    # Gesundheitscheck, um sicherzustellen, dass der app-Container erst startet, wenn die DB bereit ist.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-    # Neustart-Richtlinie: Sorgt dafür, dass der Datenbank-Container automatisch neu gestartet wird,
-    # falls er abstürzt oder der Docker-Daemon neu gestartet wird.
+  # Der neue Anwendungs-Service für feed2mastodon.
+  app:
+    # Das Docker-Image für die Anwendung.
+    image: ghcr.io/chrau/feed2mastodon:v0.0.1
+    # Name des Containers.
+    container_name: feed2toot-app
+    # Startet diesen Service erst, nachdem der 'db'-Service betriebsbereit ist.
+    depends_on:
+      db:
+        condition: service_healthy
+    # Umgebungsvariablen für die Quarkus-Anwendung.
+    # Diese werden aus der `.env`-Datei geladen.
+    environment:
+      # Datenbank-Konfiguration
+      QUARKUS_DATASOURCE_USERNAME: ${POSTGRES_USER:-dein_db_user}
+      QUARKUS_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-dein_db_passwort}
+      # Die JDBC URL verweist auf den 'db'-Service-Namen, den Docker intern auflöst.
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-feed2toot_db}
+
+      # Mastodon-Konfiguration
+      MASTODON_INSTANCE_URL: ${MASTODON_INSTANCE_URL:https://mastodon.hexix.de} # z.B. https://mastodon.social
+      MASTODON_ACCESS_TOKEN: ${MASTODON_ACCESS_TOKEN} # Dein geheimer Access Token
+
+      # Feed-Konfiguration (Beispiel)
+      # Du kannst diese als Umgebungsvariablen definieren oder eine Konfigurationsdatei verwenden.
+      # FEED_URL: ${FEED_URL}
+
+    # Leitet den Anwendungs-Port auf den Host weiter, um darauf zugreifen zu können.
+    ports:
+      - "8080:8080"
+    # Neustart-Richtlinie.
     restart: unless-stopped
 
-# Definition der benannten Volumes, die in den Services verwendet werden.
-# Docker verwaltet den Speicherort dieses Volumes automatisch.
+# Definition der benannten Volumes.
 volumes:
   postgres_data:
