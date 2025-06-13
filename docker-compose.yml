@@ -11,15 +11,20 @@ services:
     # Diese werden vom PostgreSQL-Image verwendet, um die Datenbank beim ersten Start zu initialisieren.
     # WICHTIG: Diese Werte müssen mit deiner `application.properties` übereinstimmen.
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:quarkus_test} #         # Setzt den Benutzernamen
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:quarkus_test} # Setzt das Passwort
-      POSTGRES_DB: ${POSTGRES_DB:feed2toot_db} # Setzt die Datenbank mit diesem Namen
+      # Setzt den Benutzernamen.
+      POSTGRES_USER: ${POSTGRES_USER:-dein_db_user}
+
+      # Setzt das Passwort.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dein_db_passwort}
+
+      # Setzt die Datenbank mit diesem Namen.
+      POSTGRES_DB: ${POSTGRES_DB:-feed2toot_db}
 
     # Port-Mapping: Leitet Anfragen vom Host-Port 5432 an den Container-Port 5432 weiter.
     # Dadurch kann deine Quarkus-Anwendung, die auf dem Host läuft, die Datenbank im Container erreichen.
     # Format: "HOST_PORT:CONTAINER_PORT"
     ports:
-      - ${POSTGRESQL_PORT:-5439}:5432
+      - ${POSTGRESQL_PORT:-5432}:5432
 
     # Volumes: Speichert die Datenbank-Dateien außerhalb des Containers auf deinem Host-System.
     # Dies ist entscheidend, damit deine Daten erhalten bleiben, auch wenn du den Container stoppst oder neu erstellst.
