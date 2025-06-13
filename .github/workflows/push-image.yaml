@@ -97,6 +97,7 @@ jobs:
         with:
           # Der Kontext ist das Root-Verzeichnis deines Projekts
           context: .
+          file: ./src/main/docker/Dockerfile.jvm
           # Gibt an, dass das Image nach dem Bauen hochgeladen werden soll
           push: true
           # Verwendet die im vorherigen Schritt generierten Tags
