@@ -13,10 +13,8 @@ import java.util.List;
 
 @ApplicationScoped
 public class FeedReaderService {
-    @ConfigProperty(name = "feed.url")
-    String feedUrl;
 
-    public List<SyndEntry> readFeedEntries() {
+    public List<SyndEntry> readFeedEntries(String feedUrl) {
         try (XmlReader reader = new XmlReader(new URL(feedUrl))) {
             SyndFeed feed = new SyndFeedInput().build(reader);
             return feed.getEntries();

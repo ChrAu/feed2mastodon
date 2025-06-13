@@ -1,0 +1,36 @@
+services:
+  # Unser Datenbank-Service. Du kannst ihn nennen, wie du möchtest, 'db' ist eine gängige Konvention.
+  db:
+    # Das Docker-Image, das verwendet werden soll. Wir nehmen eine aktuelle PostgreSQL-Version.
+    image: postgres:17
+
+    # Name des Containers, der erstellt wird. Dies ist optional, aber hilfreich für die Übersicht.
+    container_name: feed2toot-postgres-db
+
+    # Umgebungsvariablen, die an den Container übergeben werden.
+    # Diese werden vom PostgreSQL-Image verwendet, um die Datenbank beim ersten Start zu initialisieren.
+    # WICHTIG: Diese Werte müssen mit deiner `application.properties` übereinstimmen.
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:dein_db_user} #         # Setzt den Benutzernamen
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:dein_db_passwort} # Setzt das Passwort
+      POSTGRES_DB: ${POSTGRES_DB:feed2toot_db} # Setzt die Datenbank mit diesem Namen
+
+    # Port-Mapping: Leitet Anfragen vom Host-Port 5432 an den Container-Port 5432 weiter.
+    # Dadurch kann deine Quarkus-Anwendung, die auf dem Host läuft, die Datenbank im Container erreichen.
+    # Format: "HOST_PORT:CONTAINER_PORT"
+    ports:
+      - ${POSTGRESQL_PORT:-5432}:5432
+
+    # Volumes: Speichert die Datenbank-Dateien außerhalb des Containers auf deinem Host-System.
+    # Dies ist entscheidend, damit deine Daten erhalten bleiben, auch wenn du den Container stoppst oder neu erstellst.
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    # Neustart-Richtlinie: Sorgt dafür, dass der Datenbank-Container automatisch neu gestartet wird,
+    # falls er abstürzt oder der Docker-Daemon neu gestartet wird.
+    restart: unless-stopped
+
+# Definition der benannten Volumes, die in den Services verwendet werden.
+# Docker verwaltet den Speicherort dieses Volumes automatisch.
+volumes:
+  postgres_data:

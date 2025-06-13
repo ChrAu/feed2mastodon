@@ -80,7 +80,7 @@
 ###
 FROM registry.access.redhat.com/ubi9/openjdk-21:1.21
 
-ENV LANGUAGE='en_US:en'
+ENV LANGUAGE='de_DE:de'
 
 
 # We make four distinct layers so if there are application changes the library layers can be re-used

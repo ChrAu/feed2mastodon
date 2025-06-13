@@ -22,7 +22,7 @@ public interface MastodonClient {
     @POST
     @Path("/statuses")
     @Produces(MediaType.APPLICATION_JSON)
-    void postStatus(@HeaderParam("Authorization") String accessToken, StatusPayload status);
+    MastodonStatus postStatus(@HeaderParam("Authorization") String accessToken, StatusPayload status);
 
     /**
      * Ruft die Account-Informationen ab, die mit dem Access Token verknüpft sind.

@@ -2,6 +2,7 @@ package com.hexix;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
@@ -16,7 +17,7 @@ import java.time.ZonedDateTime;
 import java.time.chrono.ChronoZonedDateTime;
 import java.util.List;
 
-@Path("/hello")
+@Path("/status")
 public class GreetingResource {
 
 
@@ -36,22 +37,22 @@ public class GreetingResource {
         return "Hello from Quarkus REST";
     }
 
-    @GET
-    @Path("/statuses")
-    @Produces(MediaType.TEXT_PLAIN)
-    public String showStatuses(){
-        final MastodonClient.MastodonAccount account = mastodonClient.verifyCredentials("Bearer " + accessToken );
-        final List<MastodonClient.MastodonStatus> statuses = mastodonClient.getAccountStatuses("Bearer " + accessToken, account.id(), 10);
-
-        StringBuilder sb = new StringBuilder();
-        for (MastodonClient.MastodonStatus status : statuses) {
-            if(status.createdAt().isAfter(ZonedDateTime.of(2025, 6, 11, 0,0,0,0, ZoneId.of("Europe/Berlin")))){
-                final MastodonClient.MastodonStatus mastodonStatus = mastodonClient.deleteStatus("Bearer " + accessToken, status.id());
-                sb.append(status.content()).append("\n");
-            }
-
-
-        }
-        return sb.toString();
-    }
+//    @GET
+//    @Path("/delete")
+//    @Produces(MediaType.TEXT_PLAIN)
+//    public String showStatuses(){
+//        final MastodonClient.MastodonAccount account = mastodonClient.verifyCredentials("Bearer " + accessToken );
+//        final List<MastodonClient.MastodonStatus> statuses = mastodonClient.getAccountStatuses("Bearer " + accessToken, account.id(), 10);
+//
+//        StringBuilder sb = new StringBuilder();
+//        for (MastodonClient.MastodonStatus status : statuses) {
+//            if(status.createdAt().isAfter(ZonedDateTime.of(2025, 6, 11, 0,0,0,0, ZoneId.of("Europe/Berlin")))){
+//                final MastodonClient.MastodonStatus mastodonStatus = mastodonClient.deleteStatus("Bearer " + accessToken, status.id());
+//                sb.append(status.content()).append("\n");
+//            }
+//
+//
+//        }
+//        return sb.toString();
+//    }
 }
