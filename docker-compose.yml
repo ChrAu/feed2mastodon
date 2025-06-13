@@ -19,7 +19,7 @@ services:
     # Dadurch kann deine Quarkus-Anwendung, die auf dem Host läuft, die Datenbank im Container erreichen.
     # Format: "HOST_PORT:CONTAINER_PORT"
     ports:
-      - ${POSTGRESQL_PORT:-5432}:5432
+      - ${POSTGRESQL_PORT:-5439}:5432
 
     # Volumes: Speichert die Datenbank-Dateien außerhalb des Containers auf deinem Host-System.
     # Dies ist entscheidend, damit deine Daten erhalten bleiben, auch wenn du den Container stoppst oder neu erstellst.

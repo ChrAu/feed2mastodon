@@ -34,7 +34,7 @@ jobs:
           POSTGRES_PASSWORD: quarkus_test
         # Mappt den Port 5432 des Containers auf den Host, damit der Build-Prozess ihn erreichen kann.
         ports:
-          - 5432:5432
+          - 5439:5432
         # Health-Check, um sicherzustellen, dass der Build erst startet, wenn die DB bereit ist.
         options: >-
           --health-cmd pg_isready
