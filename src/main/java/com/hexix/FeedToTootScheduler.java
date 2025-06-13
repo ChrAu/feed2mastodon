@@ -70,6 +70,10 @@ public class FeedToTootScheduler {
                     }
 
                     prefixText.append(entry.getTitle());
+                    if(entry.getDescription() != null && !entry.getDescription().getValue().isEmpty()) {
+                        prefixText.append("\n\n");
+                        prefixText.append(entry.getDescription().getValue());
+                    }
 
                     String link = "\n\n" + entry.getLink();
 
