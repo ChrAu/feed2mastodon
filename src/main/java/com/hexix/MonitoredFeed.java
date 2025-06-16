@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 })
 public class MonitoredFeed extends PanacheEntity {
 
-    @Column(unique = true, nullable = false)
+    @Column(unique = true, nullable = false, columnDefinition = "TEXT")
     public String feedUrl; // Die URL des RSS-Feeds
 
     public boolean isActive = true; // Um Feeds einfach zu (de)aktivieren
@@ -23,8 +23,10 @@ public class MonitoredFeed extends PanacheEntity {
     @Column(nullable = false)
     public LocalDateTime addDate = LocalDateTime.now();
 
+    @Column(columnDefinition = "TEXT")
     public String title;
 
+    @Column(columnDefinition = "TEXT")
     public String defaultText;
 
     public Boolean tryAi;

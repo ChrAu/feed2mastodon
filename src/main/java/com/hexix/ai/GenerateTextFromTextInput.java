@@ -21,9 +21,9 @@ public class GenerateTextFromTextInput {
 
     public String getAiMessage(String initPost){
         try(Client client = Client.builder().apiKey(accessToken).build()) {
-
+            final PromptEntity prompt = PromptEntity.findLatest();
             GenerateContentResponse response =
-                    client.models.generateContent(geminiModel, String.format("Erstelle einen Mastodon Post inkl. interessanter Hashtags aus (kein markdown link erstellen aber inkl. https://) dem Text: '%s'", initPost), null);
+                    client.models.generateContent(geminiModel, String.format("%s \n\n'%s'",prompt.prompt, initPost), null);
             LOG.info("Input message:" + initPost);
             LOG.info("Generated message: " + response.text());
             return response.text();

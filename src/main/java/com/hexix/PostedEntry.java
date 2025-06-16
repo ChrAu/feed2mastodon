@@ -18,11 +18,11 @@ import java.time.Instant;
 public class PostedEntry extends PanacheEntity {
 
     // Welcher Eintrag wurde gepostet?
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     public String entryGuid; // Die eindeutige ID des Eintrags aus dem Feed
 
     // Wohin wurde er gepostet?
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     public String mastodonStatusId; // Die ID des Toots von Mastodon
 
     // Wann wurde er gepostet?
