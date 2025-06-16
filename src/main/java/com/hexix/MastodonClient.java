@@ -68,7 +68,7 @@ public interface MastodonClient {
 
 
     // Record für das Senden eines neuen Status
-    record StatusPayload(String status) {}
+    record StatusPayload(String status, String visibility) {}
 
     // Record, um die Antwort von /verify_credentials abzubilden
     // Wir brauchen hier nur die ID.
