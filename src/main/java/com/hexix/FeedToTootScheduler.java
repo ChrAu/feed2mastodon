@@ -40,7 +40,7 @@ public class FeedToTootScheduler {
 
     @Scheduled(every = "10m")
         // Alle 10 Minuten ausführen
-    @Transactional
+//    @Transactional
     void checkFeedAndPost() {
         List<MonitoredFeed> activeFeeds = MonitoredFeed.findAll().list();
 
@@ -88,16 +88,10 @@ public class FeedToTootScheduler {
                         if(!feed.isActive){
                             continue;
                         }
-                        MastodonClient.MastodonStatus postedStatus = mastodonClient.postStatus("Bearer " + accessToken,statusPayload);
-
-                        // 4. Den neuen Eintrag in der Datenbank speichern
                         newDbEntry.feed = feed;
                         newDbEntry.entryGuid = entryGuid;
-                        newDbEntry.mastodonStatusId = postedStatus.id();
                         newDbEntry.postedAt = Instant.now();
-                        newDbEntry.persist(); // Speichern!
-
-                        LOG.info("Erfolgreich getootet und in DB gespeichert. Status-ID: " + postedStatus.id());
+                        postAndPersist( statusPayload, newDbEntry);
                     } catch (Exception e) {
                         LOG.error("Fehler beim Posten auf Mastodon für Feed " + feed.feedUrl + ": " + e.getMessage(), e);
                         // Hier wird die Schleife fortgesetzt, um andere Einträge/Feeds nicht zu blockieren
@@ -142,6 +136,18 @@ public class FeedToTootScheduler {
 //                }
 //            }
 //        }
+    }
+
+    @Transactional
+    void postAndPersist(final MastodonClient.StatusPayload statusPayload, final PostedEntry newDbEntry) {
+        MastodonClient.MastodonStatus postedStatus = mastodonClient.postStatus("Bearer " + accessToken, statusPayload);
+
+        // 4. Den neuen Eintrag in der Datenbank speichern
+        newDbEntry.mastodonStatusId = postedStatus.id();
+
+        newDbEntry.persist(); // Speichern!
+
+        LOG.info("Erfolgreich getootet und in DB gespeichert. Status-ID: " + postedStatus.id());
     }
 
     private static String getTootText(final MonitoredFeed feed, final SyndEntry entry) {
