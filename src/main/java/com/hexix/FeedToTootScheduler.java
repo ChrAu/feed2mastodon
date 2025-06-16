@@ -56,6 +56,7 @@ public class FeedToTootScheduler {
             Collections.reverse(entriesFromFeed);
 
             for (SyndEntry entry : entriesFromFeed) {
+
                 String entryGuid = entry.getUri() != null ? entry.getUri() : entry.getLink();
 
                 // 2. Prüfe in der DB, ob dieser Eintrag für diesen Feed bereits gepostet wurde
@@ -97,6 +98,8 @@ public class FeedToTootScheduler {
                         LOG.error("Fehler beim Posten auf Mastodon für Feed " + feed.feedUrl + ": " + e.getMessage(), e);
                         // Hier wird die Schleife fortgesetzt, um andere Einträge/Feeds nicht zu blockieren
                     }
+                }else{
+                    LOG.info("Eintrag bereits gepostet: " + entry.getTitle() + " - " + feed.feedUrl + " -");
                 }
             }
         }
