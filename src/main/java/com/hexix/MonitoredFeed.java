@@ -27,6 +27,8 @@ public class MonitoredFeed extends PanacheEntity {
 
     public String defaultText;
 
+    public Boolean tryAi;
+
     // Hilfsmethode, um einen Feed anhand seiner URL zu finden oder null zurückzugeben
     public static MonitoredFeed findByUrl(String url) {
         return find("feedUrl", url).firstResult();

@@ -1,5 +1,6 @@
 package com.hexix;
 
+import com.hexix.ai.GenerateTextFromTextInput;
 import com.rometools.rome.feed.synd.SyndEntry;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -26,6 +27,9 @@ public class FeedToTootScheduler {
     @Inject
     @RestClient
     MastodonClient mastodonClient;
+
+    @Inject
+    GenerateTextFromTextInput generateTextFromTextInput;
 
     @ConfigProperty(name = "mastodon.access.token")
     String accessToken;
@@ -61,34 +65,27 @@ public class FeedToTootScheduler {
                     // 3. Neuer Eintrag! Posten und in der DB vermerken.
                     LOG.info("Neuer Eintrag gefunden in " + feed.feedUrl + ": " + entry.getTitle());
 
-                    StringBuilder prefixText = new StringBuilder();
-                    if(feed.title != null && !feed.title.isEmpty()){
-                        prefixText.append(feed.title);
-                    }
-                    if(feed.defaultText != null && !feed.defaultText.isEmpty()){
-                        prefixText.append(feed.defaultText);
-                    }
+                    String tootText = getTootText(feed, entry);
+                    MastodonClient.StatusPayload statusPayload = new MastodonClient.StatusPayload(tootText, "unlisted");
+                    PostedEntry newDbEntry = new PostedEntry();
+                    if(feed.tryAi != null && feed.tryAi) {
+                        try {
+                            String aiToot = generateTextFromTextInput.getAiMessage(tootText);
 
-                    prefixText.append(entry.getTitle());
-                    if(entry.getDescription() != null && !entry.getDescription().getValue().isEmpty()) {
-                        prefixText.append("\n\n");
-                        prefixText.append(entry.getDescription().getValue());
+                            if(aiToot.length() > 10 && aiToot.length() < 500){
+                                statusPayload = new MastodonClient.StatusPayload(aiToot, "public");
+                                newDbEntry.aiToot = true;
+                            }
+                        }catch (Exception e){
+                            LOG.error("Beim generieren einer KI Nachricht ist ein Fehler aufgetreten", e);
+                        }
                     }
-
-                    String link = "\n\n" + entry.getLink();
-
-                    if(prefixText.length() + link.length() > 500){
-                        prefixText = new StringBuilder(prefixText.substring(0, (497 - link.length())) + "...");
-                    }
-
-                    String tootText = prefixText +  link;
 
                     try {
                         // An Mastodon senden
-                        MastodonClient.MastodonStatus postedStatus = mastodonClient.postStatus("Bearer " + accessToken, new MastodonClient.StatusPayload(tootText));
+                        MastodonClient.MastodonStatus postedStatus = mastodonClient.postStatus("Bearer " + accessToken,statusPayload);
 
                         // 4. Den neuen Eintrag in der Datenbank speichern
-                        PostedEntry newDbEntry = new PostedEntry();
                         newDbEntry.feed = feed;
                         newDbEntry.entryGuid = entryGuid;
                         newDbEntry.mastodonStatusId = postedStatus.id();
@@ -138,5 +135,30 @@ public class FeedToTootScheduler {
 //                }
 //            }
 //        }
+    }
+
+    private static String getTootText(final MonitoredFeed feed, final SyndEntry entry) {
+        StringBuilder prefixText = new StringBuilder();
+        if(feed.title != null && !feed.title.isEmpty()){
+            prefixText.append(feed.title);
+        }
+        if(feed.defaultText != null && !feed.defaultText.isEmpty()){
+            prefixText.append(feed.defaultText);
+        }
+
+        prefixText.append(entry.getTitle());
+        if(entry.getDescription() != null && !entry.getDescription().getValue().isEmpty()) {
+            prefixText.append("\n\n");
+            prefixText.append(entry.getDescription().getValue());
+        }
+
+        String link = "\n\n" + entry.getLink();
+
+        if(prefixText.length() + link.length() > 500){
+            prefixText = new StringBuilder(prefixText.substring(0, (497 - link.length())) + "...");
+        }
+
+        String tootText = prefixText +  link;
+        return tootText;
     }
 }

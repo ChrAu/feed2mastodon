@@ -33,6 +33,8 @@ public class PostedEntry extends PanacheEntity {
     @JoinColumn(name = "feed_id")
     public MonitoredFeed feed;
 
+    public Boolean aiToot;
+
     // Leerer Konstruktor für JPA
     public PostedEntry() {
     }

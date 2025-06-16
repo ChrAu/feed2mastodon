@@ -18,9 +18,9 @@ public class InitialDataSetup {
     void onStart(@Observes StartupEvent ev) {
         LOG.info("Anwendung startet, prüfe initiale Daten...");
 
-        final List<Feed> myBlogFeeds = List.of(new Feed("https://forgejo.org/releases/rss.xml", "Forgejo Release\n\n", "Forgejo hat eine neue Version veröffentlicht: \n\n"),
-                new Feed("https://www.tagesschau.de/infoservices/alle-meldungen-100~rss2.xml", "", ""),
-                new Feed("https://rss.p.theconnman.com/_/postgres.atom?includeRegex=%5E(latest%7C(1%5B6-9%5D%7C%5B2-9%5D%5Cd%7C%5Cd%7B3%2C%7D)(%5C.%5Cd%2B)*)%24", "Postges Docker Hub Release\n\n", "Postgres wurde in einer neuen Version veröffentlicht.\n\n") );
+        final List<Feed> myBlogFeeds = List.of(new Feed("https://forgejo.org/releases/rss.xml", "Forgejo Release\n\n", "Forgejo hat eine neue Version veröffentlicht: \n\n", true),
+                new Feed("https://www.tagesschau.de/infoservices/alle-meldungen-100~rss2.xml", "", "", false),
+                new Feed("https://rss.p.theconnman.com/_/postgres.atom?includeRegex=%5E(latest%7C(1%5B6-9%5D%7C%5B2-9%5D%5Cd%7C%5Cd%7B3%2C%7D)(%5C.%5Cd%2B)*)%24", "Postges Docker Hub Release\n\n", "Postgres wurde in einer neuen Version veröffentlicht.\n\n", true) );
 
 
         for (Feed myBlogFeed : myBlogFeeds) {
@@ -32,6 +32,7 @@ public class InitialDataSetup {
                 feed.title = myBlogFeed.title;
                 feed.defaultText = myBlogFeed.defaultText;
                 feed.isActive = true;
+                feed.tryAi = myBlogFeed.tryAi;
                 feed.persist();
             } else {
                 LOG.info("Feed " + myBlogFeed + " ist bereits in der Datenbank.");
@@ -40,5 +41,5 @@ public class InitialDataSetup {
         }
     }
 
-    record Feed(String feedUrl, String title, String defaultText){}
+    record Feed(String feedUrl, String title, String defaultText, boolean tryAi){}
 }
