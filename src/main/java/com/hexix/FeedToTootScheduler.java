@@ -94,7 +94,7 @@ public class FeedToTootScheduler {
 
                         LOG.info("Erfolgreich getootet und in DB gespeichert. Status-ID: " + postedStatus.id());
                     } catch (Exception e) {
-                        System.err.println("Fehler beim Posten auf Mastodon für Feed " + feed.feedUrl + ": " + e.getMessage());
+                        LOG.error("Fehler beim Posten auf Mastodon für Feed " + feed.feedUrl + ": " + e.getMessage(), e);
                         // Hier wird die Schleife fortgesetzt, um andere Einträge/Feeds nicht zu blockieren
                     }
                 }
