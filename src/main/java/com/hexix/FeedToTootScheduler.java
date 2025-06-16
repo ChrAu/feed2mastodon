@@ -102,7 +102,7 @@ public class FeedToTootScheduler {
                         // Hier wird die Schleife fortgesetzt, um andere Einträge/Feeds nicht zu blockieren
                     }
                 }else{
-                    LOG.info("Eintrag bereits gepostet: " + entry.getTitle() + " - " + feed.feedUrl + " -");
+                    LOG.info("Eintrag bereits gepostet: " + entry.getTitle() + " - " + feed.feedUrl.substring(0, 25) + " -");
                 }
             }
         }
