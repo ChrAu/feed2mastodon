@@ -64,7 +64,7 @@ public class FeedToTootScheduler {
 
                 if (count == 0) {
                     // 3. Neuer Eintrag! Posten und in der DB vermerken.
-                    LOG.info("Neuer Eintrag gefunden in " + feed.feedUrl + ": " + entry.getTitle());
+                    LOG.info("Neuer Eintrag gefunden in " + feed.feedUrl.substring(0, 25) + ": " + entry.getTitle());
 
                     String tootText = getTootText(feed, entry);
                     MastodonClient.StatusPayload statusPayload = new MastodonClient.StatusPayload(tootText, "unlisted");
