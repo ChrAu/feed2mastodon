@@ -41,7 +41,7 @@ public class FeedToTootScheduler {
         // Alle 10 Minuten ausführen
     @Transactional
     void checkFeedAndPost() {
-        List<MonitoredFeed> activeFeeds = MonitoredFeed.list("isActive", true);
+        List<MonitoredFeed> activeFeeds = MonitoredFeed.findAll().list();
 
         for (MonitoredFeed feed : activeFeeds) {
             LOG.info("Verarbeite Feed: " + feed.feedUrl);
@@ -84,6 +84,9 @@ public class FeedToTootScheduler {
 
                     try {
                         // An Mastodon senden
+                        if(!feed.isActive){
+                            continue;
+                        }
                         MastodonClient.MastodonStatus postedStatus = mastodonClient.postStatus("Bearer " + accessToken,statusPayload);
 
                         // 4. Den neuen Eintrag in der Datenbank speichern
