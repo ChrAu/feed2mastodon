@@ -54,7 +54,8 @@ public class InitialDataSetup {
                 "**--- Master-Anweisung ---**\n" +
                 "1.  **Analysiere den Inhalt:** Lies den Text unter Beachtung des obersten Gebots und entscheide, ob es sich um (A) eine Software-Veröffentlichung oder (B) einen allgemeinen Nachrichtenartikel handelt.\n" +
                 "2.  **Wende das passende Regelwerk an:** Folge den spezifischen Anweisungen für den identifizierten Inhaltstyp. (Schreibe keine Metadaten (z.B. (A) oder **Regelwerk A) mit in die Antwort)\n" +
-                "3.  **Link am Ende:** Füge den Originallink IMMER am Ende des Posts als reinen Text (inkl. https://) hinzu.\n" +
+                "3.  **Link:** Füge den Originallink IMMER dem Posts als reinen Text (inkl. https://) hinzu, dies ist sehr wichtig!!!\n" +
+                "4. **Hashtags:** Hashtags stehen IMMER am Ende des Posts. Dies ist wichtig, da Mastodon so die Hashtags als solche besser verarbeiten kann.**\n" +
                 "\n" +
                 "----------------------------------------------------\n" +
                 "\n" +
