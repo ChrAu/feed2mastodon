@@ -39,4 +39,14 @@ import java.util.UUID;
     public static PromptEntity findLatest() {
         return find("ORDER BY createdAt DESC").firstResult();
     }
+
+    @Override
+    public String toString() {
+        return "PromptEntity{" +
+                "id=" + id +
+                ", createdAt=" + createdAt +
+                ", prompt='" + prompt + '\'' +
+                ", uuid='" + uuid + '\'' +
+                '}';
+    }
 }

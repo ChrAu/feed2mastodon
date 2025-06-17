@@ -38,4 +38,16 @@ public class PostedEntry extends PanacheEntity {
     // Leerer Konstruktor für JPA
     public PostedEntry() {
     }
+
+    @Override
+    public String toString() {
+        return "PostedEntry{" +
+                "id=" + id +
+                ", aiToot=" + aiToot +
+                ", feed=" + feed +
+                ", postedAt=" + postedAt +
+                ", mastodonStatusId='" + mastodonStatusId + '\'' +
+                ", entryGuid='" + entryGuid + '\'' +
+                '}';
+    }
 }

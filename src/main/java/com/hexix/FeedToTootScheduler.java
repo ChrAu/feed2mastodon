@@ -15,7 +15,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
@@ -48,10 +50,12 @@ public class FeedToTootScheduler {
             LOG.info("Verarbeite Feed: " + feed.feedUrl);
             List<SyndEntry> entriesFromFeed = feedReader.readFeedEntries(feed.feedUrl);
 
-            entriesFromFeed = entriesFromFeed.stream().filter(syndEntry -> {
-                final LocalDateTime feedPublishedLocalDateTime = syndEntry.getPublishedDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+           entriesFromFeed = entriesFromFeed.stream().filter(syndEntry -> {
+
+
+               final LocalDateTime feedPublishedLocalDateTime = Optional.ofNullable(syndEntry.getPublishedDate()).orElse(syndEntry.getUpdatedDate()).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
                 return feed.addDate.isBefore(feedPublishedLocalDateTime);
-            }).sorted(Comparator.comparing(SyndEntry::getPublishedDate)).collect(Collectors.toList());
+            }).sorted(Comparator.comparing(syndEntry -> Optional.ofNullable(syndEntry.getPublishedDate()).orElse(syndEntry.getUpdatedDate()), Comparator.nullsLast(Comparator.naturalOrder()))).toList();
 
             // Einträge umkehren, um sie in chronologischer Reihenfolge zu posten
 //            Collections.reverse(entriesFromFeed);

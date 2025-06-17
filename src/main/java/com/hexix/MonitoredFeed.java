@@ -35,4 +35,17 @@ public class MonitoredFeed extends PanacheEntity {
     public static MonitoredFeed findByUrl(String url) {
         return find("feedUrl", url).firstResult();
     }
+
+    @Override
+    public String toString() {
+        return "MonitoredFeed{" +
+                "id=" + id + '\'' +
+                ", feedUrl='" + feedUrl + '\'' +
+                ", isActive=" + isActive +
+                ", addDate=" + addDate +
+                ", title='" + title + '\'' +
+                ", defaultText='" + defaultText + '\'' +
+                ", tryAi=" + tryAi +
+                '}';
+    }
 }
