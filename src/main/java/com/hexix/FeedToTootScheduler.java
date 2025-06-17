@@ -71,12 +71,11 @@ public class FeedToTootScheduler {
                     // 3. Neuer Eintrag! Posten und in der DB vermerken.
                     LOG.info("Neuer Eintrag gefunden in " + feed.feedUrl.substring(0, 25) + ": " + entry.getTitle());
 
-                    String tootText = getTootText(feed, entry);
-                    MastodonClient.StatusPayload statusPayload = new MastodonClient.StatusPayload(tootText, "unlisted", "de");
+                    MastodonClient.StatusPayload statusPayload = new MastodonClient.StatusPayload(getTootText(feed, entry, false), "unlisted", "de");;
                     PostedEntry newDbEntry = new PostedEntry();
                     if(feed.tryAi != null && feed.tryAi) {
                         try {
-                            String aiToot = generateTextFromTextInput.getAiMessage(tootText);
+                            String aiToot = generateTextFromTextInput.getAiMessage(getTootText(feed, entry, true));
 
                             if(aiToot.length() > 10 && aiToot.length() < 500){
                                 statusPayload = new MastodonClient.StatusPayload(aiToot, "public", "de");
@@ -154,7 +153,7 @@ public class FeedToTootScheduler {
         LOG.info("Erfolgreich getootet und in DB gespeichert. Status-ID: " + postedStatus.id());
     }
 
-    private static String getTootText(final MonitoredFeed feed, final SyndEntry entry) {
+    private static String getTootText(final MonitoredFeed feed, final SyndEntry entry, boolean fullContent) {
         StringBuilder prefixText = new StringBuilder();
         if(feed.title != null && !feed.title.isEmpty()){
             prefixText.append(feed.title);
@@ -167,11 +166,14 @@ public class FeedToTootScheduler {
         if(entry.getDescription() != null && !entry.getDescription().getValue().isEmpty()) {
             prefixText.append("\n\n");
             prefixText.append(entry.getDescription().getValue());
+        }else if(!entry.getContents().isEmpty() && entry.getContents().getFirst().getValue() != null && !entry.getContents().getFirst().getValue().isEmpty()){
+            prefixText.append("\n\n");
+            prefixText.append(entry.getContents().getFirst().getValue());
         }
 
         String link = "\n\n" + entry.getLink();
 
-        if(prefixText.length() + link.length() > 500){
+        if(!fullContent && prefixText.length() + link.length() > 500){
             prefixText = new StringBuilder(prefixText.substring(0, (497 - link.length())) + "...");
         }
 
