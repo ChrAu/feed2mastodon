@@ -68,14 +68,14 @@ public class FeedToTootScheduler {
                     LOG.info("Neuer Eintrag gefunden in " + feed.feedUrl.substring(0, 25) + ": " + entry.getTitle());
 
                     String tootText = getTootText(feed, entry);
-                    MastodonClient.StatusPayload statusPayload = new MastodonClient.StatusPayload(tootText, "unlisted");
+                    MastodonClient.StatusPayload statusPayload = new MastodonClient.StatusPayload(tootText, "unlisted", "de");
                     PostedEntry newDbEntry = new PostedEntry();
                     if(feed.tryAi != null && feed.tryAi) {
                         try {
                             String aiToot = generateTextFromTextInput.getAiMessage(tootText);
 
                             if(aiToot.length() > 10 && aiToot.length() < 500){
-                                statusPayload = new MastodonClient.StatusPayload(aiToot, "public");
+                                statusPayload = new MastodonClient.StatusPayload(aiToot, "public", "de");
                                 newDbEntry.aiToot = true;
                             }
                         }catch (Exception e){
