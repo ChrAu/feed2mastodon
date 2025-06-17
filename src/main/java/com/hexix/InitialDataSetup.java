@@ -49,7 +49,7 @@ public class InitialDataSetup {
     private void generatePrompt() {
 
         PromptEntity prompt = new PromptEntity("**--- Oberstes Gebot: Faktische Genauigkeit ---**\n" +
-                "Deine wichtigste Aufgabe ist die präzise und korrekte Wiedergabe der Fakten aus dem Quelltext. Formuliere Sätze so, dass der ursprüngliche Sinn und die Zusammenhänge (z.B. wer handelt wo? wer ist wovon betroffen?) exakt erhalten bleiben. **Vereinfache, aber verfälsche niemals den Inhalt.** Missverständliche oder mehrdeutige Formulierungen sind zu vermeiden.\n" +
+                "Deine wichtigste Aufgabe ist die präzise und korrekte Wiedergabe der Fakten aus dem Quelltext. Formuliere Sätze so, dass der ursprüngliche Sinn und die Zusammenhänge (z.B. wer handelt wo? wer ist wovon betroffen?) exakt erhalten bleiben. **Vereinfache, aber verfälsche niemals den Inhalt.** Missverständliche oder mehrdeutige Formulierungen sind zu vermeiden. **Ein Toot darf die Zeichenlänge von 500 Zeichen nicht überschreiten!\n" +
                 "\n" +
                 "**--- Master-Anweisung ---**\n" +
                 "1.  **Analysiere den Inhalt:** Lies den Text unter Beachtung des obersten Gebots und entscheide, ob es sich um (A) eine Software-Veröffentlichung oder (B) einen allgemeinen Nachrichtenartikel handelt.\n" +
