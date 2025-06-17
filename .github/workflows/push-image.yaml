@@ -71,7 +71,7 @@ jobs:
           QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://localhost:5439/quarkus_test
         run: |
           chmod +x mvnw
-          ./mvnw -B package --file pom.xml
+          ./mvnw -B package -Dquarkus.profile=prod --file pom.xml
 
       # Schritt 4: An der GitHub Container Registry (ghcr.io) anmelden
       # Verwendet ein automatisch generiertes GITHUB_TOKEN zur Authentifizierung
