@@ -173,8 +173,8 @@ public class FeedToTootScheduler {
 
         String link = "\n\n" + entry.getLink();
 
-        if(!fullContent && prefixText.length() + link.length() > 500){
-            prefixText = new StringBuilder(prefixText.substring(0, (497 - link.length())) + "...");
+        if(prefixText.length() + link.length() > (fullContent ?4500 : 500)){
+            prefixText = new StringBuilder(prefixText.substring(0, (fullContent ?4500 :497 - link.length())) + "...");
         }
 
         String tootText = prefixText +  link;
