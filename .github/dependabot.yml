@@ -1,0 +1,22 @@
+version: 2
+updates:
+  # Konfiguration für Maven
+  - package-ecosystem: "maven"
+    directory: "/" # Stammverzeichnis deines Projekts, wo die pom.xml liegt
+    schedule:
+      interval: "daily" # Wie oft soll Dependabot prüfen? (daily, weekly, monthly)
+    open-pull-requests-limit: 10 # Begrenzt die Anzahl offener PRs von Dependabot
+    reviewers:
+      - "ChrAue" # Optional: Füge Reviewer für die PRs hinzu
+    assignees:
+      - "ChrAu" # Optional: Weise die PRs direkt jemandem zu
+    commit-message:
+      prefix: "feat"
+      prefix-development: "chore"
+      include: "scope"
+
+  # Konfiguration für GitHub Actions (falls du welche nutzt)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
