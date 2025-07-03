@@ -15,6 +15,11 @@ updates:
       prefix-development: "chore"
       include: "scope"
 
+  - package-ecosystem: "docker"
+    directory: "/src/main/docker/"
+    schedule:
+      interval: "daily"
+
   # Konfiguration für GitHub Actions (falls du welche nutzt)
   - package-ecosystem: "github-actions"
     directory: "/"
