@@ -4,7 +4,7 @@ services:
   # Unser Datenbank-Service.
   db:
     # Das Docker-Image, das verwendet werden soll.
-    image: postgres:16 # Es wird empfohlen, eine spezifischere Version als 'latest' oder '17' zu verwenden, die noch nicht final ist.
+    image: postgres:17 # Es wird empfohlen, eine spezifischere Version als 'latest' oder '17' zu verwenden, die noch nicht final ist.
     # Name des Containers, der erstellt wird.
     container_name: feed2toot-postgres-db
     # Umgebungsvariablen, die an den Container übergeben werden.
@@ -49,8 +49,8 @@ services:
       QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-feed2toot_db}
 
       # Mastodon-Konfiguration
-      MASTODON_INSTANCE_URL: ${MASTODON_INSTANCE_URL:https://mastodon.hexix.de} # z.B. https://mastodon.social
-      MASTODON_ACCESS_TOKEN: ${MASTODON_ACCESS_TOKEN} # Dein geheimer Access Token
+      MASTODON_INSTANCE_URL: ${MASTODON_INSTANCE_URL:-https://mastodon.hexix.de} # z.B. https://mastodon.social
+      MASTODON_ACCESS_TOKEN: ${MASTODON_ACCESS_TOKEN:-key} # Dein geheimer Access Token
 
       # Feed-Konfiguration (Beispiel)
       # Du kannst diese als Umgebungsvariablen definieren oder eine Konfigurationsdatei verwenden.
