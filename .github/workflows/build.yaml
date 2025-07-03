@@ -1,0 +1,107 @@
+# Name des GitHub Action Workflows
+name: Build and Push Quarkus Application to GHCR
+
+# Dieser Workflow wird bei jedem Push auf den 'main'-Branch ausgeführt.
+# Du kannst dies anpassen, z.B. auf Pull Requests oder andere Branches.
+on:
+  push:
+    branches:
+      - *
+  # Ermöglicht das manuelle Ausführen dieses Workflows von der Actions-Registerkarte aus
+  workflow_dispatch:
+
+# Umgebungsvariablen, die für alle Jobs im Workflow gelten
+env:
+  # Name des Docker-Images. Passe dies an deinen Projektnamen an.
+  # Es wird im Format ghcr.io/DEIN_GITHUB_BENUTZERNAME/DEIN_PROJEKTNAME sein
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push-image:
+    # Der Typ des Runners, auf dem der Job ausgeführt wird
+    runs-on: self-hosted
+
+    # NEU: Service-Container für die Test-Datenbank
+    # Dieser Block startet einen PostgreSQL-Container, der für die Dauer des Jobs verfügbar ist.
+    services:
+      postgres:
+        image: postgres:17
+        # Umgebungsvariablen zum Initialisieren der Test-Datenbank.
+        # Diese Anmeldedaten werden im Build-Schritt unten verwendet.
+        env:
+          POSTGRES_DB: quarkus_test
+          POSTGRES_USER: quarkus_test
+          POSTGRES_PASSWORD: quarkus_test
+        # Mappt den Port 5432 des Containers auf den Host, damit der Build-Prozess ihn erreichen kann.
+        ports:
+          - 5439:5432
+        # Health-Check, um sicherzustellen, dass der Build erst startet, wenn die DB bereit ist.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    # Berechtigungen, die der GITHUB_TOKEN für diesen Job benötigt.
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # Schritt 1: Code aus dem Repository auschecken
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Schritt 2: Java JDK 21 (Zulu) einrichten
+      # Richtet die angeforderte Java-Version und Distribution ein.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'zulu'
+
+      # Schritt 3: Mit Maven Wrapper bauen
+      # Stellt sicher, dass die mvnw-Datei ausführbar ist und führt dann den Build aus.
+      - name: Build with Maven Wrapper
+        # NEU: Umgebungsvariablen, um Quarkus mit der Test-DB zu verbinden.
+        # Diese überschreiben die Werte aus deiner application.properties nur für diesen Schritt.
+        env:
+          QUARKUS_DATASOURCE_USERNAME: quarkus_test
+          QUARKUS_DATASOURCE_PASSWORD: quarkus_test
+          QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://localhost:5439/quarkus_test
+        run: |
+          chmod +x mvnw
+          ./mvnw -B package -Dquarkus.profile=prod --file pom.xml
+
+#      # Schritt 4: An der GitHub Container Registry (ghcr.io) anmelden
+#      # Verwendet ein automatisch generiertes GITHUB_TOKEN zur Authentifizierung
+#      - name: Log in to the Container registry
+#        uses: docker/login-action@v3
+#        with:
+#          registry: ghcr.io
+#          username: ${{ github.actor }}
+#          password: ${{ secrets.GITHUB_TOKEN }}
+#
+#      # Schritt 5: Metadaten für das Docker-Image extrahieren (z.B. Tags und Labels)
+#      # Erstellt automatisch Tags basierend auf dem Git-Commit, Branch usw.
+#      - name: Extract metadata (tags, labels) for Docker
+#        id: meta
+#        uses: docker/metadata-action@v5
+#        with:
+#          images: ghcr.io/${{ env.IMAGE_NAME }}
+#
+#      # Schritt 6: Docker-Image bauen und in die GHCR hochladen
+#      # Dieser Schritt verwendet dein angepasstes Dockerfile.
+#      - name: Build and push Docker image
+#        uses: docker/build-push-action@v6
+#        with:
+#          # Der Kontext ist das Root-Verzeichnis deines Projekts
+#          context: .
+#          file: ./src/main/docker/Dockerfile.jvm
+#          # Gibt an, dass das Image nach dem Bauen hochgeladen werden soll
+#          push: true
+#          # Verwendet die im vorherigen Schritt generierten Tags
+#          tags: ${{ steps.meta.outputs.tags }}
+#          # Verwendet die im vorherigen Schritt generierten Labels
+#          labels: ${{ steps.meta.outputs.labels }}
+
