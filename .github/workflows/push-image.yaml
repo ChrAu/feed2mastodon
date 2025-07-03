@@ -70,7 +70,7 @@ jobs:
           QUARKUS_DATASOURCE_PASSWORD: quarkus_test
           QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://localhost:5439/quarkus_test
           GEMINIE_ACCESS_TOKEN: ${{ secrets.GEMINIE_ACCESS_TOKEN}}
-          GEMINI_MODEL: ${{ env.GEMINI_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
         run: |
           chmod +x mvnw
           ./mvnw -B package -Dquarkus.profile=prod --file pom.xml
