@@ -4,7 +4,7 @@ updates:
   - package-ecosystem: "maven"
     directory: "/" # Stammverzeichnis deines Projekts, wo die pom.xml liegt
     schedule:
-      interval: "daily" # Wie oft soll Dependabot prüfen? (daily, weekly, monthly)
+      interval: "weekly" # Wie oft soll Dependabot prüfen? (daily, weekly, monthly)
     open-pull-requests-limit: 10 # Begrenzt die Anzahl offener PRs von Dependabot
     reviewers:
       - "ChrAu" # Optional: Füge Reviewer für die PRs hinzu
@@ -18,10 +18,10 @@ updates:
   - package-ecosystem: "docker"
     directory: "/src/main/docker/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
 
   # Konfiguration für GitHub Actions (falls du welche nutzt)
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
