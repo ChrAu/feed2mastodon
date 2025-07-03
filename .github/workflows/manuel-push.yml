@@ -105,7 +105,7 @@ jobs:
       # Schritt 6: Docker-Image bauen und in die GHCR hochladen
       # Dieser Schritt verwendet dein Dockerfile für den JVM-Build.
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           # Der Kontext ist das Root-Verzeichnis deines Projekts
           context: .
