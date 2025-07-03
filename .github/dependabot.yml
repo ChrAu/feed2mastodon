@@ -1,7 +1,7 @@
 version: 2
 updates:
   # Konfiguration für Maven
-  - package-ecosystem: "npm, maven, docker"
+  - package-ecosystem: "maven"
     directory: "/" # Stammverzeichnis deines Projekts, wo die pom.xml liegt
     schedule:
       interval: "daily" # Wie oft soll Dependabot prüfen? (daily, weekly, monthly)
