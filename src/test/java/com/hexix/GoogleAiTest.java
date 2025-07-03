@@ -31,6 +31,8 @@ public class GoogleAiTest {
 
     @Test
     public void simpleQuestionTest() {
+
+        LOG.info(accessToken);
         try (Client client = Client.builder().apiKey(accessToken).build()) {
 
             final GenerationConfig config = GenerationConfig.builder().responseMimeType("application/json").maxOutputTokens(256).build();
