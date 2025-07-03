@@ -5,8 +5,8 @@ name: Build and Push Quarkus Application to GHCR
 # Du kannst dies anpassen, z.B. auf Pull Requests oder andere Branches.
 on:
   push:
-    branches:
-      - *
+#    branches:
+#      - main
   # Ermöglicht das manuelle Ausführen dieses Workflows von der Actions-Registerkarte aus
   workflow_dispatch:
 
