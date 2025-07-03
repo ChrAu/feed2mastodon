@@ -5,6 +5,7 @@ updates:
     directory: "/" # Stammverzeichnis deines Projekts, wo die pom.xml liegt
     schedule:
       interval: "daily" # Wie oft soll Dependabot prüfen? (daily, weekly, monthly)
+    runs-on: self-hosted 
     open-pull-requests-limit: 10 # Begrenzt die Anzahl offener PRs von Dependabot
     reviewers:
       - "ChrAue" # Optional: Füge Reviewer für die PRs hinzu
@@ -20,3 +21,4 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    runs-on: self-hosted
