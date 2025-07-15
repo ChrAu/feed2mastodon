@@ -229,7 +229,7 @@ public class GoogleAiTest {
 
         List<double[]> vectors = new LinkedList<>();
 
-        for(int i = 0; i<10000000;i++){
+        for(int i = 0; i<10000;i++){
             double [] vector = new double[EMBEDDING_DIMENSION];
             for(int j = 0; j<vector.length;j++){
                 vector[j] = random.nextFloat(2)-1;

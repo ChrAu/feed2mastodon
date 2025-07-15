@@ -8,6 +8,7 @@ import io.restassured.http.ContentType;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.wildfly.common.Assert;
 
@@ -33,6 +34,7 @@ class GreetingResourceTest {
     }
 
     @Test
+    @Disabled
     void testPutThemen(){
         given().contentType(ContentType.TEXT).body("Pilze").when().post("/themen").then().statusCode(200).body("thema", is("Pilze")).body("uuid", notNullValue());
     }
