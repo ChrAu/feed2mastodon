@@ -18,7 +18,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push-image:
+  build:
     # Der Typ des Runners, auf dem der Job ausgeführt wird
     runs-on: self-hosted
 

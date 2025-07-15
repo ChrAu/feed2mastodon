@@ -24,7 +24,8 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push-image:
+  build:
+    name: Build Java Application
     # Der Typ des Runners, auf dem der Job ausgeführt wird
     runs-on: self-hosted
 
@@ -32,7 +33,7 @@ jobs:
     # Dieser Block startet einen PostgreSQL-Container, der für die Dauer des Jobs verfügbar ist.
     services:
       postgres:
-        image: postgres:16
+        image: postgres:17
         # Umgebungsvariablen zum Initialisieren der Test-Datenbank.
         # Diese Anmeldedaten werden im Build-Schritt unten verwendet.
         env:
@@ -52,7 +53,6 @@ jobs:
     # Berechtigungen, die der GITHUB_TOKEN für diesen Job benötigt.
     permissions:
       contents: read
-      packages: write
 
     steps:
       # Schritt 1: Code aus dem ausgewählten Repository-Branch auschecken
@@ -84,18 +84,59 @@ jobs:
         run: |
           chmod +x mvnw
           ./mvnw -B package --file pom.xml
+          
 
-      # Schritt 4: An der GitHub Container Registry (ghcr.io) anmelden
-      # Verwendet ein automatisch generiertes GITHUB_TOKEN zur Authentifizierung
-      - name: Log in to the Container registry
+      # Schritt 4: Build-Artefakte hochladen
+      # Das 'target'-Verzeichnis enthält die gebaute JAR-Datei, die für den Docker-Build benötigt wird.
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: java-app-build
+          path: |
+            target/quarkus-app/
+            target/lib/
+            target/*-runner.jar
+            
+            
+
+  # ===================================================================
+  # JOB 2: Pusht das Docker-Image zur GitHub Container Registry (GHCR)
+  # ===================================================================
+  push-to-ghcr:
+    name: Push to GitHub Container Registry
+    # Dieser Job startet erst, nachdem der 'build'-Job erfolgreich war.
+    needs: build
+    runs-on: self-hosted
+
+    # Berechtigungen für diesen Job. Schreibberechtigung für Packages wird benötigt.
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # Schritt 1: Code auschecken (wird für das Dockerfile benötigt)
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      # Schritt 2: Build-Artefakt herunterladen
+      # Holt die im 'build'-Job erstellten Dateien.
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: java-app-build
+          path: target/
+
+      # Schritt 3: An der GitHub Container Registry (ghcr.io) anmelden
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Schritt 5: Metadaten für das Docker-Image extrahieren (z.B. Tags und Labels)
-      # Erstellt automatisch einen Tag basierend auf der Benutzereingabe.
+      # Schritt 4: Metadaten für das Docker-Image extrahieren
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -104,18 +145,42 @@ jobs:
           tags: |
             ${{ github.event.inputs.tag }}
 
-      # Schritt 6: Docker-Image bauen und in die GHCR hochladen
-      # Dieser Schritt verwendet dein Dockerfile für den JVM-Build.
+      # Schritt 5: Docker-Image bauen und in die GHCR hochladen
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          # Der Kontext ist das Root-Verzeichnis deines Projekts
           context: .
           file: ./src/main/docker/Dockerfile.jvm
-          # Gibt an, dass das Image nach dem Bauen hochgeladen werden soll
           push: true
-          # Verwendet die im vorherigen Schritt generierten Tags
           tags: ${{ steps.meta.outputs.tags }}
-          # Verwendet die im vorherigen Schritt generierten Labels
           labels: ${{ steps.meta.outputs.labels }}
 
+  # ===================================================================
+  # ZUKÜNFTIGER JOB: Hier könntest du einen weiteren Push-Job hinzufügen
+  # zum Beispiel für Docker Hub. Er würde parallel zu 'push-to-ghcr' laufen.
+  # ===================================================================
+  # push-to-dockerhub:
+  #   name: Push to Docker Hub
+  #   needs: build
+  #   runs-on: self-hosted
+  #   permissions:
+  #     contents: read
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #       with:
+  #         ref: ${{ github.event.inputs.branch }}
+  #
+  #     - name: Download build artifact
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: java-app-build
+  #         path: target/
+  #
+  #     - name: Log in to Docker Hub
+  #       uses: docker/login-action@v3
+  #       with:
+  #         username: ${{ secrets.DOCKERHUB_USERNAME }}
+  #         password: ${{ secrets.DOCKERHUB_TOKEN }}
+  #
+  #     # ... weitere Schritte für den Build und Push zu Docker Hub
