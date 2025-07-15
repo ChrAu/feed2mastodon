@@ -1,5 +1,5 @@
 # Name des GitHub Action Workflows
-name: Build and Push Quarkus Application to GHCR
+name: Build and Push
 
 # Dieser Workflow wird bei jedem Push auf den 'main'-Branch ausgeführt.
 # Du kannst dies anpassen, z.B. auf Pull Requests oder andere Branches.
