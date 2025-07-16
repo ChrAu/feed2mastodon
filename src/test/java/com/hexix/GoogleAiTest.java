@@ -104,6 +104,52 @@ public class GoogleAiTest {
         }
     }
 
+    @Test
+    public void new001EmbeddingsTest() {
+        try(Client client = Client.builder().apiKey(accessToken).build()) {
+            System.out.println("Rufe Embeddings mit dem Google Gen AI SDK ab...");
+
+            final EmbedContentResponse embedContentResponse = client.models.embedContent("gemini-embedding-001","Patchday: Adobe schützt After Effects & Co. vor möglichen Attacken\n" +
+                    "\n" +
+                    "Mehrere Adobe-Anwendungen sind unter anderem für DoS- und Schadcode-Attacken anfällig. Sicherheitsupdates schaffen Abhilfe. " +
+                    "https://www.heise.de/news/Patchday-Adobe-schuetzt-After-Effects-Co-vor-moeglichen-Attacken-10479838.html?wt_mc=sm.red.ho.mastodon.mastodon.md_beitraege.md_beitraege&utm_source=mastodon" +
+                    "#\n" +
+                    "Adobe\n" +
+                    "#\n" +
+                    "IT\n" +
+                    "#\n" +
+                    "Patchday\n" +
+                    "#\n" +
+                    "Security\n" +
+                    "#\n" +
+                    "Sicherheitslücken\n" +
+                    "#\n" +
+                    "Updates\n" +
+                    "#", EmbedContentConfig.builder().taskType("SEMANTIC_SIMILARITY").build());
+
+            final List<ContentEmbedding> contentEmbeddings = embedContentResponse.embeddings().get();
+
+
+            final List<ContentEmbedding> compareExample = client.models.embedContent("gemini-embedding-001", "Patchday: Adobe schützt After Effects & Co. vor möglichen Attacken\n" +
+                    "\n" +
+                    "Mehrere Adobe-Anwendungen sind unter anderem für DoS- und Schadcode-Attacken anfällig. Sicherheitsupdates schaffen Abhilfe.", EmbedContentConfig.builder().taskType("SEMANTIC_SIMILARITY").build()).embeddings().get();
+
+
+
+            final double[] result1 = Arrays.stream(contentEmbeddings.getFirst().values().get().<Float>toArray(new Float[0])).mapToDouble(Float::doubleValue).toArray();
+
+            final double[] result2 = Arrays.stream(compareExample.getFirst().values().get().<Float>toArray(new Float[0])).mapToDouble(Float::doubleValue).toArray();
+
+            double[] userProfileVector = createProfileVector(List.of(result1));
+
+            double similarityScore1 = getCosineSimilarity(userProfileVector, result2);
+            System.out.println(similarityScore1);
+
+            Assertions.assertTrue(similarityScore1 > 0.9, "Die Ähnlichkeit lieft bei unter 0,9");
+
+        }
+    }
+
 
     @Test
     public void simpleEmbedding() {
@@ -250,18 +296,20 @@ public class GoogleAiTest {
      * @return Der durchschnittliche, normalisierte Vektor.
      */
     public static double[] createProfileVector(List<double[]> vectors) {
-        if (vectors == null || vectors.isEmpty()) {
+        if (vectors == null || vectors.isEmpty() || vectors.stream().map(doubles -> doubles.length).count() > 1) {
+
             return new double[EMBEDDING_DIMENSION];
         }
+        final int dimension = vectors.getFirst().length;
 
-        double[] profileVector = new double[EMBEDDING_DIMENSION];
+        double[] profileVector = new double[dimension];
         for (double[] vector : vectors) {
-            for (int i = 0; i < EMBEDDING_DIMENSION; i++) {
+            for (int i = 0; i < dimension; i++) {
                 profileVector[i] += vector[i];
             }
         }
 
-        for (int i = 0; i < EMBEDDING_DIMENSION; i++) {
+        for (int i = 0; i < dimension; i++) {
             profileVector[i] /= vectors.size();
         }
         return normalize(profileVector);
