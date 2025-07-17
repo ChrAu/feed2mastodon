@@ -25,7 +25,7 @@ jobs:
     # Dieser Block startet einen PostgreSQL-Container, der für die Dauer des Jobs verfügbar ist.
     services:
       postgres:
-        image: postgres:17
+        image: postgres:latest
         # Umgebungsvariablen zum Initialisieren der Test-Datenbank.
         # Diese Anmeldedaten werden im Build-Schritt unten verwendet.
         env:
