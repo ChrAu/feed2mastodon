@@ -27,6 +27,9 @@ public class GeminiRequestEntity extends PanacheEntity {
     @Column(columnDefinition = "TEXT")
     String text;
 
+
+    Integer totalTokenCount = 0;
+
     public String getUuid() {
         return uuid;
     }
@@ -62,4 +65,9 @@ public class GeminiRequestEntity extends PanacheEntity {
     public static long countLast10Minutes(String model){
         return find("model = ?1 and timestamp > ?2", model, LocalDateTime.now().minusMinutes(10)).count();
     }
+
+    public void setTotalTokenCount(final int totalTokenCount) {
+        this.totalTokenCount = totalTokenCount;
+    }
+
 }
