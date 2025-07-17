@@ -3,15 +3,19 @@ package com.hexix.ai;
 import com.google.genai.Client;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
+import com.google.genai.types.GenerateContentResponseUsageMetadata;
 import com.google.genai.types.HarmBlockThreshold;
 import com.google.genai.types.HarmCategory;
+import com.google.genai.types.ModalityTokenCount;
 import com.google.genai.types.SafetySetting;
+import com.google.genai.types.TrafficType;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import java.util.List;
+import java.util.Optional;
 
 
 @ApplicationScoped
@@ -45,6 +49,8 @@ public class GenerateTextFromTextInput {
 
             GenerateContentResponse response =
                     client.models.generateContent(geminiModel, sendPrompt, GenerateContentConfig.builder().safetySettings(safetySettings).maxOutputTokens(500).build());
+            final Optional<GenerateContentResponseUsageMetadata> generateContentResponseUsageMetadata = response.usageMetadata();
+            geminiRequestEntity.setTotalTokenCount(generateContentResponseUsageMetadata.orElse(GenerateContentResponseUsageMetadata.builder().totalTokenCount(0).build()).totalTokenCount().orElse(0));
             LOG.info("Input message:" + initPost);
             LOG.info("Generated message: " + response.text());
             return response.text();
