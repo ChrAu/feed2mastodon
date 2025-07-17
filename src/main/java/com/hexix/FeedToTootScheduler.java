@@ -1,5 +1,6 @@
 package com.hexix;
 
+import com.hexix.ai.GeminiRequestEntity;
 import com.hexix.ai.GenerateTextFromTextInput;
 import com.hexix.mastodon.api.MastodonDtos;
 import com.hexix.mastodon.resource.MastodonClient;
@@ -35,6 +36,9 @@ public class FeedToTootScheduler {
 
     @ConfigProperty(name = "mastodon.access.token")
     String accessToken;
+
+    @ConfigProperty(name = "gemini.model")
+    String geminiModel;
 
     // Einfache In-Memory-Lösung zur Vermeidung von Duplikaten.
     // Für eine robuste Lösung eine Datei oder DB verwenden!
@@ -73,8 +77,15 @@ public class FeedToTootScheduler {
                     MastodonDtos.StatusPayload statusPayload = new MastodonDtos.StatusPayload(getTootText(feed, entry, false), "unlisted", "de");;
                     PostedEntry newDbEntry = new PostedEntry();
                     if(feed.tryAi != null && feed.tryAi) {
+                        final long countGeminiRequests = GeminiRequestEntity.countLast10Minutes(geminiModel);
+
+                        if(countGeminiRequests > 3){
+                            continue;
+                        }
+
+
                         try {
-                            String aiToot = generateTextFromTextInput.getAiMessage(getTootText(feed, entry, true));
+                            String aiToot = generateTextFromTextInput.getAiMessage(geminiModel, getTootText(feed, entry, true));
 
                             if(aiToot.length() > 10 && aiToot.length() < 500){
                                 statusPayload = new MastodonDtos.StatusPayload(aiToot, "public", "de");
