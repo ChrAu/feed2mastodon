@@ -1,6 +1,8 @@
 package com.hexix;
 
 import com.hexix.ai.GenerateTextFromTextInput;
+import com.hexix.mastodon.api.MastodonDtos;
+import com.hexix.mastodon.resource.MastodonClient;
 import com.rometools.rome.feed.synd.SyndEntry;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -13,12 +15,9 @@ import org.jboss.logging.Logger;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class FeedToTootScheduler {
@@ -71,14 +70,14 @@ public class FeedToTootScheduler {
                     // 3. Neuer Eintrag! Posten und in der DB vermerken.
                     LOG.info("Neuer Eintrag gefunden in " + feed.feedUrl.substring(0, 25) + ": " + entry.getTitle());
 
-                    MastodonClient.StatusPayload statusPayload = new MastodonClient.StatusPayload(getTootText(feed, entry, false), "unlisted", "de");;
+                    MastodonDtos.StatusPayload statusPayload = new MastodonDtos.StatusPayload(getTootText(feed, entry, false), "unlisted", "de");;
                     PostedEntry newDbEntry = new PostedEntry();
                     if(feed.tryAi != null && feed.tryAi) {
                         try {
                             String aiToot = generateTextFromTextInput.getAiMessage(getTootText(feed, entry, true));
 
                             if(aiToot.length() > 10 && aiToot.length() < 500){
-                                statusPayload = new MastodonClient.StatusPayload(aiToot, "public", "de");
+                                statusPayload = new MastodonDtos.StatusPayload(aiToot, "public", "de");
                                 newDbEntry.aiToot = true;
                             }
                         }catch (Exception e){
@@ -142,8 +141,8 @@ public class FeedToTootScheduler {
     }
 
     @Transactional
-    void postAndPersist(final MastodonClient.StatusPayload statusPayload, final PostedEntry newDbEntry) {
-        MastodonClient.MastodonStatus postedStatus = mastodonClient.postStatus("Bearer " + accessToken, statusPayload);
+    void postAndPersist(final MastodonDtos.StatusPayload statusPayload, final PostedEntry newDbEntry) {
+        MastodonDtos.MastodonStatus postedStatus = mastodonClient.postStatus("Bearer " + accessToken, statusPayload);
 
         // 4. Den neuen Eintrag in der Datenbank speichern
         newDbEntry.mastodonStatusId = postedStatus.id();
