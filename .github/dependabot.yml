@@ -6,8 +6,8 @@ updates:
     schedule:
       interval: "weekly" # Wie oft soll Dependabot prüfen? (daily, weekly, monthly)
     open-pull-requests-limit: 10 # Begrenzt die Anzahl offener PRs von Dependabot
-    reviewers:
-      - "ChrAu" # Optional: Füge Reviewer für die PRs hinzu
+#    reviewers:
+#      - "ChrAu" # Optional: Füge Reviewer für die PRs hinzu
     assignees:
       - "ChrAu" # Optional: Weise die PRs direkt jemandem zu
     commit-message:
