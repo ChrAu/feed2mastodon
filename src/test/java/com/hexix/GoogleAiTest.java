@@ -1,7 +1,11 @@
 package com.hexix;
 
 import com.google.genai.Client;
+import com.google.genai.types.BatchJob;
+import com.google.genai.types.BatchJobSource;
+import com.google.genai.types.Content;
 import com.google.genai.types.ContentEmbedding;
+import com.google.genai.types.CreateBatchJobConfig;
 import com.google.genai.types.EmbedContentConfig;
 import com.google.genai.types.EmbedContentResponse;
 import com.google.genai.types.GenerateContentConfig;
@@ -10,8 +14,12 @@ import com.google.genai.types.GenerationConfig;
 import com.google.genai.types.GoogleSearch;
 import com.google.genai.types.HarmBlockThreshold;
 import com.google.genai.types.HarmCategory;
+import com.google.genai.types.InlinedRequest;
+import com.google.genai.types.Part;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Tool;
+import com.hexix.mastodon.api.MastodonDtos;
+import com.hexix.mastodon.resource.FavouritesResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.vertx.core.runtime.config.VertxConfiguration;
 import jakarta.inject.Inject;
@@ -22,6 +30,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
@@ -40,9 +49,59 @@ public class GoogleAiTest {
     String geminiModel;
 
     static Integer EMBEDDING_DIMENSION = 768;
-    @Inject
-    VertxConfiguration vertxConfiguration;
 
+
+
+
+
+    @Test
+    public void embeddingTests(){
+        try (Client client = Client.builder().apiKey(accessToken).build()) {
+
+            System.out.println("Rufe Embeddings mit dem Google Gen AI SDK ab...");
+
+            final EmbedContentResponse embedContentResponse = client.models.embedContent("gemini-embedding-001","Patchday: Adobe schützt After Effects & Co. vor möglichen Attacken\n" +
+                    "\n" +
+                    "Mehrere Adobe-Anwendungen sind unter anderem für DoS- und Schadcode-Attacken anfällig. Sicherheitsupdates schaffen Abhilfe. " +
+                    "https://www.heise.de/news/Patchday-Adobe-schuetzt-After-Effects-Co-vor-moeglichen-Attacken-10479838.html?wt_mc=sm.red.ho.mastodon.mastodon.md_beitraege.md_beitraege&utm_source=mastodon" +
+                    "#\n" +
+                    "Adobe\n" +
+                    "#\n" +
+                    "IT\n" +
+                    "#\n" +
+                    "Patchday\n" +
+                    "#\n" +
+                    "Security\n" +
+                    "#\n" +
+                    "Sicherheitslücken\n" +
+                    "#\n" +
+                    "Updates\n" +
+                    "#", EmbedContentConfig.builder().taskType("SEMANTIC_SIMILARITY").build());
+
+            final List<ContentEmbedding> contentEmbeddings = embedContentResponse.embeddings().get();
+
+
+            final List<ContentEmbedding> compareExample = client.models.embedContent("gemini-embedding-001", "Patchday: Adobe schützt After Effects & Co. vor möglichen Attacken\n" +
+                    "\n" +
+                    "Mehrere Adobe-Anwendungen sind unter anderem für DoS- und Schadcode-Attacken anfällig. Sicherheitsupdates schaffen Abhilfe.", EmbedContentConfig.builder().taskType("SEMANTIC_SIMILARITY").build()).embeddings().get();
+
+
+
+            final double[] result1 = Arrays.stream(contentEmbeddings.getFirst().values().get().<Float>toArray(new Float[0])).mapToDouble(Float::doubleValue).toArray();
+
+            final double[] result2 = Arrays.stream(compareExample.getFirst().values().get().<Float>toArray(new Float[0])).mapToDouble(Float::doubleValue).toArray();
+
+            double[] userProfileVector = createProfileVector(List.of(result1));
+
+            double similarityScore1 = getCosineSimilarity(userProfileVector, result2);
+            System.out.println(similarityScore1);
+
+            Assertions.assertTrue(similarityScore1 > 0.9, "Die Ähnlichkeit lieft bei unter 0,9");
+
+        }
+
+
+    }
 
     @Test
     public void simpleQuestionTest() {

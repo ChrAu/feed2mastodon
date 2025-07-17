@@ -1,6 +1,7 @@
-package com.hexix;
+package com.hexix.mastodon.resource;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.hexix.mastodon.api.MastodonDtos;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
@@ -10,7 +11,6 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 import java.time.ZonedDateTime;
@@ -23,7 +23,7 @@ public interface MastodonClient {
     @POST
     @Path("/statuses")
     @Produces(MediaType.APPLICATION_JSON)
-    MastodonStatus postStatus(@HeaderParam("Authorization") String accessToken, StatusPayload status);
+    MastodonDtos.MastodonStatus postStatus(@HeaderParam("Authorization") String accessToken, MastodonDtos.StatusPayload status);
 
     /**
      * Ruft die Account-Informationen ab, die mit dem Access Token verknüpft sind.
@@ -33,7 +33,7 @@ public interface MastodonClient {
      */
     @GET
     @Path("/accounts/verify_credentials")
-    MastodonAccount verifyCredentials(@HeaderParam("Authorization") String accessToken);
+    MastodonDtos.MastodonAccount verifyCredentials(@HeaderParam("Authorization") String accessToken);
 
     /**
      * Ruft eine Liste der Status-Updates für eine gegebene Account-ID ab.
@@ -44,7 +44,7 @@ public interface MastodonClient {
      */
     @GET
     @Path("/accounts/{id}/statuses")
-    List<MastodonStatus> getAccountStatuses(
+    List<MastodonDtos.MastodonStatus> getAccountStatuses(
             @HeaderParam("Authorization") String accessToken,
             @PathParam("id") String accountId,
             @QueryParam("limit") Integer limit
@@ -58,7 +58,7 @@ public interface MastodonClient {
      */
     @DELETE
     @Path("/statuses/{id}")
-    MastodonStatus deleteStatus(
+    MastodonDtos.MastodonStatus deleteStatus(
             @HeaderParam("Authorization") String accessToken,
             @PathParam("id") String statusId
     );
@@ -68,19 +68,5 @@ public interface MastodonClient {
 
 
 
-    // Record für das Senden eines neuen Status
-    record StatusPayload(String status, String visibility, String language) {}
 
-    // Record, um die Antwort von /verify_credentials abzubilden
-    // Wir brauchen hier nur die ID.
-    record MastodonAccount(String id, String username) {}
-
-    // Record, um einen einzelnen empfangenen Status abzubilden
-    // @JsonProperty wird verwendet, um JSON-Felder (snake_case) auf Java-Felder (camelCase) zu mappen.
-    record MastodonStatus(
-            String id,
-            @JsonProperty("created_at") ZonedDateTime createdAt,// Jackson wandelt den String automatisch in ein Datum um
-            String content,
-            MastodonAccount account
-    ) {}
 }
