@@ -58,7 +58,7 @@ jobs:
 
       - if: matrix.language == 'java'
         name: Build Java
-        run: ./mvnw -B install
+        run: ./mvnw -B install -DskipTests
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
