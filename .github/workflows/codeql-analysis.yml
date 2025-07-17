@@ -7,6 +7,10 @@ name: "CodeQL Security Scan"
 permissions:
   contents: read
   pull-requests: write
+  security-events: write
+
+
+
 on:
 
   schedule:
