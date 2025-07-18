@@ -42,6 +42,10 @@ public class GenerateEmbeddingTextInput {
                 }
             }
 
+            if(contentEmbeddings.isEmpty()){
+                return results;
+            }
+
             final GeminiRequestEntity geminiRequestEntity = new GeminiRequestEntity();
             geminiRequestEntity.setModel(geminiModel);
             geminiRequestEntity.setText(contentEmbeddings.stream().map(String::valueOf).collect(Collectors.joining("\n\n")));
