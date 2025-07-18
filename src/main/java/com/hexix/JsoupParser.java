@@ -2,12 +2,16 @@ package com.hexix;
 
 import io.quarkus.logging.Log;
 import org.jboss.logging.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.StringJoiner;
 
 public class JsoupParser {
@@ -18,6 +22,8 @@ public class JsoupParser {
 
     }
     private final static String TAGESSCHAU_CSS_QUERY ="#content article > *:not(div.meldungsfooter)";
+    private final static String ZDF_HEUTE_CSS_QUERY = "main > div";
+    private final static String HEISE_CSS_QUERY = "article > *:not(p.printversion__back-to-article)";
 
 
     public static String getArticle(String url){
@@ -30,6 +36,22 @@ public class JsoupParser {
 
         if(url.contains("tagesschau.de")){
             cssQuery = TAGESSCHAU_CSS_QUERY;
+        }else if(url.contains("zdfheute.de")){
+            cssQuery = ZDF_HEUTE_CSS_QUERY;
+        }else if(url.contains("heise.de")){
+            try {
+                final URI newUri = heiseUrl(url);
+
+                url = newUri.toString();
+
+                cssQuery = HEISE_CSS_QUERY;
+
+            } catch (URISyntaxException e) {
+                Log.warn("Wrong URL format", e);
+                return null;
+            }
+
+
         }else{
             return null;
         }
@@ -55,6 +77,30 @@ public class JsoupParser {
 
         return null;
 
+    }
+
+    private static @NotNull URI heiseUrl(final String url) throws URISyntaxException {
+        final URI oldURL = new URI(url);
+        String existingQuery = oldURL.getQuery();
+
+        String newQuery;
+        if (existingQuery == null || existingQuery.isEmpty()) {
+            newQuery = "view=print";
+        } else {
+            // Fall 2: Es gibt bereits Query-Parameter.
+            // Der neue Parameter wird mit einem '&' angehängt.
+            newQuery = existingQuery + "&" + "view=print";
+        }
+
+        // 3. Erzeuge eine neue URI mit den alten Teilen und dem neuen Query-String.
+        URI newUri = new URI(
+                oldURL.getScheme(),
+                oldURL.getAuthority(),
+                oldURL.getPath(),
+                newQuery,
+                oldURL.getFragment()
+        );
+        return newUri;
     }
 
 }
