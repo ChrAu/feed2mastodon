@@ -1,36 +1,23 @@
 package com.hexix;
 
 import com.google.genai.Client;
-import com.google.genai.types.BatchJob;
-import com.google.genai.types.BatchJobSource;
-import com.google.genai.types.Content;
 import com.google.genai.types.ContentEmbedding;
-import com.google.genai.types.CreateBatchJobConfig;
 import com.google.genai.types.EmbedContentConfig;
 import com.google.genai.types.EmbedContentResponse;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.GenerationConfig;
 import com.google.genai.types.GoogleSearch;
 import com.google.genai.types.HarmBlockThreshold;
 import com.google.genai.types.HarmCategory;
-import com.google.genai.types.InlinedRequest;
-import com.google.genai.types.Part;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Tool;
-import com.hexix.mastodon.api.MastodonDtos;
-import com.hexix.mastodon.resource.FavouritesResource;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.vertx.core.runtime.config.VertxConfiguration;
-import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
@@ -60,7 +47,7 @@ public class GoogleAiTest {
 
             System.out.println("Rufe Embeddings mit dem Google Gen AI SDK ab...");
 
-            final EmbedContentResponse embedContentResponse = client.models.embedContent("gemini-embedding-001","Patchday: Adobe schützt After Effects & Co. vor möglichen Attacken\n" +
+            final EmbedContentResponse embedContentResponse = client.models.embedContent("gemini-embedding-001",List.of("Patchday: Adobe schützt After Effects & Co. vor möglichen Attacken\n" +
                     "\n" +
                     "Mehrere Adobe-Anwendungen sind unter anderem für DoS- und Schadcode-Attacken anfällig. Sicherheitsupdates schaffen Abhilfe. " +
                     "https://www.heise.de/news/Patchday-Adobe-schuetzt-After-Effects-Co-vor-moeglichen-Attacken-10479838.html?wt_mc=sm.red.ho.mastodon.mastodon.md_beitraege.md_beitraege&utm_source=mastodon" +
@@ -76,7 +63,7 @@ public class GoogleAiTest {
                     "Sicherheitslücken\n" +
                     "#\n" +
                     "Updates\n" +
-                    "#", EmbedContentConfig.builder().taskType("SEMANTIC_SIMILARITY").build());
+                    "#", "TEST"), EmbedContentConfig.builder().taskType("SEMANTIC_SIMILARITY").build());
 
             final List<ContentEmbedding> contentEmbeddings = embedContentResponse.embeddings().get();
 
