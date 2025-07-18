@@ -1,7 +1,6 @@
 package com.hexix;
 
 import com.hexix.ai.GeminiRequestEntity;
-import com.hexix.ai.GenerateEmbeddingTextInput;
 import com.hexix.ai.GenerateTextFromTextInput;
 import com.hexix.mastodon.StarredMastodonPosts;
 import com.hexix.mastodon.api.MastodonDtos;
@@ -205,10 +204,8 @@ public class FeedToTootScheduler {
         starredMastodonPosts.collectNewStarredPosts();
     }
 
-    @Scheduled(every = "10m")
+    @Scheduled(every = "1m")
     void calcEmbeddings() {
-
         starredMastodonPosts.generateEmbeddings();
-
     }
 }
