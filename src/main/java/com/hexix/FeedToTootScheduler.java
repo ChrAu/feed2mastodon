@@ -1,7 +1,9 @@
 package com.hexix;
 
 import com.hexix.ai.GeminiRequestEntity;
+import com.hexix.ai.GenerateEmbeddingTextInput;
 import com.hexix.ai.GenerateTextFromTextInput;
+import com.hexix.mastodon.StarredMastodonPosts;
 import com.hexix.mastodon.api.MastodonDtos;
 import com.hexix.mastodon.resource.MastodonClient;
 import com.rometools.rome.feed.synd.SyndEntry;
@@ -34,11 +36,16 @@ public class FeedToTootScheduler {
     @Inject
     GenerateTextFromTextInput generateTextFromTextInput;
 
+    @Inject
+    StarredMastodonPosts starredMastodonPosts;
+
     @ConfigProperty(name = "mastodon.access.token")
     String accessToken;
 
     @ConfigProperty(name = "gemini.model")
     String geminiModel;
+
+
 
     // Einfache In-Memory-Lösung zur Vermeidung von Duplikaten.
     // Für eine robuste Lösung eine Datei oder DB verwenden!
@@ -189,5 +196,19 @@ public class FeedToTootScheduler {
 
         String tootText = prefixText +  link;
         return tootText;
+    }
+
+
+
+    @Scheduled(every = "10m")
+    void checkMastodonStarred() {
+        starredMastodonPosts.collectNewStarredPosts();
+    }
+
+    @Scheduled(every = "10m")
+    void calcEmbeddings() {
+
+        starredMastodonPosts.generateEmbeddings();
+
     }
 }

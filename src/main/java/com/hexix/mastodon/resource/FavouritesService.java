@@ -1,25 +1,32 @@
 package com.hexix.mastodon.resource;
 
+import com.hexix.JsoupParser;
+import com.hexix.ai.GenerateEmbeddingTextInput;
+import com.hexix.mastodon.Embedding;
+import com.hexix.mastodon.PagingConfigEntity;
 import com.hexix.mastodon.api.MastodonDtos;
 import com.hexix.mastodon.resource.client.FavouritesClient;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.Link;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
+import org.jsoup.Jsoup;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @RequestScoped
-public class FavouritesResource {
+public class FavouritesService {
 
     final Logger LOG = Logger.getLogger(this.getClass());
 
@@ -28,19 +35,32 @@ public class FavouritesResource {
     @RestClient
     FavouritesClient favouritesClient;
 
+    @Inject
+    GenerateEmbeddingTextInput generateEmbeddingTextInput;
+
     @ConfigProperty(name = "mastodon.private.access.token")
     String privateAccessToken;
 
     public List<MastodonDtos.MastodonStatus> getAllFavourites() {
-        return getNewFavourites(null);
+        return getNewFavourites();
     }
 
-    public List<MastodonDtos.MastodonStatus> getNewFavourites(String sinceId) {
+    @Transactional
+    public List<MastodonDtos.MastodonStatus> getNewFavourites() {
+
+        PagingConfigEntity favourites = PagingConfigEntity.find("favourites");
+        if(favourites == null) {
+            favourites = new PagingConfigEntity("favourites");
+            favourites.persist();
+        }
 
         List<MastodonDtos.MastodonStatus> results = new LinkedList<>();
         String minId = null;
         String maxId = null;
         String oldMaxId = null;
+
+        String sinceId = favourites.getSinceId();
+
         do {
             oldMaxId = maxId;
 
@@ -54,6 +74,20 @@ public class FavouritesResource {
                     final String queryParams = next.getUri().getQuery();
 
                     maxId = parseLink(queryParams, "max_id");
+                }
+
+
+                final Link prev = response.getLink("prev");
+                if(prev != null){
+                    final String queryParams = prev.getUri().getQuery();
+
+                    String min = parseLink(queryParams, "min_id");
+
+                    if(min != null && (favourites.getSinceId() == null || Integer.parseInt(favourites.getSinceId()) < Integer.parseInt(min))) {
+                        favourites.setSinceId(min);
+                    }
+
+
                 }
 
                 results.addAll(0, mastodonStatuses);
@@ -83,5 +117,39 @@ public class FavouritesResource {
             return matcher.group(1);
         }
         return null;
+    }
+
+    @Transactional
+    public void createEmbedding(final MastodonDtos.MastodonStatus mastodonStatus) {
+
+        final String content = mastodonStatus.content();
+        final String onlyText = Jsoup.parse(content).text();
+        Map<String, String> list = new HashMap<>();
+
+        if(onlyText != null && !onlyText.trim().isEmpty()) {
+            list.put("MASTODON_STATUS_ID__"+ mastodonStatus.id() + "__ONLY_TEXT", onlyText);
+        }
+
+        final MastodonDtos.PreviewCard card = mastodonStatus.card();
+        if(card != null) {
+            final String article = JsoupParser.getArticle(card.url());
+            if(article != null && !article.trim().isEmpty()) {
+                list.put("MASTODON_STATUS_ID__" + mastodonStatus.id() + "__CARD_URL", article);
+            }
+        }
+
+
+//        final Map<String, ContentEmbedding> embedding = generateEmbeddingTextInput.getEmbedding("gemini-embedding-001", list);
+
+
+        list.forEach((key, value) -> {
+            final Embedding embedding = new Embedding();
+            embedding.setText(value);
+            embedding.setMastodonStatusId(mastodonStatus.id());
+            embedding.setResource(key);
+            embedding.persist();
+        });
+
+
     }
 }

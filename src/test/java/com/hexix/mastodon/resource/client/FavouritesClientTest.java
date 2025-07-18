@@ -1,7 +1,7 @@
 package com.hexix.mastodon.resource.client;
 
 import com.hexix.mastodon.api.MastodonDtos;
-import com.hexix.mastodon.resource.FavouritesResource;
+import com.hexix.mastodon.resource.FavouritesService;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -9,8 +9,6 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
 class FavouritesClientTest {
@@ -20,7 +18,7 @@ class FavouritesClientTest {
     FavouritesClient favouritesClient;
 
     @Inject
-    FavouritesResource favouritesResource;
+    FavouritesService favouritesService;
 
     @ConfigProperty(name ="mastodon.private.access.token")
     String privateAccessToken;
@@ -36,7 +34,7 @@ class FavouritesClientTest {
 
     @Test
     public void setFavouritesResource(){
-        final List<MastodonDtos.MastodonStatus> favourites = favouritesResource.getNewFavourites("566");
+        final List<MastodonDtos.MastodonStatus> favourites = favouritesService.getNewFavourites();
 
         System.out.println(favourites);
     }
