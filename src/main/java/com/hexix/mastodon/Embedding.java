@@ -42,6 +42,15 @@ public class Embedding extends PanacheEntity {
     @Column(name = "embedding_created_at")
     LocalDateTime embeddingCreatedAt;
 
+    @Column(name= "lokal_embedding_vector_string", columnDefinition = "TEXT")
+    String localEmbeddingVectorString;
+
+    @Transient
+    double[] localEmbedding;
+
+    @Column(name = "local_embedding_created_at")
+    LocalDateTime localEmbeddingCreatedAt;
+
 
 
 
@@ -90,14 +99,27 @@ public class Embedding extends PanacheEntity {
         return embeddingCreatedAt;
     }
 
+
+
     void setEmbeddingCreatedAt(final LocalDateTime embeddingCreatedAt) {
         this.embeddingCreatedAt = embeddingCreatedAt;
+    }
+
+    public LocalDateTime getLocalEmbeddingCreatedAt() {
+        return localEmbeddingCreatedAt;
+    }
+
+    void setLocalEmbeddingCreatedAt(final LocalDateTime localEmbeddingCreatedAt) {
+        this.localEmbeddingCreatedAt = localEmbeddingCreatedAt;
     }
 
     String getEmbeddingVectorString() {
         return embeddingVectorString;
     }
 
+    String getLocalEmbeddingVectorString() {
+        return localEmbeddingVectorString;
+    }
 
     public double[] getEmbedding() {
 
@@ -106,6 +128,14 @@ public class Embedding extends PanacheEntity {
         }
 
         return embedding;
+    }
+
+    public double[] getLocalEmbedding() {
+        if (localEmbedding == null && localEmbeddingVectorString != null) {
+            this.localEmbedding = DoubleArrayConverter.stringToArray(localEmbeddingVectorString);
+        }
+
+        return localEmbedding;
     }
 
     public void setEmbedding(final double[] embedding) {
@@ -118,6 +148,16 @@ public class Embedding extends PanacheEntity {
 
 
         this.embedding = embedding;
+    }
+
+    public void setLocalEmbedding(final double[] localEmbedding) {
+        this.localEmbeddingVectorString = DoubleArrayConverter.arrayToString(localEmbedding);
+
+        if(localEmbeddingVectorString != null){
+            this.localEmbeddingCreatedAt = LocalDateTime.now();
+        }
+
+        this.localEmbedding = localEmbedding;
     }
 
     final class DoubleArrayConverter {
@@ -171,5 +211,9 @@ public class Embedding extends PanacheEntity {
 
     public static List<Embedding> findNextEmbeddings() {
         return find("embeddingCreatedAt is null").range(0, 3).list();
+    }
+
+    public static List<Embedding> findNextLocalEmbeddings() {
+        return find("localEmbeddingCreatedAt is null").range(0,10).list();
     }
 }

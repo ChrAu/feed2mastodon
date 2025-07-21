@@ -197,6 +197,7 @@ public class GoogleAiTest {
     }
 
 
+
     @Test
     public void simpleEmbedding() {
 
