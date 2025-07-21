@@ -42,7 +42,8 @@ public class Embedding extends PanacheEntity {
     @Column(name = "embedding_created_at")
     LocalDateTime embeddingCreatedAt;
 
-    @Column(name= "lokal_embedding_vector_string", columnDefinition = "TEXT")
+
+    @Column(name= "local_embedding_vector_string", columnDefinition = "TEXT")
     String localEmbeddingVectorString;
 
     @Transient
