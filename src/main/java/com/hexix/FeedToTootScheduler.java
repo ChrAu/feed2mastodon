@@ -207,5 +207,6 @@ public class FeedToTootScheduler {
     @Scheduled(every = "1m")
     void calcEmbeddings() {
         starredMastodonPosts.generateEmbeddings();
+        starredMastodonPosts.generateLocalEmbeddings();
     }
 }
