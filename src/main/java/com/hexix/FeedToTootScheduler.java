@@ -49,7 +49,7 @@ public class FeedToTootScheduler {
     // Einfache In-Memory-Lösung zur Vermeidung von Duplikaten.
     // Für eine robuste Lösung eine Datei oder DB verwenden!
 
-    @Scheduled(every = "10m")
+    @Scheduled(every = "10m", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
         // Alle 10 Minuten ausführen
 //    @Transactional
     void checkFeedAndPost() {
@@ -199,12 +199,12 @@ public class FeedToTootScheduler {
 
 
 
-    @Scheduled(every = "10m")
+    @Scheduled(every = "10m", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void checkMastodonStarred() {
         starredMastodonPosts.collectNewStarredPosts();
     }
 
-    @Scheduled(every = "1m")
+    @Scheduled(every = "1m", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcEmbeddings() {
         starredMastodonPosts.generateEmbeddings();
         starredMastodonPosts.generateLocalEmbeddings();
