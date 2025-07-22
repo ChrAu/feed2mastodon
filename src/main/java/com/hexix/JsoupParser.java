@@ -25,6 +25,8 @@ public class JsoupParser {
     private final static String ZDF_HEUTE_CSS_QUERY = "main > div";
     private final static String HEISE_CSS_QUERY = "article > *:not(p.printversion__back-to-article)";
 
+    private final static String BW_CSS_QUERY="article > header, article > .article__body";
+
 
     public static String getArticle(String url){
         Document doc = null;
@@ -52,6 +54,8 @@ public class JsoupParser {
             }
 
 
+        }else if(url.contains("baden-wuerttemberg.de")){
+            cssQuery = BW_CSS_QUERY;
         }else{
             return null;
         }

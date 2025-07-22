@@ -53,7 +53,7 @@ public class JsoupTest {
     public void zdfheute(){
         final String article = JsoupParser.getArticle("https://www.zdfheute.de/politik/ausland/dobrindt-eu-asylpolitik-migration-100.html");
 
-        LOG.info(article);
+        LOG.debug(article);
 
         Assertions.assertTrue(article.contains("Gemeinsam mit fünf Amtskollegen aus anderen EU-Ländern will Bundesinnenminister"));
         Assertions.assertTrue(article.contains("Die wichtigsten Routen für irreguläre Migranten führen über das östliche und zentrale"));
@@ -65,10 +65,19 @@ public class JsoupTest {
     public void heise(){
         final String article = JsoupParser.getArticle("https://www.heise.de/news/Oracle-309-Sicherheitsupdates-fuer-alle-moeglichen-Produkte-10490492.html");
 
-        LOG.info(article);
+        LOG.debug(article);
 
         Assertions.assertTrue(article.contains("Oracle hat in der Nacht zum Mittwoch seinen quartalsweise stattfindenden \"Critical Patch Update\" genannten Patchday begangen. Dabei hat das Unternehmen 309 Sicherheitspatches für Produkte quer durch sein Portfolio veröffentlicht."));
         Assertions.assertTrue(article.contains("Produkte Updates bereitstehen, die noch \"Premier Support\" erhalten oder in der erweiterten Support-Phase sind"));
+
+    }
+
+    @Test
+    public void bw(){
+        final String article = JsoupParser.getArticle("https://www.baden-wuerttemberg.de/de/service/presse/pressemitteilung/pid/land-startet-neues-informationssystem-zum-waldbrandmanagement");
+        LOG.info(article);
+
+
 
     }
 }
