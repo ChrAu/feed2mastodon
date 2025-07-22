@@ -80,4 +80,15 @@ public class JsoupTest {
 
 
     }
+
+    @Test
+    public void swr(){
+        final String article = JsoupParser.getArticle("https://www.swr.de/swrkultur/wissen/warum-schmeckt-aufgewaermtes-essen-besser-100.html");
+
+        LOG.debug(article);
+
+
+        Assertions.assertTrue(article.contains("sich das Kollagen im Fleisch weiter und der Braten wird umso zarter."));
+
+    }
 }
