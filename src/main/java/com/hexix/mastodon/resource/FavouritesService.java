@@ -124,17 +124,19 @@ public class FavouritesService {
 
         final String content = mastodonStatus.content();
         final String onlyText = Jsoup.parse(content).text();
-        Map<String, String> list = new HashMap<>();
+        Map<String, MastodonText> list = new HashMap<>();
 
         if(onlyText != null && !onlyText.trim().isEmpty()) {
-            list.put("MASTODON_STATUS_ID__"+ mastodonStatus.id() + "__ONLY_TEXT", onlyText);
+            list.put("MASTODON_STATUS_ID__"+ mastodonStatus.id() + "__ONLY_TEXT", new MastodonText(onlyText, null));
         }
 
         final MastodonDtos.PreviewCard card = mastodonStatus.card();
         if(card != null) {
             final String article = JsoupParser.getArticle(card.url());
             if(article != null && !article.trim().isEmpty()) {
-                list.put("MASTODON_STATUS_ID__" + mastodonStatus.id() + "__CARD_URL", article);
+                list.put("MASTODON_STATUS_ID__" + mastodonStatus.id() + "__CARD_URL", new MastodonText(article, card.url()));
+            }else{
+                list.put("MASTODON_STATUS_ID__" + mastodonStatus.id() + "__CARD_URL", new MastodonText(null, card.url()));
             }
         }
 
@@ -144,12 +146,15 @@ public class FavouritesService {
 
         list.forEach((key, value) -> {
             final Embedding embedding = new Embedding();
-            embedding.setText(value);
+            embedding.setText(value.text);
             embedding.setMastodonStatusId(mastodonStatus.id());
             embedding.setResource(key);
+            embedding.setUrl(value.url);
             embedding.persist();
         });
 
 
     }
+
+    record MastodonText(String text, String url){}
 }

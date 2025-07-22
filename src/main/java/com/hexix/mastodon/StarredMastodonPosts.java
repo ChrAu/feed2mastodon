@@ -1,6 +1,7 @@
 package com.hexix.mastodon;
 
 import com.google.genai.types.ContentEmbedding;
+import com.hexix.JsoupParser;
 import com.hexix.ai.GeminiRequestEntity;
 import com.hexix.ai.GenerateEmbeddingTextInput;
 import com.hexix.ai.OllamaRestClient;

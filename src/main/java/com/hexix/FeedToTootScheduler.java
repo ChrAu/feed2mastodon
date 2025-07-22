@@ -2,10 +2,12 @@ package com.hexix;
 
 import com.hexix.ai.GeminiRequestEntity;
 import com.hexix.ai.GenerateTextFromTextInput;
+import com.hexix.mastodon.Embedding;
 import com.hexix.mastodon.StarredMastodonPosts;
 import com.hexix.mastodon.api.MastodonDtos;
 import com.hexix.mastodon.resource.MastodonClient;
 import com.rometools.rome.feed.synd.SyndEntry;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -208,5 +210,13 @@ public class FeedToTootScheduler {
     void calcEmbeddings() {
         starredMastodonPosts.generateEmbeddings();
         starredMastodonPosts.generateLocalEmbeddings();
+    }
+
+    @Transactional
+    @Scheduled(every = "24h", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    void calcEmbeddingsArticles() {
+        final List<Embedding> embeddings = Embedding.<Embedding>find("text is null").list();
+
+        embeddings.stream().filter(embedding -> embedding.getText() ==null).filter(embedding -> embedding.getUrl() != null).forEach(embedding -> embedding.setText(JsoupParser.getArticle(embedding.getUrl())));
     }
 }
