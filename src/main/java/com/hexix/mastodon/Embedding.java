@@ -52,7 +52,8 @@ public class Embedding extends PanacheEntity {
     @Column(name = "local_embedding_created_at")
     LocalDateTime localEmbeddingCreatedAt;
 
-
+    @Column(name = "url", columnDefinition = "TEXT")
+    String url;
 
 
     public String getUuid() {
@@ -161,6 +162,14 @@ public class Embedding extends PanacheEntity {
         this.localEmbedding = localEmbedding;
     }
 
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(final String url) {
+        this.url = url;
+    }
+
     final class DoubleArrayConverter {
 
         private static final String TRENNZEICHEN = ",";
@@ -211,10 +220,10 @@ public class Embedding extends PanacheEntity {
 
 
     public static List<Embedding> findNextEmbeddings() {
-        return find("embeddingCreatedAt is null").range(0, 3).list();
+        return find("embeddingCreatedAt is null and text is not null").range(0, 3).list();
     }
 
     public static List<Embedding> findNextLocalEmbeddings() {
-        return find("localEmbeddingCreatedAt is null").range(0,10).list();
+        return find("localEmbeddingCreatedAt is null and text is not null").range(0,10).list();
     }
 }
