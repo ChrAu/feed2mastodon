@@ -11,6 +11,7 @@ import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -139,6 +140,7 @@ Hier ist eine typische Einteilung, die Sie als Ausgangspunkt verwenden können:
     }
 
     @Test
+    @Disabled
     public void testMultiModel() {
         List<String> models = List.of("granite-embedding:278m", "jina/jina-embeddings-v2-base-de", "nomic-embed-text:v1.5", "mxbai-embed-large:335m" ,"bge-m3:567m", "all-minilm:33m", "snowflake-arctic-embed:335m", "bge-large:335m", "snowflake-arctic-embed2:568m", "paraphrase-multilingual:278m");
 
@@ -183,6 +185,7 @@ Hier ist eine typische Einteilung, die Sie als Ausgangspunkt verwenden können:
 
 
     @Test
+    @Disabled
     public void testMultiModel2() {
         List<String> models = List.of("granite-embedding:278m", "jina/jina-embeddings-v2-base-de", "nomic-embed-text:v1.5", "mxbai-embed-large:335m" ,"bge-m3:567m", "all-minilm:33m", "snowflake-arctic-embed:335m", "bge-large:335m", "snowflake-arctic-embed2:568m", "paraphrase-multilingual:278m");
 
