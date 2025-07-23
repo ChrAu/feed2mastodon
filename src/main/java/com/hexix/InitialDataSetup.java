@@ -40,7 +40,7 @@ public class InitialDataSetup {
                 feed.tryAi = myBlogFeed.tryAi;
                 feed.persist();
             } else {
-                LOG.info("Feed " + myBlogFeed + " ist bereits in der Datenbank.");
+                LOG.debug("Feed " + myBlogFeed + " ist bereits in der Datenbank.");
             }
 
         }
