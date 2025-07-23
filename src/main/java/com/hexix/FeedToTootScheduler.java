@@ -80,7 +80,7 @@ public class FeedToTootScheduler {
 
                 if (count == 0) {
                     // 3. Neuer Eintrag! Posten und in der DB vermerken.
-                    LOG.info("Neuer Eintrag gefunden in " + feed.feedUrl.substring(0, 25) + ": " + entry.getTitle());
+                    LOG.debug("Neuer Eintrag gefunden in " + feed.feedUrl.substring(0, 25) + ": " + entry.getTitle());
 
                     MastodonDtos.StatusPayload statusPayload = new MastodonDtos.StatusPayload(getTootText(feed, entry, false), "unlisted", "de");;
                     PostedEntry newDbEntry = new PostedEntry();
@@ -118,7 +118,7 @@ public class FeedToTootScheduler {
                         // Hier wird die Schleife fortgesetzt, um andere Einträge/Feeds nicht zu blockieren
                     }
                 }else{
-                    LOG.info("Eintrag bereits gepostet: " + entry.getTitle() + " - " + feed.feedUrl.substring(0, 25) + " -");
+                    LOG.debug("Eintrag bereits gepostet: " + entry.getTitle() + " - " + feed.feedUrl.substring(0, 25) + " -");
                 }
             }
         }

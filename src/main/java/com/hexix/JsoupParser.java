@@ -69,7 +69,7 @@ public class JsoupParser {
 
         try {
             doc = Jsoup.connect(url).get();
-            LOG.info(doc.title());
+            LOG.debug(doc.title());
             Elements article = doc.select(cssQuery);
             StringJoiner sj = new StringJoiner("\n");
 
