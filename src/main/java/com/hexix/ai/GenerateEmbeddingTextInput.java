@@ -55,6 +55,10 @@ public class GenerateEmbeddingTextInput {
             final EmbedContentResponse embedContentResponse = client.models.embedContent(geminiModel, contentEmbeddings, EmbedContentConfig.builder().outputDimensionality(3072).build());
 
             geminiRequestEntity.setResponse(embedContentResponse.toString());
+            final String test = contentEmbeddings.stream().map(s -> "[[" + s +"]]" ).collect(Collectors.joining("\n\n"));
+
+            LOG.infof("Embeddings UUIDs: %s", keys.stream().map(String::valueOf).collect(Collectors.joining("\n")));
+            LOG.infof("ContentEmbeddings: %s", test) ;
             LOG.infof("EmbeddingResponse: %s",embedContentResponse);
             final List<ContentEmbedding> geminiContentEmbedding = embedContentResponse.embeddings().get();
 
