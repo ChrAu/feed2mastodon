@@ -76,7 +76,11 @@ public class JsoupParser {
 
 
             LOG.debug(sj);
-            return sj.toString();
+
+            if(!sj.toString().trim().isEmpty()){
+                return sj.toString();
+            }
+
 
         } catch (IOException e) {
             Log.warn("", e);
