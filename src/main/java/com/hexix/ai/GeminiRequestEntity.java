@@ -29,6 +29,8 @@ public class GeminiRequestEntity extends PanacheEntity {
 
 
     Integer totalTokenCount = 0;
+    @Column(columnDefinition = "TEXT")
+    String response;
 
     public String getUuid() {
         return uuid;
@@ -70,4 +72,11 @@ public class GeminiRequestEntity extends PanacheEntity {
         this.totalTokenCount = totalTokenCount;
     }
 
+    public void setResponse(final String response) {
+        this.response = response;
+    }
+
+    public String getResponse() {
+        return response;
+    }
 }
