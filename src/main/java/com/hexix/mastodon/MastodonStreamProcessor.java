@@ -18,9 +18,15 @@ import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Diese Bean abonniert den Mastodon Streaming API beim Start der Anwendung.
@@ -42,6 +48,7 @@ public class MastodonStreamProcessor {
     // Injiziert den Jackson ObjectMapper für die JSON-Deserialisierung
     @Inject
     ObjectMapper objectMapper;
+
 
     @ConfigProperty(name = "mastodon.private.access.token")
     String privateAccessToken;
@@ -93,16 +100,43 @@ public class MastodonStreamProcessor {
         try {
             // Zuerst versuchen, als MastodonStatus zu parsen (für 'update' oder 'status.update' Events)
             MastodonDtos.MastodonStatus status = objectMapper.readValue(dataPayload, MastodonDtos.MastodonStatus.class);
-            final String content = status.content().replaceAll("<[^>]*>", "").trim();
+            List<String> contents = new ArrayList<>();
+
+            final String content = Jsoup.parse(status.content()).text();
+//            final String content = status.content().replaceAll("<[^>]*>", "").trim();
+            contents.add(content);
+
+            final List<String> urls = extractLinksFromHtml(status.content());
+            if(!urls.isEmpty()){
+                for (String url : urls) {
+                    final String article = JsoupParser.getArticle(url);
+                    if(article != null){
+                        final List<String> splitText = StarredMastodonPosts.splitByLength(article, 500);
+                        contents.addAll(splitText);
+                    }
+                }
 
 
+            }
 
                 LOG.info("Start OLLAMA Request");
-                EmbeddingRequest request = new EmbeddingRequest("granite-embedding:278m", List.of(content), true);
+                EmbeddingRequest request = new EmbeddingRequest("granite-embedding:278m", contents, true);
 
                 ollamaRestClient.generateEmbeddingsTest(request).subscribe().with(s -> {
+
+                    final List<double[]> collect = s.embeddings().stream().map(doubles -> doubles.stream().mapToDouble(Double::doubleValue).toArray()).toList();
+//                    s.add(response.embeddings().getFirst().stream().mapToDouble(Double::doubleValue).toArray());
+
+                    LOG.info("Vektoren erhalten: " + collect.size());
+
+                    final double[] profileVector = StarredMastodonPosts.createProfileVector(collect);
+
                     LOG.infof("Empfangener Status (ID: %s, Account: %s, Inhalt: \"%s\" Vektorlänge: %s)\n",
-                            status.id(), status.account().username(), content, s.embeddings().getFirst().size());
+                            status.id(), status.account().username(), content, profileVector.length);
+
+                    if(status.card() != null){
+                        LOG.info("Hat Card: " + status.card().url());
+                    }
 //                    LOG.infof("Embedding: %s", s.embeddings().getFirst());
                 });
 
@@ -126,4 +160,32 @@ public class MastodonStreamProcessor {
         }
     }
 
+
+    public static List<String> extractLinksFromHtml(String htmlContent) {
+        List<String> links = new ArrayList<>();
+        if (htmlContent == null || htmlContent.trim().isEmpty()) {
+            System.err.println("Fehler: HTML-Inhalt ist null oder leer.");
+            return links;
+        }
+
+        try {
+            // Parsen des HTML-Inhalts mit Jsoup
+            Document doc = Jsoup.parse(htmlContent);
+
+            // Alle 'a'-Tags (Anker-Tags) auswählen
+            Elements linkElements = doc.select("a[href]");
+
+            // Iterieren über die gefundenen Elemente und Extrahieren des 'href'-Attributs
+            for (Element linkElement : linkElements) {
+                String link = linkElement.attr("href");
+                if (!link.isEmpty()) { // Sicherstellen, dass der Link nicht leer ist
+                    links.add(link);
+                }
+            }
+        } catch (Exception e) {
+            // Fehlerbehandlung: Wenn beim Parsen ein Problem auftritt
+            LOG.error("Fehler beim Extrahieren der Links: " + e.getMessage(), e);
+        }
+        return links;
+    }
 }
