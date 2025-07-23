@@ -65,7 +65,11 @@ public class StarredMastodonPosts {
             nextEmbedding.forEach(embedding -> {
                 final ContentEmbedding result = results.get(embedding.getUuid());
 
-                embedding.setEmbedding(Arrays.stream(result.values().get().<Float>toArray(new Float[0])).mapToDouble(Float::doubleValue).toArray());
+                if(result !=null && result.values().isPresent()) {
+                    embedding.setEmbedding(Arrays.stream(result.values().get().<Float>toArray(new Float[0])).mapToDouble(Float::doubleValue).toArray());
+                }else{
+                    LOG.infof("Embedding (%s) has no result", embedding.getUuid());
+                }
 
             });
         }
