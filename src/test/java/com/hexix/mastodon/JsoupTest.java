@@ -91,4 +91,11 @@ public class JsoupTest {
         Assertions.assertTrue(article.contains("sich das Kollagen im Fleisch weiter und der Braten wird umso zarter."));
 
     }
+
+    @Test
+    public void noContent(){
+        final  String article = JsoupParser.getArticle("https://peertube.heise.de/w/mmhBXfZVAMFQigoaV5KWMu");
+
+        Assertions.assertNull(article);
+    }
 }
