@@ -17,6 +17,7 @@ import java.util.StringJoiner;
 public class JsoupParser {
     final static Logger LOG = Logger.getLogger(JsoupParser.class);
     private static final String SWR_CSS_QUERY = "main h1.headline, main .detail-body p.lead, main .bodytext h2, main .bodytext p, main .bodytext figure.quote";
+    private static final String DEUTSCHLANDFUNK_CSS_QUERY = "article.b-article > header > *:not(.article-header-actions, .article-header-meta), .article-details-text, .article-details-title";
 
 
     private JsoupParser(){
@@ -59,6 +60,8 @@ public class JsoupParser {
             cssQuery = BW_CSS_QUERY;
         }else if(url.contains("swr.de")){
             cssQuery = SWR_CSS_QUERY;
+        }else if(url.contains("deutschlandfunk.de")){
+            cssQuery = DEUTSCHLANDFUNK_CSS_QUERY;
         }else{
             return null;
         }

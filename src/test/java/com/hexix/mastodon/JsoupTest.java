@@ -98,4 +98,16 @@ public class JsoupTest {
 
         Assertions.assertNull(article);
     }
+
+    @Test
+    public void deutschlandfunk(){
+        final String article = JsoupParser.getArticle("https://www.deutschlandfunk.de/elektronische-patientenakte-vorteile-nachteile-kritik-widerspruch-100.html");
+
+        Assertions.assertTrue(article.contains("wird als Opt-out-Verfahren bezeichnet. Alternativ können bestimmte Befunde und Labor"));
+
+        final String article2 = JsoupParser.getArticle("https://www.deutschlandfunk.de/who-warnt-vor-risiko-einer-weltweiten-chikungunya-epidemie-uebertragung-durch-stechmuecken-112.html");
+
+        Assertions.assertTrue(article2.contains("Chikungunya ist eine durch Stechmücken übertragene Virusinfektion, die vor allem in tropischen und subtropischen Regionen vorkommt. Durch den Klimawandel breiten sich die das Virus übertragenden Mücken aber zunehmend aus. Die Erkrankung verursacht hohes Fieber und starke Gelenkschmerzen. Schwere Verläufe sind selten und treten insbesondere bei älteren oder vorerkrankten Menschen auf."));
+
+    }
 }
