@@ -4,6 +4,7 @@ import com.google.genai.Client;
 import com.google.genai.types.ContentEmbedding;
 import com.google.genai.types.EmbedContentConfig;
 import com.google.genai.types.EmbedContentResponse;
+import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -65,6 +66,8 @@ public class GenerateEmbeddingTextInput {
 
 
 
+        } catch (Exception e) {
+            Log.warn("Fehler beim generieren von Gemini Embedding Vektoren", e);
         }
         return results;
     }
