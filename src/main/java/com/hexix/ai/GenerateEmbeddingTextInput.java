@@ -55,7 +55,7 @@ public class GenerateEmbeddingTextInput {
             final EmbedContentResponse embedContentResponse = client.models.embedContent(geminiModel, contentEmbeddings, EmbedContentConfig.builder().outputDimensionality(3072).build());
 
             geminiRequestEntity.setResponse(embedContentResponse.toString());
-//            LOG.infof("EmbeddingResponse: %s",embedContentResponse);
+            LOG.infof("EmbeddingResponse: %s",embedContentResponse);
             final List<ContentEmbedding> geminiContentEmbedding = embedContentResponse.embeddings().get();
 
 
