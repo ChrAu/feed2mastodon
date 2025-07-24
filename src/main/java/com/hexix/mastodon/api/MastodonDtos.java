@@ -16,6 +16,11 @@ public class MastodonDtos {
     // Wir brauchen hier nur die ID.
     public record MastodonAccount(String id, String username) {}
 
+    /**
+     * Request-Body für das Boosten eines Status, um die Sichtbarkeit zu steuern.
+     */
+    public record BoostStatusRequest(MastodonStatus.StatusVisibility visibility) {}
+
     // Record, um einen einzelnen empfangenen Status abzubilden
     // @JsonProperty wird verwendet, um JSON-Felder (snake_case) auf Java-Felder (camelCase) zu mappen.
     public record MastodonStatus(
