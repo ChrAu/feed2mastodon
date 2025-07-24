@@ -367,7 +367,7 @@ public class FeedToTootScheduler {
             final double cosineSimilarity = VektorUtil.getCosineSimilarity(profileVector, embeddingVector);
             post.setCosDistance(cosineSimilarity);
 
-            if(post.getCosDistance() > 0.85){
+            if(post.getCosDistance() > 0.8){
                 if(boostDisable != null && !boostDisable){
                     try {
                         final MastodonDtos.MastodonStatus mastodonStatus = mastodonClient.boostStatus(post.getMastodonId(), new MastodonDtos.BoostStatusRequest(MastodonDtos.MastodonStatus.StatusVisibility.PRIVATE), "Bearer " + accessToken);
