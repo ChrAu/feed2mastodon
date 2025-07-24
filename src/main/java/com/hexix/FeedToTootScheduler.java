@@ -26,6 +26,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -314,8 +315,23 @@ public class FeedToTootScheduler {
 
         final List<Embedding> allLocalEmbeddings = Embedding.findAllLocalEmbeddings();
 
-        final double[] originalVektor = VektorUtil.createProfileVector(allLocalEmbeddings.stream().map(Embedding::getLocalEmbedding).toList());
+        final List<Embedding> positivList = allLocalEmbeddings.stream().filter(embedding -> embedding.getNegativeWeight() == null).toList();
 
+        double[] originalVektor = VektorUtil.createProfileVector(positivList.stream().map(Embedding::getLocalEmbedding).toList());
+
+        Map<Double, List<Embedding>> negativeEmbeddings = new HashMap<>();
+
+        allLocalEmbeddings.stream().filter(embedding -> embedding.getNegativeWeight() != null)
+                .forEach( embedding -> negativeEmbeddings.computeIfAbsent(embedding.getNegativeWeight(), k -> new ArrayList<>()).add(embedding));
+
+        for (Map.Entry<Double, List<Embedding>> entry : negativeEmbeddings.entrySet()) {
+            final double weight = entry.getKey();
+            final List<Embedding> negativList = entry.getValue();
+            final List<double[]> negativVektors = negativList.stream().map(Embedding::getLocalEmbedding).toList();
+
+            originalVektor = VektorUtil.createProfileVector(Collections.singletonList(originalVektor), negativVektors, 1, weight);
+
+        }
 
 
 
