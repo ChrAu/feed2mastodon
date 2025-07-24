@@ -324,6 +324,8 @@ public class FeedToTootScheduler {
         allLocalEmbeddings.stream().filter(embedding -> embedding.getNegativeWeight() != null)
                 .forEach( embedding -> negativeEmbeddings.computeIfAbsent(embedding.getNegativeWeight(), k -> new ArrayList<>()).add(embedding));
 
+
+
         for (Map.Entry<Double, List<Embedding>> entry : negativeEmbeddings.entrySet()) {
             final double weight = entry.getKey();
             final List<Embedding> negativList = entry.getValue();
@@ -333,6 +335,18 @@ public class FeedToTootScheduler {
 
         }
 
+        Map<Double, List<PublicMastodonPostEntity>> negativePosts = new HashMap<>();
+
+        PublicMastodonPostEntity.findAllNegativPosts().forEach(post -> negativePosts.computeIfAbsent(post.getNegativeWeight(), k -> new ArrayList<>()).add(post));
+
+
+        for (Map.Entry<Double, List<PublicMastodonPostEntity>> entry : negativePosts.entrySet()) {
+            final double weight = entry.getKey();
+            final List<PublicMastodonPostEntity> negativList = entry.getValue();
+            final List<double[]> negativVektors = negativList.stream().map(PublicMastodonPostEntity::getEmbeddingVector).toList();
+
+            originalVektor = VektorUtil.createProfileVector(Collections.singletonList(originalVektor), negativVektors, 1, weight);
+        }
 
 
         List<PublicMastodonPostEntity> posts = PublicMastodonPostEntity.findAllComparable();

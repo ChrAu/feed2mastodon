@@ -39,6 +39,10 @@ public class PublicMastodonPostEntity extends PanacheEntity {
     @Column(name = "status_original_url", columnDefinition = "TEXT")
     private String statusOriginalUrl;
 
+    @Column(name = "negative_weight")
+    private Double negativeWeight;
+
+
 
 
     public String getMastodonId() {
@@ -110,6 +114,14 @@ public class PublicMastodonPostEntity extends PanacheEntity {
         this.statusOriginalUrl = statusOriginalUrl;
     }
 
+    public void setNegativeWeight(final Double negativeWeight) {
+        this.negativeWeight = negativeWeight;
+    }
+
+    public Double getNegativeWeight() {
+        return negativeWeight;
+    }
+
     public static List<PublicMastodonPostEntity> findNextPublicMastodonPost() {
         return find("embeddingVectorString is null").range(0, 10).list();
     }
@@ -117,4 +129,13 @@ public class PublicMastodonPostEntity extends PanacheEntity {
     public static List<PublicMastodonPostEntity> findAllComparable() {
         return find("embeddingVectorString is not null and cosDistance is null").list();
     }
+
+    public static PublicMastodonPostEntity findByMastodonId(final String id) {
+        return find("mastodonId", id).firstResult();
+    }
+
+    public static List<PublicMastodonPostEntity> findAllNegativPosts() {
+        return find("negativeWeight is not null and embeddingVectorString is not null").list();
+    }
+
 }

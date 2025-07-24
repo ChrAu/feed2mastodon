@@ -30,4 +30,15 @@ public interface MastodonStreamingService {
     @Path("/api/v1/streaming/public")
     @Produces(MediaType.SERVER_SENT_EVENTS) // Wichtig: Definiert den Medientyp als Server-Sent Events
     Multi<String> streamPublicTimeline(@HeaderParam("Authorization") String accessToken);
+
+    /**
+     * Streamt den direct Zeitstrahl von Mastodon.
+     * Der Endpunkt ist /api/v1/streaming/direct.
+     *
+     * @return Ein Multi<String>, das jeden empfangenen SSE-Ereignis-Payload (den "data"-Teil) als String liefert.
+     */
+    @GET
+    @Path("/api/v1/streaming/direct")
+    @Produces(MediaType.SERVER_SENT_EVENTS) // Wichtig: Definiert den Medientyp als Server-Sent Events
+    Multi<String> mastodonStreamingDirect(@HeaderParam("Authorization") String accessToken);
 }

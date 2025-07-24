@@ -7,6 +7,7 @@ import com.hexix.ai.OllamaRestClient;
 import com.hexix.ai.dto.EmbeddingRequest;
 import com.hexix.ai.dto.EmbeddingResponse; // Stellen Sie sicher, dass dies importiert ist, falls noch nicht geschehen
 import com.hexix.mastodon.api.MastodonDtos;
+import com.hexix.mastodon.resource.MastodonClient;
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Multi;
@@ -19,6 +20,7 @@ import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -45,12 +47,19 @@ public class MastodonStreamProcessor {
 
     @Inject
     @RestClient
+    MastodonClient mastodonClient;
+
+    @Inject
+    @RestClient
     OllamaRestClient ollamaRestClient;
 
     // Injiziert den Jackson ObjectMapper für die JSON-Deserialisierung
     @Inject
     ObjectMapper objectMapper;
 
+
+    @ConfigProperty(name = "mastodon.access.token")
+    String accessToken;
 
     @ConfigProperty(name = "mastodon.private.access.token")
     String privateAccessToken;
@@ -70,6 +79,13 @@ public class MastodonStreamProcessor {
      * Abonniert den Mastodon-Stream und definiert die Verarbeitungs- und Wiederverbindungslogik.
      */
     private void subscribeToMastodonStream() {
+        final Multi<String> directStream = mastodonStreamingService.mastodonStreamingDirect("Bearer " + accessToken);
+        directStream.onFailure(throwable -> false).retry().withBackOff(Duration.ofSeconds(5), Duration.ofSeconds(10)).atMost(Long.MAX_VALUE)
+                .onItem().call(this::processDirectPayload)
+                .subscribe().with(dataPayload -> Log.debugf("Direct-Mastodon-Payload erfolgreich verarbeitet: %s", dataPayload), failure -> Log.error("Fehler im Mastodon Stream (Direct) nach Wiederholungsversuchen: " + failure.getMessage(), failure));
+
+
+
         final Multi<String> stringMulti = mastodonStreamingService.streamPublicTimeline("Bearer " + privateAccessToken);
         stringMulti
                 // Wenn ein Fehler auftritt (z.B. Verbindungsabbruch), versuche die Verbindung erneut herzustellen.
@@ -87,7 +103,7 @@ public class MastodonStreamProcessor {
                         // Dieser Consumer wird aufgerufen, nachdem jede processDataPayload-Uni abgeschlossen ist.
                         // Der 'dataPayload' hier ist das ursprüngliche String-Payload vom Multi.
                         dataPayload -> {
-                            Log.debugf("Mastodon-Payload erfolgreich verarbeitet (nach Ollama-Aufruf): %s", dataPayload);
+                            Log.debugf("Mastodon-Payload erfolgreich verarbeitet: %s", dataPayload);
                         },
                         failure -> {
                             // Fehler beim Stream-Empfang (nach allen Wiederholungsversuchen)
@@ -96,6 +112,73 @@ public class MastodonStreamProcessor {
                         }
                 );
     }
+
+    private Uni<?> processDirectPayload(String dataPayload)  {
+
+
+        try {
+            MastodonDtos.DirectStatus directStatus = objectMapper.readValue(dataPayload, MastodonDtos.DirectStatus.class);
+
+
+            final String replyId = directStatus.lastStatus().inReplyToId();
+
+            final String rawContent = directStatus.lastStatus().content();
+            final String content = Jsoup.parse(rawContent).text();
+            boolean noUrl;
+            if(content.contains("negativ")) {
+
+                if(content.toLowerCase().contains("no_url")){
+                    noUrl = true;
+                } else {
+                    noUrl = false;
+                }
+
+                final String[] negativs = content.split("negativ");
+
+                Double negativeWeight = Double.parseDouble(negativs[negativs.length - 1].trim());
+
+
+                return Uni.createFrom().item(() -> {
+
+
+                            createPostAndUpdate(replyId, negativeWeight, noUrl);
+                            // Diese blockierende Operation wird nun auf einem Worker-Thread ausgeführt
+                            return Uni.createFrom().voidItem(); // Uni<Void> benötigt einen Wert, null ist für Void ok
+                        }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
+                        .onFailure().invoke(e -> {
+                            Log.errorf("Fehler beim Speichern des Mastodon-Posts (ID: %s): %s", replyId, e.getMessage(), e);
+                        })
+                        .onItem().ignore().andContinueWithNull();
+            } else {
+                noUrl = false;
+            }
+
+
+        } catch (JsonProcessingException e) {
+            return Uni.createFrom().voidItem();
+        }
+
+        return Uni.createFrom().voidItem();
+
+    }
+
+    @Transactional
+    void createPostAndUpdate(final String replyId, final Double negativeWeight, boolean noUrl) {
+        PublicMastodonPostEntity post = PublicMastodonPostEntity.findByMastodonId(replyId);
+
+        if(post == null){
+            MastodonDtos.MastodonStatus status = mastodonClient.getStatus(replyId, "Bearer " + privateAccessToken);
+            post = getPublicMastodonPostEntity(status, noUrl);
+            savePostInPipeline(post);
+        }
+
+
+        post.setNegativeWeight(negativeWeight);
+
+        // Zuerst versuchen, als MastodonStatus zu parsen (für 'update' oder 'status.update' Events)
+
+    }
+
 
     /**
      * Verarbeitet die empfangene Daten-Payload vom Mastodon-Stream.
@@ -114,31 +197,7 @@ public class MastodonStreamProcessor {
             MastodonDtos.MastodonStatus status = objectMapper.readValue(dataPayload, MastodonDtos.MastodonStatus.class);
 
 
-
-            final PublicMastodonPostEntity post = new PublicMastodonPostEntity();
-            post.setMastodonId(status.id());
-            post.setPostText(Jsoup.parse(status.content()).text());
-            post.setStatusOriginalUrl(status.url());
-
-            LOG.infof("Empfangener Status (ID: %s, Account: %s, Inhalt: \"%s\", URL: %s)\n",
-                    status.id(), status.account().username(), post.getPostText().substring(0, Math.min(20, post.getPostText().length())) + "...", post.getStatusOriginalUrl());
-
-            final List<String> urls = extractLinksFromHtml(status.content());
-
-            if (!urls.isEmpty()) {
-                StringJoiner sj = new StringJoiner("\n\n");
-                for (String url : urls) {
-                    // Annahme: JsoupParser.getArticle ist synchron und blockierend.
-                    // Wenn dies auch asynchron sein sollte, müsste es ebenfalls in ein Uni gewickelt werden.
-                    final String article = JsoupParser.getArticle(url);
-                    if (article != null) {
-                        sj.add(article);
-                    }
-                }
-                if(sj.length() > 0) {
-                    post.setUrlText(sj.toString());
-                }
-            }
+            final PublicMastodonPostEntity post = getPublicMastodonPostEntity(status, false);
 
             // WICHTIGE ÄNDERUNG: post.persist() auf einen Worker-Thread auslagern
             return Uni.createFrom().item(() -> {
@@ -170,6 +229,36 @@ public class MastodonStreamProcessor {
             Log.error("Fehler beim Verarbeiten des Ereignisses: " + dataPayload + " - Fehler: " + e.getMessage(), e);
             return Uni.createFrom().voidItem(); // Sofortiger Abschluss bei allgemeinen Fehlern
         }
+    }
+
+    private static @NotNull PublicMastodonPostEntity getPublicMastodonPostEntity(final MastodonDtos.MastodonStatus status, boolean noUrl) {
+        final PublicMastodonPostEntity post = new PublicMastodonPostEntity();
+        post.setMastodonId(status.id());
+        post.setPostText(Jsoup.parse(status.content()).text());
+        post.setStatusOriginalUrl(status.url());
+
+        LOG.infof("Empfangener Status (ID: %s, Account: %s, Inhalt: \"%s\", URL: %s)\n",
+                status.id(), status.account().username(), post.getPostText().substring(0, Math.min(20, post.getPostText().length())) + "...", post.getStatusOriginalUrl());
+
+        if(!noUrl) {
+            final List<String> urls = extractLinksFromHtml(status.content());
+
+            if (!urls.isEmpty()) {
+                StringJoiner sj = new StringJoiner("\n\n");
+                for (String url : urls) {
+                    // Annahme: JsoupParser.getArticle ist synchron und blockierend.
+                    // Wenn dies auch asynchron sein sollte, müsste es ebenfalls in ein Uni gewickelt werden.
+                    final String article = JsoupParser.getArticle(url);
+                    if (article != null) {
+                        sj.add(article);
+                    }
+                }
+                if (sj.length() > 0) {
+                    post.setUrlText(sj.toString());
+                }
+            }
+        }
+        return post;
     }
 
     @Transactional
