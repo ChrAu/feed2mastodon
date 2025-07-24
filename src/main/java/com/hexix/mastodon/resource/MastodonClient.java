@@ -64,6 +64,17 @@ public interface MastodonClient {
     );
 
 
+    /**
+     * Boostet (rebloggt) einen bestehenden Status.
+     *
+     * @param id Der ID des Status, der geboostet werden soll.
+     * @param boostStatusRequest Das Request-Objekt, das die Sichtbarkeit des Reblogs enthält.
+     * @param authorizationHeader Der Authorization-Header.
+     * @return Das geboostete Status-Objekt.
+     */
+    @POST
+    @Path("/statuses/{id}/reblog")
+    MastodonDtos.MastodonStatus boostStatus(@PathParam("id") String id, MastodonDtos.BoostStatusRequest boostStatusRequest, @HeaderParam("Authorization") String authorizationHeader);
 
 
 

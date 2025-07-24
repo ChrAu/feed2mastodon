@@ -9,6 +9,7 @@ import com.hexix.ai.dto.EmbeddingRequest;
 import com.hexix.ai.dto.EmbeddingResponse;
 import com.hexix.mastodon.api.MastodonDtos;
 import com.hexix.mastodon.resource.FavouritesService;
+import com.hexix.util.VektorUtil;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -44,7 +45,7 @@ public class StarredMastodonPosts {
     public void collectNewStarredPosts(){
         final List<MastodonDtos.MastodonStatus> newFavourites = favouritesService.getNewFavourites();
 
-        System.out.println("Neue Favourites: " + newFavourites.size());
+        LOG.infof("Neue Favourites: %s",  newFavourites.size());
 
 
         newFavourites.forEach(mastodonStatus -> favouritesService.createEmbedding(mastodonStatus));
@@ -98,7 +99,9 @@ public class StarredMastodonPosts {
                 responses.add(response.embeddings().getFirst().stream().mapToDouble(Double::doubleValue).toArray());
             }
 
-            final double[] profileVector = createProfileVector(responses);
+
+
+            final double[] profileVector = VektorUtil.createProfileVector(responses);
 
             saveEmbedding(embedding.id, profileVector);
 
@@ -118,51 +121,7 @@ public class StarredMastodonPosts {
     }
 
 
-    /**
-     * Erstellt einen Profil-Vektor, indem der Durchschnitt mehrerer Vektoren gebildet wird.
-     * @param vectors Eine Liste von Vektoren.
-     * @return Der durchschnittliche, normalisierte Vektor.
-     */
-    public static double[] createProfileVector(List<double[]> vectors) {
-        if (vectors == null || vectors.isEmpty() || vectors.stream().map(doubles -> doubles.length).distinct().count() > 1) {
 
-            return new double[768];
-        }
-        final int dimension = vectors.getFirst().length;
-
-        double[] profileVector = new double[dimension];
-        for (double[] vector : vectors) {
-            for (int i = 0; i < dimension; i++) {
-                profileVector[i] += vector[i];
-            }
-        }
-
-        for (int i = 0; i < dimension; i++) {
-            profileVector[i] /= vectors.size();
-        }
-        return normalize(profileVector);
-    }
-
-    /**
-     * Normalisiert einen Vektor, sodass seine Länge 1 beträgt.
-     * @param vector Der zu normalisierende Vektor.
-     * @return Der normalisierte Vektor.
-     */
-    private static double[] normalize(double[] vector) {
-        double magnitude = 0.0;
-        for (double v : vector) {
-            magnitude += v * v;
-        }
-        magnitude = Math.sqrt(magnitude);
-
-        if (magnitude == 0) return vector;
-
-        double[] normalizedVector = new double[vector.length];
-        for (int i = 0; i < vector.length; i++) {
-            normalizedVector[i] = vector[i] / magnitude;
-        }
-        return normalizedVector;
-    }
 
     public static List<String> splitByLength(String str, int laenge) {
         List<String> teile = new ArrayList<>();

@@ -2,13 +2,19 @@ package com.hexix;
 
 import com.hexix.ai.GeminiRequestEntity;
 import com.hexix.ai.GenerateTextFromTextInput;
+import com.hexix.ai.OllamaRestClient;
+import com.hexix.ai.dto.EmbeddingRequest;
+import com.hexix.ai.dto.EmbeddingResponse;
 import com.hexix.mastodon.Embedding;
+import com.hexix.mastodon.PublicMastodonPostEntity;
 import com.hexix.mastodon.StarredMastodonPosts;
 import com.hexix.mastodon.api.MastodonDtos;
 import com.hexix.mastodon.resource.MastodonClient;
+import com.hexix.util.VektorUtil;
 import com.rometools.rome.feed.synd.SyndEntry;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import io.quarkus.scheduler.Scheduled;
+import io.quarkus.vertx.core.runtime.config.VertxConfiguration;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -19,6 +25,7 @@ import org.jboss.logging.Logger;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -43,8 +50,18 @@ public class FeedToTootScheduler {
     @ConfigProperty(name = "mastodon.access.token")
     String accessToken;
 
+    @ConfigProperty(name = "mastodon.private.access.token")
+    String privateAccessToken;
+
     @ConfigProperty(name = "gemini.model")
     String geminiModel;
+
+    @ConfigProperty(name = "mastodon.boost.disable", defaultValue = "true")
+    Boolean boostDisable;
+
+    @Inject
+    @RestClient
+    OllamaRestClient ollamaRestClient;
 
 
 
@@ -215,8 +232,77 @@ public class FeedToTootScheduler {
     @Transactional
     @Scheduled(every = "24h", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcEmbeddingsArticles() {
+
+
         final List<Embedding> embeddings = Embedding.<Embedding>find("text is null").list();
 
         embeddings.stream().filter(embedding -> embedding.getText() ==null).filter(embedding -> embedding.getUrl() != null).forEach(embedding -> embedding.setText(JsoupParser.getArticle(embedding.getUrl())));
     }
+
+    @Transactional
+    @Scheduled(every = "1m", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    void calcPublicVectors(){
+
+        int calcRequests = 0;
+        final List<PublicMastodonPostEntity> nextPublicMastodonPost = PublicMastodonPostEntity.findNextPublicMastodonPost();
+
+        for (PublicMastodonPostEntity post : nextPublicMastodonPost) {
+            List<double[]> vectors = new ArrayList<>();
+            final EmbeddingRequest request = new EmbeddingRequest("granite-embedding:278m", List.of(post.getPostText()), false);
+            final EmbeddingResponse postResponse = ollamaRestClient.generateEmbeddings(request);
+            calcRequests++;
+            vectors.add(postResponse.embeddings().getFirst().stream().mapToDouble(Double::doubleValue).toArray());
+
+            final String urlText = post.getUrlText();
+            if(urlText != null && !urlText.isBlank()){
+
+                final List<String> texte = StarredMastodonPosts.splitByLength(urlText, 500);
+                for (String subText : texte) {
+                    final EmbeddingRequest requestUrl = new EmbeddingRequest("granite-embedding:278m", List.of(subText), false);
+                    final EmbeddingResponse urlResponse = ollamaRestClient.generateEmbeddings(requestUrl);
+                    calcRequests++;
+                    vectors.add(urlResponse.embeddings().getFirst().stream().mapToDouble(Double::doubleValue).toArray());
+                }
+
+            }
+
+            final double[] profileVector = VektorUtil.createProfileVector(vectors);
+
+            post.setEmbeddingVector(profileVector);
+
+        }
+
+        if(calcRequests > 0) {
+            LOG.infof("Es wurden %s Ollama Vektoren berechnet", calcRequests);
+        }
+    }
+    @Transactional
+    @Scheduled(every = "1m", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    void calcRecommendations(){
+
+        final List<Embedding> allLocalEmbeddings = Embedding.findAllLocalEmbeddings();
+
+        final double[] originalVektor = VektorUtil.createProfileVector(allLocalEmbeddings.stream().map(Embedding::getLocalEmbedding).toList());
+
+
+
+
+        List<PublicMastodonPostEntity> posts = PublicMastodonPostEntity.findAllComparable();
+
+        for (PublicMastodonPostEntity post : posts) {
+            final double[] embeddingVector = post.getEmbeddingVector();
+
+            final double cosineSimilarity = VektorUtil.getCosineSimilarity(originalVektor, embeddingVector);
+            post.setCosDistance(cosineSimilarity);
+
+            if(post.getCosDistance() > 0.85){
+                if(boostDisable != null && !boostDisable){
+                    final MastodonDtos.MastodonStatus mastodonStatus = mastodonClient.boostStatus(post.getMastodonId(), new MastodonDtos.BoostStatusRequest(MastodonDtos.MastodonStatus.StatusVisibility.PRIVATE), "Bearer " + accessToken);
+                }
+
+                LOG.infof("Mastodon Satatus (ID: %s) wurde geboosted", post.getMastodonId());
+            }
+        }
+    }
+
 }

@@ -11,10 +11,11 @@ import io.quarkus.logging.Log;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
-import io.smallrye.mutiny.infrastructure.Infrastructure; // Könnte für bestimmte Threading-Kontrollen nützlich sein, aber hier nicht direkt benötigt
+import io.smallrye.mutiny.infrastructure.Infrastructure; // Wichtig für runOn()
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
@@ -26,6 +27,7 @@ import org.jsoup.select.Elements;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 /**
@@ -77,7 +79,7 @@ public class MastodonStreamProcessor {
                     Log.error("Fehler beim Stream-Empfang: " + throwable.getMessage(), throwable);
                     return false; // Gibt an, dass die Wiederholung fortgesetzt werden soll
                 })
-                .retry().withBackOff(Duration.ofSeconds(5), Duration.ofSeconds(60)).atMost(Long.MAX_VALUE)
+                .retry().withBackOff(Duration.ofSeconds(5), Duration.ofSeconds(10)).atMost(Long.MAX_VALUE)
                 // WICHTIGE ÄNDERUNG: onItem().call() stellt sicher, dass jede processDataPayload-Ausführung
                 // abgeschlossen ist, bevor das nächste Element aus dem Stream verarbeitet wird.
                 .onItem().call(this::processDataPayload)
@@ -106,54 +108,50 @@ public class MastodonStreamProcessor {
      */
     private Uni<Void> processDataPayload(String dataPayload) {
         try {
-            // Zuerst versuchen, als MastodonStatus zu parsen (für 'update' oder 'status.update' Events)
-            MastodonDtos.MastodonStatus status = objectMapper.readValue(dataPayload, MastodonDtos.MastodonStatus.class);
-            List<String> contents = new ArrayList<>();
 
-            final String content = Jsoup.parse(status.content()).text();
-            contents.add(content);
+
+
+            MastodonDtos.MastodonStatus status = objectMapper.readValue(dataPayload, MastodonDtos.MastodonStatus.class);
+
+
+
+            final PublicMastodonPostEntity post = new PublicMastodonPostEntity();
+            post.setMastodonId(status.id());
+            post.setPostText(Jsoup.parse(status.content()).text());
+            post.setStatusOriginalUrl(status.url());
+
+            LOG.infof("Empfangener Status (ID: %s, Account: %s, Inhalt: \"%s\", URL: %s)\n",
+                    status.id(), status.account().username(), post.getPostText().substring(0, Math.min(20, post.getPostText().length())) + "...", post.getStatusOriginalUrl());
 
             final List<String> urls = extractLinksFromHtml(status.content());
+
             if (!urls.isEmpty()) {
+                StringJoiner sj = new StringJoiner("\n\n");
                 for (String url : urls) {
                     // Annahme: JsoupParser.getArticle ist synchron und blockierend.
                     // Wenn dies auch asynchron sein sollte, müsste es ebenfalls in ein Uni gewickelt werden.
                     final String article = JsoupParser.getArticle(url);
                     if (article != null) {
-                        final List<String> splitText = StarredMastodonPosts.splitByLength(article, 500);
-                        contents.addAll(splitText);
+                        sj.add(article);
                     }
+                }
+                if(sj.length() > 0) {
+                    post.setUrlText(sj.toString());
                 }
             }
 
-            LOG.info("Starte OLLAMA Request für Status-ID: " + status.id());
-            EmbeddingRequest request = new EmbeddingRequest("granite-embedding:278m", contents, false);
-
-            // Gibt ein Uni zurück, das abgeschlossen wird, wenn der Ollama-Aufruf beendet ist.
-            return ollamaRestClient.generateEmbeddingsTest(request)
-                    .onItem().call(s -> {
-                        // Diese Logik wird ausgeführt, wenn die Ollama-Antwort erfolgreich empfangen wurde.
-                        final List<double[]> collect = s.embeddings().stream()
-                                .map(doubles -> doubles.stream().mapToDouble(Double::doubleValue).toArray())
-                                .toList();
-
-                        LOG.info("Vektoren erhalten: " + collect.size());
-
-                        final double[] profileVector = StarredMastodonPosts.createProfileVector(collect);
-
-                        LOG.infof("Empfangener Status (ID: %s, Account: %s, Inhalt: \"%s\" Vektorlänge: %s)\n",
-                                status.id(), status.account().username(), content, profileVector.length);
-
-                        if (status.card() != null) {
-                            LOG.info("Hat Card: " + status.card().url());
-                        }
-                        return Uni.createFrom().voidItem(); // Signalisiert den Abschluss dieser Phase
-                    })
+            // WICHTIGE ÄNDERUNG: post.persist() auf einen Worker-Thread auslagern
+            return Uni.createFrom().item(() -> {
+                        // Zuerst versuchen, als MastodonStatus zu parsen (für 'update' oder 'status.update' Events)
+                        savePostInPipeline(post);
+                         // Diese blockierende Operation wird nun auf einem Worker-Thread ausgeführt
+                        return Uni.createFrom().voidItem(); // Uni<Void> benötigt einen Wert, null ist für Void ok
+                    }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
                     .onFailure().invoke(e -> {
-                        // Fehlerbehandlung für den Ollama-Aufruf
-                        Log.errorf("Fehler bei Ollama-Anfrage für Status-ID %s: %s", status.id(), e.getMessage(), e);
+                        Log.errorf("Fehler beim Speichern des Mastodon-Posts (ID: %s): %s", status.id(), e.getMessage(), e);
                     })
-                    .onItem().ignore().andContinueWithNull(); // Ignoriert das Ergebnis und setzt die Kette als Uni<Void> fort
+                    .onItem().ignore().andContinueWithNull();
+
 
         } catch (JsonProcessingException e) {
             // Wenn es kein MastodonStatus-JSON ist, könnte es ein Delete-Ereignis sein (nur ein ID-String)
@@ -171,6 +169,13 @@ public class MastodonStreamProcessor {
             // Allgemeine Fehlerbehandlung für andere unerwartete Probleme
             Log.error("Fehler beim Verarbeiten des Ereignisses: " + dataPayload + " - Fehler: " + e.getMessage(), e);
             return Uni.createFrom().voidItem(); // Sofortiger Abschluss bei allgemeinen Fehlern
+        }
+    }
+
+    @Transactional
+    public void savePostInPipeline(final PublicMastodonPostEntity post) {
+        if(post.getPostText() != null && !post.getPostText().isBlank()) {
+            post.persist();
         }
     }
 
