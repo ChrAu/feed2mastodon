@@ -1,6 +1,7 @@
 package com.hexix;
 
 import com.hexix.ai.GeminiRequestEntity;
+import com.hexix.ai.GenerateEmbeddingTextInput;
 import com.hexix.ai.GenerateTextFromTextInput;
 import com.hexix.ai.OllamaRestClient;
 import com.hexix.ai.dto.EmbeddingRequest;
@@ -14,7 +15,6 @@ import com.hexix.util.VektorUtil;
 import com.rometools.rome.feed.synd.SyndEntry;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import io.quarkus.scheduler.Scheduled;
-import io.quarkus.vertx.core.runtime.config.VertxConfiguration;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -27,7 +27,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @ApplicationScoped
@@ -62,7 +64,8 @@ public class FeedToTootScheduler {
     @Inject
     @RestClient
     OllamaRestClient ollamaRestClient;
-
+    @Inject
+    GenerateEmbeddingTextInput generateEmbeddingTextInput;
 
 
     // Einfache In-Memory-Lösung zur Vermeidung von Duplikaten.
@@ -239,19 +242,17 @@ public class FeedToTootScheduler {
         embeddings.stream().filter(embedding -> embedding.getText() ==null).filter(embedding -> embedding.getUrl() != null).forEach(embedding -> embedding.setText(JsoupParser.getArticle(embedding.getUrl())));
     }
 
-    @Transactional
-    @Scheduled(every = "1m", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
-    void calcPublicVectors(){
 
-        int calcRequests = 0;
+    @Transactional
+    Map<String, List<EmbeddingRequest>> generateOllamaRequest(){
+
+        Map<String, List<EmbeddingRequest>> allRequests = new HashMap<>();
         final List<PublicMastodonPostEntity> nextPublicMastodonPost = PublicMastodonPostEntity.findNextPublicMastodonPost();
 
         for (PublicMastodonPostEntity post : nextPublicMastodonPost) {
-            List<double[]> vectors = new ArrayList<>();
-            final EmbeddingRequest request = new EmbeddingRequest("granite-embedding:278m", List.of(post.getPostText()), false);
-            final EmbeddingResponse postResponse = ollamaRestClient.generateEmbeddings(request);
-            calcRequests++;
-            vectors.add(postResponse.embeddings().getFirst().stream().mapToDouble(Double::doubleValue).toArray());
+
+            List<EmbeddingRequest> requests = new ArrayList<>();
+            requests.add( new EmbeddingRequest("granite-embedding:278m", List.of(post.getPostText()), false));
 
             final String urlText = post.getUrlText();
             if(urlText != null && !urlText.isBlank()){
@@ -259,23 +260,54 @@ public class FeedToTootScheduler {
                 final List<String> texte = StarredMastodonPosts.splitByLength(urlText, 500);
                 for (String subText : texte) {
                     final EmbeddingRequest requestUrl = new EmbeddingRequest("granite-embedding:278m", List.of(subText), false);
-                    final EmbeddingResponse urlResponse = ollamaRestClient.generateEmbeddings(requestUrl);
-                    calcRequests++;
-                    vectors.add(urlResponse.embeddings().getFirst().stream().mapToDouble(Double::doubleValue).toArray());
+
+
+                    requests.add(requestUrl);
+
                 }
 
             }
 
+            allRequests.put(post.getMastodonId(), requests);
+       }
+
+        return allRequests;
+    }
+
+    @Scheduled(every = "1m", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    void calcPublicVectors(){
+        int calcRequests = 0;
+        final Map<String, List<EmbeddingRequest>> requests = generateOllamaRequest();
+
+        for (Map.Entry<String, List<EmbeddingRequest>> entry : requests.entrySet()) {
+
+            final String mastodonId = entry.getKey();
+            final List<EmbeddingRequest> embeddingRequests = entry.getValue();
+            List<double[]> vectors = new ArrayList<>();
+
+            for (EmbeddingRequest request : embeddingRequests) {
+                final EmbeddingResponse postResponse = ollamaRestClient.generateEmbeddings(request);
+                calcRequests++;
+                vectors.add(postResponse.embeddings().getFirst().stream().mapToDouble(Double::doubleValue).toArray());
+            }
+
             final double[] profileVector = VektorUtil.createProfileVector(vectors);
 
-            post.setEmbeddingVector(profileVector);
+            savePublicVector(mastodonId, profileVector);
 
         }
-
         if(calcRequests > 0) {
             LOG.infof("Es wurden %s Ollama Vektoren berechnet", calcRequests);
         }
     }
+
+    @Transactional
+    void savePublicVector(final String mastodonId, final double[] profileVector) {
+        final PublicMastodonPostEntity mastodonPost = PublicMastodonPostEntity.<PublicMastodonPostEntity>find("mastodonId = ?1", mastodonId).firstResult();
+        mastodonPost.setEmbeddingVector(profileVector);
+    }
+
+
     @Transactional
     @Scheduled(every = "1m", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcRecommendations(){
