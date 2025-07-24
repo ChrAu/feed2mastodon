@@ -170,6 +170,10 @@ public class MastodonStreamProcessor {
             MastodonDtos.MastodonStatus status = mastodonClient.getStatus(replyId, "Bearer " + privateAccessToken);
             post = getPublicMastodonPostEntity(status, noUrl);
             savePostInPipeline(post);
+        }else{
+            if(noUrl){
+                post.setUrlText(null);
+            }
         }
 
 
