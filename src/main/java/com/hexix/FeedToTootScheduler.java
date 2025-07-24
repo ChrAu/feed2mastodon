@@ -297,7 +297,13 @@ public class FeedToTootScheduler {
 
             if(post.getCosDistance() > 0.85){
                 if(boostDisable != null && !boostDisable){
-                    final MastodonDtos.MastodonStatus mastodonStatus = mastodonClient.boostStatus(post.getMastodonId(), new MastodonDtos.BoostStatusRequest(MastodonDtos.MastodonStatus.StatusVisibility.PRIVATE), "Bearer " + accessToken);
+                    try {
+                        final MastodonDtos.MastodonStatus mastodonStatus = mastodonClient.boostStatus(post.getMastodonId(), new MastodonDtos.BoostStatusRequest(MastodonDtos.MastodonStatus.StatusVisibility.PRIVATE), "Bearer " + accessToken);
+                    }catch (Exception e){
+                      LOG.errorf("Fehler beim Boosten der MastodonId: %s", post.getMastodonId(), e);
+                      post.setCosDistance(null);
+                      continue;
+                    }
                 }
 
                 LOG.infof("Mastodon Satatus (ID: %s) wurde geboosted", post.getMastodonId());
