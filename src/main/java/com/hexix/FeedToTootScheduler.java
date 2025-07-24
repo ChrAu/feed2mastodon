@@ -280,7 +280,7 @@ public class FeedToTootScheduler {
         int calcRequests = 0;
         final Map<String, List<EmbeddingRequest>> requests = generateOllamaRequest();
 
-        LOG.infof("Generiere für folgende Einträge Vektoren: %s", requests.keySet());
+        LOG.debugf("Generiere für folgende Einträge Vektoren: %s", requests.keySet());
 
         for (Map.Entry<String, List<EmbeddingRequest>> entry : requests.entrySet()) {
             try{
@@ -312,7 +312,7 @@ public class FeedToTootScheduler {
     void savePublicVector(final String mastodonId, final double[] profileVector) {
         final PublicMastodonPostEntity mastodonPost = PublicMastodonPostEntity.<PublicMastodonPostEntity>find("mastodonId = ?1", mastodonId).firstResult();
         mastodonPost.setEmbeddingVector(profileVector);
-        LOG.infof("Speichere Vektor für Id: %s", mastodonPost.getMastodonId());
+        LOG.debugf("Speichere Vektor für Id: %s", mastodonPost.getMastodonId());
     }
 
 
