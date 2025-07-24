@@ -324,7 +324,10 @@ public class FeedToTootScheduler {
 
         final List<Embedding> positivList = allLocalEmbeddings.stream().filter(embedding -> embedding.getNegativeWeight() == null).toList();
 
-        double[] originalVektor = VektorUtil.createProfileVector(positivList.stream().map(Embedding::getLocalEmbedding).toList());
+        final List<VektorUtil.VektorWeight> positiveVektoren = new ArrayList<>(positivList.stream().map(Embedding::getLocalEmbedding).map(doubles -> new VektorUtil.VektorWeight(doubles, 1.0)).toList());
+        final List<VektorUtil.VektorWeight> negativeVektoren = new ArrayList<>();
+
+//        double[] originalVektor = VektorUtil.createProfileVector(positiveVektoren);
 
         Map<Double, List<Embedding>> negativeEmbeddings = new HashMap<>();
 
@@ -337,8 +340,7 @@ public class FeedToTootScheduler {
             final double weight = entry.getKey();
             final List<Embedding> negativList = entry.getValue();
             final List<double[]> negativVektors = negativList.stream().map(Embedding::getLocalEmbedding).toList();
-
-            originalVektor = VektorUtil.createProfileVector(Collections.singletonList(originalVektor), negativVektors, 1, weight);
+            negativeVektoren.addAll(negativVektors.stream().map(doubles -> new VektorUtil.VektorWeight(doubles, weight)).toList());
 
         }
 
@@ -351,9 +353,10 @@ public class FeedToTootScheduler {
             final double weight = entry.getKey();
             final List<PublicMastodonPostEntity> negativList = entry.getValue();
             final List<double[]> negativVektors = negativList.stream().map(PublicMastodonPostEntity::getEmbeddingVector).toList();
-
-            originalVektor = VektorUtil.createProfileVector(Collections.singletonList(originalVektor), negativVektors, 1, weight);
+            negativeVektoren.addAll(negativVektors.stream().map(doubles -> new VektorUtil.VektorWeight(doubles, weight)).toList());
         }
+
+        final double[] profileVector = VektorUtil.createProfileVector(positiveVektoren, negativeVektoren);
 
 
         List<PublicMastodonPostEntity> posts = PublicMastodonPostEntity.findAllComparable();
@@ -361,7 +364,7 @@ public class FeedToTootScheduler {
         for (PublicMastodonPostEntity post : posts) {
             final double[] embeddingVector = post.getEmbeddingVector();
 
-            final double cosineSimilarity = VektorUtil.getCosineSimilarity(originalVektor, embeddingVector);
+            final double cosineSimilarity = VektorUtil.getCosineSimilarity(profileVector, embeddingVector);
             post.setCosDistance(cosineSimilarity);
 
             if(post.getCosDistance() > 0.85){

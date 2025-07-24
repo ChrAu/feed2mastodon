@@ -278,7 +278,7 @@ Hier ist eine typische Einteilung, die Sie als Ausgangspunkt verwenden können:
         double posWeight = 1.0;
         double negWeight = 0.5; // Negative Interessen haben einen geringeren Einfluss
 
-        double[] profile = VektorUtil.createProfileVector(positiveVectors, negativeVectors, posWeight, negWeight);
+        double[] profile = VektorUtil.createProfileVector(positiveVectors.stream().map(doubles -> new VektorUtil.VektorWeight(doubles, posWeight)).toList(), negativeVectors.stream().map(doubles -> new VektorUtil.VektorWeight(doubles, negWeight)).toList());
 
         System.out.println("Erstellter Profil-Vektor:");
         for (double v : profile) {
@@ -296,7 +296,7 @@ Hier ist eine typische Einteilung, die Sie als Ausgangspunkt verwenden können:
         System.out.println("Kosinus-Ähnlichkeit mit neuem Artikel 3 (ähnlich Thema C): " + VektorUtil.getCosineSimilarity(profile, newArticleVector3));
 
         // Test mit leeren Listen
-        double[] emptyProfile = VektorUtil.createProfileVector(new ArrayList<>(), new ArrayList<>(), 1.0, 1.0);
+        double[] emptyProfile = VektorUtil.createProfileVector(new ArrayList<>(), new ArrayList<>());
         System.out.println("Profil mit leeren Listen (sollte Nullvektor sein):");
         for (double v : emptyProfile) {
             System.out.printf("%.4f ", v);

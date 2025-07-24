@@ -107,18 +107,16 @@ public class VektorUtil {
      * @param negativeWeight Der Gewichtungsfaktor für negative Vektoren.
      * @return Der resultierende, normalisierte Profil-Vektor. Gibt einen Nullvektor zurück, wenn keine gültigen Vektoren vorhanden sind.
      */
-    public static double[] createProfileVector(List<double[]> positiveVectors,
-                                               List<double[]> negativeVectors,
-                                               double positiveWeight,
-                                               double negativeWeight) {
+    public static double[] createProfileVector(List<VektorWeight> positiveVectors,
+                                               List<VektorWeight> negativeVectors) {
 
         // Bestimme die Dimension der Vektoren. Annahme: Alle Vektoren haben die gleiche Dimension.
         // Wenn keine Vektoren vorhanden sind, gib einen Nullvektor zurück.
         int dimension;
         if (positiveVectors != null && !positiveVectors.isEmpty()) {
-            dimension = positiveVectors.getFirst().length;
+            dimension = positiveVectors.getFirst().vektor().length;
         } else if (negativeVectors != null && !negativeVectors.isEmpty()) {
-            dimension = negativeVectors.getFirst().length;
+            dimension = negativeVectors.getFirst().vektor().length;
         } else {
             dimension = 0;
             // Keine Vektoren zum Erstellen eines Profils vorhanden.
@@ -126,8 +124,8 @@ public class VektorUtil {
         }
 
         // Überprüfe, ob alle Vektoren die gleiche Dimension haben (optional, aber gute Praxis)
-        if ((positiveVectors != null && positiveVectors.stream().anyMatch(v -> v.length != dimension)) ||
-                (negativeVectors != null && negativeVectors.stream().anyMatch(v -> v.length != dimension))) {
+        if ((positiveVectors != null && positiveVectors.stream().anyMatch(v -> v.vektor().length != dimension)) ||
+                (negativeVectors != null && negativeVectors.stream().anyMatch(v -> v.vektor().length != dimension))) {
             LOG.warn("Warnung: Vektoren haben unterschiedliche Dimensionen. Dies könnte zu Fehlern führen.");
             // Eine robustere Implementierung könnte hier eine Exception werfen oder die fehlerhaften Vektoren ignorieren.
         }
@@ -137,18 +135,18 @@ public class VektorUtil {
 
         // Positive Vektoren mit Gewichtung addieren
         if (positiveVectors != null) {
-            for (double[] vector : positiveVectors) {
+            for (VektorWeight vector : positiveVectors) {
                 for (int i = 0; i < dimension; i++) {
-                    profileVector[i] += vector[i] * positiveWeight;
+                    profileVector[i] += vector.vektor()[i] * vector.weight;
                 }
             }
         }
 
         // Negative Vektoren mit Gewichtung subtrahieren
         if (negativeVectors != null) {
-            for (double[] vector : negativeVectors) {
+            for (VektorWeight vector : negativeVectors) {
                 for (int i = 0; i < dimension; i++) {
-                    profileVector[i] -= vector[i] * negativeWeight;
+                    profileVector[i] -= vector.vektor()[i] * vector.weight();
                 }
             }
         }
@@ -191,7 +189,9 @@ public class VektorUtil {
      */
     @Deprecated
     public static double[] createProfileVector(List<double[]> vectors) {
-        return createProfileVector(vectors, Collections.emptyList(), 1.0, 1.0);
+
+
+        return createProfileVector(vectors.stream().map(doubles -> new VektorWeight(doubles, 1.0)).toList(), Collections.emptyList());
     }
 
 
@@ -240,6 +240,9 @@ public class VektorUtil {
 //        }
 //        return normalizedVector;
 //    }
+
+        public record VektorWeight(double[] vektor, double weight){}
+
 
 
 }
