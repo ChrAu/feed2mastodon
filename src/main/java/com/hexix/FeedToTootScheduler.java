@@ -253,7 +253,7 @@ public class FeedToTootScheduler {
         for (PublicMastodonPostEntity post : nextPublicMastodonPost) {
 
             List<EmbeddingRequest> requests = new ArrayList<>();
-            requests.add( new EmbeddingRequest("granite-embedding:278m", List.of(post.getPostText()), false));
+            requests.add( new EmbeddingRequest("granite-embedding:278m", List.of(post.getPostText()), true));
 
             final String urlText = post.getUrlText();
             if(urlText != null && !urlText.isBlank()){
