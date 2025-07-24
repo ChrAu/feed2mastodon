@@ -21,6 +21,8 @@ public class MastodonDtos {
      */
     public record BoostStatusRequest(MastodonStatus.StatusVisibility visibility) {}
 
+    public record DirectStatus(String id, boolean unread, List<MastodonAccount> accounts, @JsonProperty("last_status") MastodonStatus lastStatus){}
+
     // Record, um einen einzelnen empfangenen Status abzubilden
     // @JsonProperty wird verwendet, um JSON-Felder (snake_case) auf Java-Felder (camelCase) zu mappen.
     public record MastodonStatus(
@@ -41,7 +43,9 @@ public class MastodonDtos {
             @JsonProperty("reblog") Optional<MastodonStatus> reblog,
             String language,
             String text,
-            PreviewCard card
+            PreviewCard card,
+            @JsonProperty("in_reply_to_id")
+            String inReplyToId
 
 ) {
         public enum StatusVisibility{
