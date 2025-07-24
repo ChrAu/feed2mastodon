@@ -280,21 +280,27 @@ public class FeedToTootScheduler {
         int calcRequests = 0;
         final Map<String, List<EmbeddingRequest>> requests = generateOllamaRequest();
 
+        LOG.infof("Generiere für folgende Einträge Vektoren: %s", requests.keySet());
+
         for (Map.Entry<String, List<EmbeddingRequest>> entry : requests.entrySet()) {
+            try{
+                final String mastodonId = entry.getKey();
+                final List<EmbeddingRequest> embeddingRequests = entry.getValue();
+                List<double[]> vectors = new ArrayList<>();
 
-            final String mastodonId = entry.getKey();
-            final List<EmbeddingRequest> embeddingRequests = entry.getValue();
-            List<double[]> vectors = new ArrayList<>();
+                for (EmbeddingRequest request : embeddingRequests) {
+                    final EmbeddingResponse postResponse = ollamaRestClient.generateEmbeddings(request);
+                    calcRequests++;
+                    vectors.add(postResponse.embeddings().getFirst().stream().mapToDouble(Double::doubleValue).toArray());
+                }
 
-            for (EmbeddingRequest request : embeddingRequests) {
-                final EmbeddingResponse postResponse = ollamaRestClient.generateEmbeddings(request);
-                calcRequests++;
-                vectors.add(postResponse.embeddings().getFirst().stream().mapToDouble(Double::doubleValue).toArray());
+                final double[] profileVector = VektorUtil.createProfileVector(vectors);
+
+                savePublicVector(mastodonId, profileVector);
+            }catch (Exception e){
+                LOG.errorf("Fehler beim Vektor generieren für ID: %s", entry.getKey(), e);
             }
 
-            final double[] profileVector = VektorUtil.createProfileVector(vectors);
-
-            savePublicVector(mastodonId, profileVector);
 
         }
         if(calcRequests > 0) {
@@ -306,6 +312,7 @@ public class FeedToTootScheduler {
     void savePublicVector(final String mastodonId, final double[] profileVector) {
         final PublicMastodonPostEntity mastodonPost = PublicMastodonPostEntity.<PublicMastodonPostEntity>find("mastodonId = ?1", mastodonId).firstResult();
         mastodonPost.setEmbeddingVector(profileVector);
+        LOG.infof("Speichere Vektor für Id: %s", mastodonPost.getMastodonId());
     }
 
 
