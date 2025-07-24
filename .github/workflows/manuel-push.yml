@@ -156,16 +156,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-      # NEUER SCHRITT: Gebautes Docker-Image vom Runner löschen
-      - name: Clean up Docker image from runner
-        # Dieser Schritt wird nur ausgeführt, wenn der vorherige Schritt (Build und Push) erfolgreich war.
-        if: success()
-        run: |
-          IMAGE_FULL_NAME="ghcr.io/${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag }}"
-          echo "Attempting to remove Docker image: $IMAGE_FULL_NAME"
-          docker rmi $IMAGE_FULL_NAME || true
-          echo "Docker image cleanup complete (or image not found)."
-
   # ===================================================================
   # ZUKÜNFTIGER JOB: Hier könntest du einen weiteren Push-Job hinzufügen
   # zum Beispiel für Docker Hub. Er würde parallel zu 'push-to-ghcr' laufen.
