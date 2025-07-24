@@ -173,6 +173,7 @@ public class MastodonStreamProcessor {
         }else{
             if(noUrl){
                 post.setUrlText(null);
+                post.removeEmbeddingVektor();
             }
         }
 

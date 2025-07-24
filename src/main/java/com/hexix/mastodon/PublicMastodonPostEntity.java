@@ -138,4 +138,8 @@ public class PublicMastodonPostEntity extends PanacheEntity {
         return find("negativeWeight is not null and embeddingVectorString is not null").list();
     }
 
+    public void removeEmbeddingVektor() {
+        embeddingVector = null;
+        embeddingVectorString = null;
+    }
 }
