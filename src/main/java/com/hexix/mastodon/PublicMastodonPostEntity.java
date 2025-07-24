@@ -15,7 +15,7 @@ import java.util.List;
 @Table(name = "public_mastodon_posts", indexes = {@Index(name = "idx_Embedding_cosDistance", columnList = "cosinus_distance"), @Index(name = "idx_Embedding_create_at", columnList = "create_at")})
 public class PublicMastodonPostEntity extends PanacheEntity {
 
-    @Column(name = "mastodon_id", columnDefinition = "TEXT")
+    @Column(name = "mastodon_id", columnDefinition = "TEXT", unique = true)
     String mastodonId;
 
     @Column(name = "post_text", columnDefinition = "TEXT")
