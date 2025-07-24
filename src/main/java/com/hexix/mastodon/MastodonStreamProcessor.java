@@ -205,8 +205,14 @@ public class MastodonStreamProcessor {
 
             // WICHTIGE ÄNDERUNG: post.persist() auf einen Worker-Thread auslagern
             return Uni.createFrom().item(() -> {
-                        // Zuerst versuchen, als MastodonStatus zu parsen (für 'update' oder 'status.update' Events)
-                        savePostInPipeline(post);
+                        final PublicMastodonPostEntity currentEntity = PublicMastodonPostEntity.findByMastodonId(status.id());
+
+                        if (currentEntity == null) {
+                            // Zuerst versuchen, als MastodonStatus zu parsen (für 'update' oder 'status.update' Events)
+                            savePostInPipeline(post);
+                        }
+
+
                          // Diese blockierende Operation wird nun auf einem Worker-Thread ausgeführt
                         return Uni.createFrom().voidItem(); // Uni<Void> benötigt einen Wert, null ist für Void ok
                     }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
