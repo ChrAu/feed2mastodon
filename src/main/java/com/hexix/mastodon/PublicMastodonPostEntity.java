@@ -12,10 +12,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "public_mastodon_posts", indexes = {@Index(name = "idx_Embedding_cosDistance", columnList = "cosinus_distance"), @Index(name = "idx_Embedding_create_at", columnList = "create_at")})
+@Table(name = "public_mastodon_posts", indexes = {@Index(name = "idx_Embedding_cosDistance", columnList = "cosinus_distance"), @Index(name = "idx_Embedding_create_at", columnList = "create_at"), @Index(name = "idx_Embedding_mastodonId", columnList = "mastodon_id", unique = true)})
 public class PublicMastodonPostEntity extends PanacheEntity {
 
-    @Column(name = "mastodon_id", columnDefinition = "TEXT", unique = true)
+    @Column(name = "mastodon_id", columnDefinition = "TEXT")
     String mastodonId;
 
     @Column(name = "post_text", columnDefinition = "TEXT")
