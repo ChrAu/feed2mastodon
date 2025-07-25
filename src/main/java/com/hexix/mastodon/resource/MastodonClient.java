@@ -77,6 +77,11 @@ public interface MastodonClient {
     MastodonDtos.MastodonStatus boostStatus(@PathParam("id") String id, MastodonDtos.BoostStatusRequest boostStatusRequest, @HeaderParam("Authorization") String authorizationHeader);
 
 
+    @POST
+    @Path("/statuses/{id}/unreblog")
+    MastodonDtos.MastodonStatus unBoostStatus(@PathParam("id") String id, @HeaderParam("Authorization") String authorizationHeader);
+
+
     @GET
     @Path("/statuses/{id}")
     MastodonDtos.MastodonStatus getStatus(@PathParam("id") String id, @HeaderParam("Authorization") String authorizationHeader);
