@@ -177,6 +177,12 @@ public class MastodonStreamProcessor {
             }
         }
 
+        try{
+            mastodonClient.unBoostStatus(replyId, "Bearer " + accessToken);
+        }catch (Exception e){
+            LOG.errorf("Fehler unboost status Id: %s", replyId);
+        }
+
 
         post.setNegativeWeight(negativeWeight);
 
