@@ -145,4 +145,12 @@ public class JsoupTest {
 
         Assertions.assertTrue(article.contains("nds, dankte den Verantwortlichen der Fluggesellschaft Plus Ultra für ihr Vertrauen und betonte, dass dies ein großer Gewinn für die domi"), article);
     }
+
+
+    @Test
+    public void ntv(){
+        final String article = JsoupParser.getArticle("https://www.n-tv.de/politik/Pistorius-macht-Kriegstuechtigkeit-zur-Handlungsmaxime-article24521261.html");
+
+        Assertions.assertTrue(article.contains(" es, die Bundeswehr müsse \"in allen Bereichen kriegstüchtig\" werden - ein Begriff, mit dem Pistorius jüngst auch Kritik ausgelöst hatte. Die Vorgaben der ne"), article);
+    }
 }
