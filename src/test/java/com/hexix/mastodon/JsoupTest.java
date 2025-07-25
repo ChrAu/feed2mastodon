@@ -28,7 +28,7 @@ public class JsoupTest {
 
         LOG.debug(article.text());
 
-        Assertions.assertTrue(article.text().contains("Parlament"));
+        Assertions.assertTrue(article.text().contains("Parlament"), article.text());
     }
 
 
@@ -46,7 +46,7 @@ public class JsoupTest {
 
         LOG.debug(sj);
 
-        Assertions.assertTrue(sj.toString().contains("Krebs"));
+        Assertions.assertTrue(sj.toString().contains("Krebs"), sj.toString());
     }
 
     @Test
@@ -55,10 +55,10 @@ public class JsoupTest {
 
         LOG.debug(article);
 
-        Assertions.assertTrue(article.contains("Gemeinsam mit fünf Amtskollegen aus anderen EU-Ländern will Bundesinnenminister"));
-        Assertions.assertTrue(article.contains("Die wichtigsten Routen für irreguläre Migranten führen über das östliche und zentrale"));
+        Assertions.assertTrue(article.contains("Gemeinsam mit fünf Amtskollegen aus anderen EU-Ländern will Bundesinnenminister"), article);
+        Assertions.assertTrue(article.contains("Die wichtigsten Routen für irreguläre Migranten führen über das östliche und zentrale"), article);
 
-        Assertions.assertTrue(article.contains("Der innenpolitische Sprecher der Grünen-Fraktion, Marcel Emmerich, meint: \"Die Streichung des Verbindungselements ist ein herzloser Angriff auf Schutzsuchende, Familien und Kinder, die in Länder ohne jede persönliche Bindung abgeschoben werden sollen.\""));
+        Assertions.assertTrue(article.contains("Der innenpolitische Sprecher der Grünen-Fraktion, Marcel Emmerich, meint: \"Die Streichung des Verbindungselements ist ein herzloser Angriff auf Schutzsuchende, Familien und Kinder, die in Länder ohne jede persönliche Bindung abgeschoben werden sollen.\""), article);
     }
 
     @Test
@@ -67,17 +67,17 @@ public class JsoupTest {
 
         LOG.debug(article);
 
-        Assertions.assertTrue(article.contains("Oracle hat in der Nacht zum Mittwoch seinen quartalsweise stattfindenden \"Critical Patch Update\" genannten Patchday begangen. Dabei hat das Unternehmen 309 Sicherheitspatches für Produkte quer durch sein Portfolio veröffentlicht."));
-        Assertions.assertTrue(article.contains("Produkte Updates bereitstehen, die noch \"Premier Support\" erhalten oder in der erweiterten Support-Phase sind"));
+        Assertions.assertTrue(article.contains("Oracle hat in der Nacht zum Mittwoch seinen quartalsweise stattfindenden \"Critical Patch Update\" genannten Patchday begangen. Dabei hat das Unternehmen 309 Sicherheitspatches für Produkte quer durch sein Portfolio veröffentlicht."), article);
+        Assertions.assertTrue(article.contains("Produkte Updates bereitstehen, die noch \"Premier Support\" erhalten oder in der erweiterten Support-Phase sind"), article);
 
     }
 
     @Test
     public void bw(){
         final String article = JsoupParser.getArticle("https://www.baden-wuerttemberg.de/de/service/presse/pressemitteilung/pid/land-startet-neues-informationssystem-zum-waldbrandmanagement");
-        LOG.info(article);
+        LOG.debug(article);
 
-
+        Assertions.assertTrue(article.contains("arauf ein und ergreift präventive Maßnahmen. Am 5. Juli 2025 wurde das neue Waldbrandmanagement-Informationssystem, kurz WAMIN, in Betrieb genommen. Über die Startphase wur"), article);
 
     }
 
@@ -88,7 +88,7 @@ public class JsoupTest {
         LOG.debug(article);
 
 
-        Assertions.assertTrue(article.contains("sich das Kollagen im Fleisch weiter und der Braten wird umso zarter."));
+        Assertions.assertTrue(article.contains("sich das Kollagen im Fleisch weiter und der Braten wird umso zarter."), article);
 
     }
 
@@ -96,18 +96,18 @@ public class JsoupTest {
     public void noContent(){
         final  String article = JsoupParser.getArticle("https://peertube.heise.de/w/mmhBXfZVAMFQigoaV5KWMu");
 
-        Assertions.assertNull(article);
+        Assertions.assertNull(article, article);
     }
 
     @Test
     public void deutschlandfunk(){
         final String article = JsoupParser.getArticle("https://www.deutschlandfunk.de/elektronische-patientenakte-vorteile-nachteile-kritik-widerspruch-100.html");
 
-        Assertions.assertTrue(article.contains("wird als Opt-out-Verfahren bezeichnet. Alternativ können bestimmte Befunde und Labor"));
+        Assertions.assertTrue(article.contains("wird als Opt-out-Verfahren bezeichnet. Alternativ können bestimmte Befunde und Labor"), article);
 
         final String article2 = JsoupParser.getArticle("https://www.deutschlandfunk.de/who-warnt-vor-risiko-einer-weltweiten-chikungunya-epidemie-uebertragung-durch-stechmuecken-112.html");
 
-        Assertions.assertTrue(article2.contains("Chikungunya ist eine durch Stechmücken übertragene Virusinfektion, die vor allem in tropischen und subtropischen Regionen vorkommt. Durch den Klimawandel breiten sich die das Virus übertragenden Mücken aber zunehmend aus. Die Erkrankung verursacht hohes Fieber und starke Gelenkschmerzen. Schwere Verläufe sind selten und treten insbesondere bei älteren oder vorerkrankten Menschen auf."));
+        Assertions.assertTrue(article2.contains("Chikungunya ist eine durch Stechmücken übertragene Virusinfektion, die vor allem in tropischen und subtropischen Regionen vorkommt. Durch den Klimawandel breiten sich die das Virus übertragenden Mücken aber zunehmend aus. Die Erkrankung verursacht hohes Fieber und starke Gelenkschmerzen. Schwere Verläufe sind selten und treten insbesondere bei älteren oder vorerkrankten Menschen auf."), article2);
 
     }
 
@@ -115,14 +115,34 @@ public class JsoupTest {
     public void t3n(){
         final String article = JsoupParser.getArticle("https://t3n.de/news/chatgpt-ecommerce-shopping-1698203/");
 
-        Assertions.assertTrue(article.contains("PT-interne Lösung abgewickelt. Inwieweit hier sämtliche Payment-Service-Provider eingebunden werden (die ja händlerseitig bereits existieren) o"));
+        Assertions.assertTrue(article.contains("PT-interne Lösung abgewickelt. Inwieweit hier sämtliche Payment-Service-Provider eingebunden werden (die ja händlerseitig bereits existieren) o"), article);
     }
 
     @Test
     public void winfuture(){
         final String article = JsoupParser.getArticle("https://winfuture.de/news,152477.html");
 
-        Assertions.assertTrue(article.contains("ch vor ungewollten Upgrades zu schützen - eine häufig empfohlene 'Schutzmaßnahme' für Anwender, die nicht auf Windows 11 wechseln wollen. Dass Microsoft seine Anforderungen ge"));
+        Assertions.assertTrue(article.contains("ch vor ungewollten Upgrades zu schützen - eine häufig empfohlene 'Schutzmaßnahme' für Anwender, die nicht auf Windows 11 wechseln wollen. Dass Microsoft seine Anforderungen ge"), article);
     }
 
+    @Test
+    public void ndr(){
+        final String article = JsoupParser.getArticle("https://www.ndr.de/nachrichten/schleswig-holstein/Duerre-Sommer-Experten-befuerchten-anhaltende-Trockenheit-in-SH,trockenheit628.html?at_medium=mastodon&at_campaign=NDR.de");
+
+        Assertions.assertTrue(article.contains("Wittenborn fielen vor wenigen Tagen immerhin 3,6 Millimeter Regen. Thorsten Lange nimmt es mit Humor: \"Im Nachbarort waren e"), article);
+    }
+
+    @Test
+    public void tOnline(){
+        final String article = JsoupParser.getArticle("https://www.t-online.de/nachrichten/ukraine/id_100831642/russlands-wirtschaft-drohen-insolvenzen-bringen-putin-in-bedraengnis.html?utm_source=dlvr.it");
+
+        Assertions.assertTrue(article.contains("Unternehmen befinden sich bereits in Zahlungsschwierigkeiten. So stiegen die Lohnrückstände zuletzt deutlich an. Von April auf M"), article);
+    }
+
+    @Test
+    public void domrepTotal(){
+        final String article = JsoupParser.getArticle("https://www.domreptotal.com/der-flughafen-cibao-bietet-seit-samstag-den-direktflug-santiago-madrid-an/");
+
+        Assertions.assertTrue(article.contains("nds, dankte den Verantwortlichen der Fluggesellschaft Plus Ultra für ihr Vertrauen und betonte, dass dies ein großer Gewinn für die domi"), article);
+    }
 }
