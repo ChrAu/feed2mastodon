@@ -222,7 +222,7 @@ public class FeedToTootScheduler {
 
 
 
-    @Scheduled(every = "10m", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "1m", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void checkMastodonStarred() {
         starredMastodonPosts.collectNewStarredPosts();
     }
