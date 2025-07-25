@@ -142,6 +142,12 @@ public class MastodonStreamProcessor {
 
 
                             createPostAndUpdate(replyId, negativeWeight, noUrl);
+
+                            try {
+                                mastodonClient.deleteStatus("Bearer " + privateAccessToken, directStatus.lastStatus().id());
+                            }catch (Exception e){
+                                LOG.errorf("Fehler beim löschen der Direct Nachricht Id: %s", directStatus.lastStatus().id(), e);
+                            }
                             // Diese blockierende Operation wird nun auf einem Worker-Thread ausgeführt
                             return Uni.createFrom().voidItem(); // Uni<Void> benötigt einen Wert, null ist für Void ok
                         }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
