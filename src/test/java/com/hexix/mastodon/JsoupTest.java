@@ -110,4 +110,19 @@ public class JsoupTest {
         Assertions.assertTrue(article2.contains("Chikungunya ist eine durch Stechmücken übertragene Virusinfektion, die vor allem in tropischen und subtropischen Regionen vorkommt. Durch den Klimawandel breiten sich die das Virus übertragenden Mücken aber zunehmend aus. Die Erkrankung verursacht hohes Fieber und starke Gelenkschmerzen. Schwere Verläufe sind selten und treten insbesondere bei älteren oder vorerkrankten Menschen auf."));
 
     }
+
+    @Test
+    public void t3n(){
+        final String article = JsoupParser.getArticle("https://t3n.de/news/chatgpt-ecommerce-shopping-1698203/");
+
+        Assertions.assertTrue(article.contains("PT-interne Lösung abgewickelt. Inwieweit hier sämtliche Payment-Service-Provider eingebunden werden (die ja händlerseitig bereits existieren) o"));
+    }
+
+    @Test
+    public void winfuture(){
+        final String article = JsoupParser.getArticle("https://winfuture.de/news,152477.html");
+
+        Assertions.assertTrue(article.contains("ch vor ungewollten Upgrades zu schützen - eine häufig empfohlene 'Schutzmaßnahme' für Anwender, die nicht auf Windows 11 wechseln wollen. Dass Microsoft seine Anforderungen ge"));
+    }
+
 }

@@ -18,6 +18,7 @@ public class JsoupParser {
     final static Logger LOG = Logger.getLogger(JsoupParser.class);
     private static final String SWR_CSS_QUERY = "main h1.headline, main .detail-body p.lead, main .bodytext h2, main .bodytext p, main .bodytext figure.quote";
     private static final String DEUTSCHLANDFUNK_CSS_QUERY = "article.b-article > header > *:not(.article-header-actions, .article-header-meta), .article-details-text, .article-details-title";
+    private static final String WINFUTURE_CSS_QUERY = "#news_content strong.article-intro, #news_content h2, #news_content div.teaser_img_container + script + div.mb14 + h2 + br + br,#news_content div.teaser_img_container + script + div.mb14 + h2 + br + br + div.primis_widget + br, #news_content div.teaser_img_container + script + div.mb14 + h2 + br + br + div.primis_widget + br + br + h2, #news_content div.teaser_img_container + script + div.mb14 + h2 + br + br + div.primis_widget + br + br + h2 + br + br, #news_content div.teaser_img_container + script + div.mb14 + h2 + br + br + div.primis_widget + br + br + h2 + br + br + script + div.ws_contentAd300 + br + br, #news_content div.teaser_img_container + script + div.mb14 + h2 + br + br + div.primis_widget + br + br + h2 + br + br + script + div.ws_contentAd300 + br + br + h2, #news_content div.teaser_img_container + script + div.mb14 + h2 + br + br + div.primis_widget + br + br + h2 + br + br + script + div.ws_contentAd300 + br + br + h2 + br + br, #news_content div.summary_box, #news_content div.changelog_list, #news_content";
 
 
     private JsoupParser(){
@@ -28,6 +29,8 @@ public class JsoupParser {
     private final static String HEISE_CSS_QUERY = "article > *:not(p.printversion__back-to-article)";
 
     private final static String BW_CSS_QUERY="article > header, article > .article__body";
+
+    private final static String T3N_CSS_QUERY = "div.c-entry > div > p:not(.tg-crosslinks), div.c-entry > p:not(.tg-crosslinks), div.c-entry h2";
 
 
     public static String getArticle(String url){
@@ -62,6 +65,10 @@ public class JsoupParser {
             cssQuery = SWR_CSS_QUERY;
         }else if(url.contains("deutschlandfunk.de")){
             cssQuery = DEUTSCHLANDFUNK_CSS_QUERY;
+        }else if(url.contains("t3n.de")){
+            cssQuery = T3N_CSS_QUERY;
+        }else if(url.contains("winfuture.de")){
+            cssQuery = WINFUTURE_CSS_QUERY;
         }else{
             return null;
         }
