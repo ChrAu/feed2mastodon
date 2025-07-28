@@ -34,7 +34,7 @@ public class PublicMastodonPostEntity extends PanacheEntity {
     double[] embeddingVector;
 
     @Column(name = "create_at")
-    LocalDateTime create_at = LocalDateTime.now();
+    LocalDateTime createAt = LocalDateTime.now();
 
     @Column(name = "status_original_url", columnDefinition = "TEXT")
     private String statusOriginalUrl;
@@ -98,12 +98,12 @@ public class PublicMastodonPostEntity extends PanacheEntity {
         embeddingVectorString = VektorUtil.DoubleArrayConverter.arrayToString(embeddingVector);
     }
 
-    public LocalDateTime getCreate_at() {
-        return create_at;
+    public LocalDateTime getCreateAt() {
+        return createAt;
     }
 
-    public void setCreate_at(final LocalDateTime create_at) {
-        this.create_at = create_at;
+    public void setCreate_at(final LocalDateTime createAt) {
+        this.createAt = createAt;
     }
 
     public String getStatusOriginalUrl() {
@@ -136,6 +136,10 @@ public class PublicMastodonPostEntity extends PanacheEntity {
 
     public static List<PublicMastodonPostEntity> findAllNegativPosts() {
         return find("negativeWeight is not null and embeddingVectorString is not null").list();
+    }
+
+    public static List<PublicMastodonPostEntity> findAllCalcedEmbeddings(){
+        return find("embeddingVectorString is not null and (postText is not null or urlText is not null) and createAt< ?1", LocalDateTime.now().minusDays(2)).list();
     }
 
     public void removeEmbeddingVektor() {

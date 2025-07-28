@@ -22,6 +22,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -381,6 +382,25 @@ public class FeedToTootScheduler {
                 LOG.infof("Mastodon Satatus (ID: %s) wurde geboosted", post.getMastodonId());
             }
         }
+    }
+
+
+    @Scheduled(every = "P1D", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Transactional
+    public void removeText(){
+
+        LOG.info("Lösche alle alten Embedding Texte");
+        final List<Embedding> allCalcedEmbeddings = Embedding.findAllCalcedEmbeddings();
+//
+        allCalcedEmbeddings.forEach(embedding -> embedding.setText(null));
+
+        final List<PublicMastodonPostEntity> allComparable = PublicMastodonPostEntity.findAllCalcedEmbeddings();
+        allComparable.forEach(post -> {
+            post.setPostText(null);
+            post.setUrlText(null);
+        });
+
+        LOG.info("Löschen abgeschlossen");
     }
 
 }

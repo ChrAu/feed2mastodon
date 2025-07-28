@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -111,6 +112,12 @@ public class Embedding extends PanacheEntity {
     @Column(name = "negative_weight")
     Double negativeWeight = null;
 
+    @Column(name = "status_original_url", columnDefinition = "TEXT")
+    private String statusOriginalUrl;
+
+    public static Embedding findByUUID(final String uuid) {
+        return find("uuid = ?1", uuid).firstResult();
+    }
 
 
     public String getUuid() {
@@ -281,5 +288,40 @@ public class Embedding extends PanacheEntity {
      */
     public static List<Embedding> findAllLocalEmbeddings() {
         return find("localEmbeddingVectorString is not null").list();
+    }
+
+
+    public static List<Embedding> findAllCalcedEmbeddings(){
+        return find("embeddingVectorString is not null and localEmbeddingVectorString is not null and text is not null and createdAt < ?1", LocalDateTime.now().minusDays(30)).list();
+    }
+
+    public String getStatusOriginalUrl() {
+        return statusOriginalUrl;
+    }
+
+    public void setStatusOriginalUrl(final String statusOriginalUrl) {
+        this.statusOriginalUrl = statusOriginalUrl;
+    }
+
+
+    @Override
+    public String toString() {
+        return "Embedding{" +
+                "id='" + id + '\'' +'\'' +
+                ", uuid=" + uuid +
+                ", createdAt=" + createdAt +
+                ", resource='" + resource + '\'' +
+                ", text='" + text + '\'' +
+                ", embeddingVectorString='" + embeddingVectorString + '\'' +
+                ", embedding=" + Arrays.toString(embedding) +
+                ", mastodonStatusId='" + mastodonStatusId + '\'' +
+                ", embeddingCreatedAt=" + embeddingCreatedAt +
+                ", localEmbeddingVectorString='" + localEmbeddingVectorString + '\'' +
+                ", localEmbedding=" + Arrays.toString(localEmbedding) +
+                ", localEmbeddingCreatedAt=" + localEmbeddingCreatedAt +
+                ", url='" + url + '\'' +
+                ", negativeWeight=" + negativeWeight +
+                ", statusOriginalUrl='" + statusOriginalUrl +
+                '}';
     }
 }

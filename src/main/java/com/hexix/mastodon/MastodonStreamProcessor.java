@@ -4,8 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hexix.JsoupParser;
 import com.hexix.ai.OllamaRestClient;
-import com.hexix.ai.dto.EmbeddingRequest;
-import com.hexix.ai.dto.EmbeddingResponse; // Stellen Sie sicher, dass dies importiert ist, falls noch nicht geschehen
 import com.hexix.mastodon.api.MastodonDtos;
 import com.hexix.mastodon.resource.MastodonClient;
 import io.quarkus.logging.Log;
@@ -22,15 +20,12 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.StringJoiner;
-import java.util.stream.Collectors;
+
+import static com.hexix.mastodon.api.MastodonDtos.MastodonStatus.extractLinksFromHtml;
 
 /**
  * Diese Bean abonniert den Mastodon Streaming API beim Start der Anwendung.
@@ -292,31 +287,5 @@ public class MastodonStreamProcessor {
     }
 
 
-    public static List<String> extractLinksFromHtml(String htmlContent) {
-        List<String> links = new ArrayList<>();
-        if (htmlContent == null || htmlContent.trim().isEmpty()) {
-            System.err.println("Fehler: HTML-Inhalt ist null oder leer.");
-            return links;
-        }
 
-        try {
-            // Parsen des HTML-Inhalts mit Jsoup
-            Document doc = Jsoup.parse(htmlContent);
-
-            // Alle 'a'-Tags (Anker-Tags) auswählen
-            Elements linkElements = doc.select("a[href]");
-
-            // Iterieren über die gefundenen Elemente und Extrahieren des 'href'-Attributs
-            for (Element linkElement : linkElements) {
-                String link = linkElement.attr("href");
-                if (!link.isEmpty()) { // Sicherstellen, dass der Link nicht leer ist
-                    links.add(link);
-                }
-            }
-        } catch (Exception e) {
-            // Fehlerbehandlung: Wenn beim Parsen ein Problem auftritt
-            LOG.error("Fehler beim Extrahieren der Links: " + e.getMessage(), e);
-        }
-        return links;
-    }
 }

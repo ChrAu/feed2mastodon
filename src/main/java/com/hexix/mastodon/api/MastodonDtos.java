@@ -2,13 +2,20 @@ package com.hexix.mastodon.api;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonValue;
+import org.jboss.logging.Logger;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 public class MastodonDtos {
 
+    static Logger LOG = Logger.getLogger(MastodonDtos.class.getName());
     // Record für das Senden eines neuen Status
     public record StatusPayload(String status, String visibility, String language) {}
 
@@ -70,6 +77,34 @@ public class MastodonDtos {
                 String name,
                 String website
         ){}
+
+        public static List<String> extractLinksFromHtml(String htmlContent) {
+            List<String> links = new ArrayList<>();
+            if (htmlContent == null || htmlContent.trim().isEmpty()) {
+                System.err.println("Fehler: HTML-Inhalt ist null oder leer.");
+                return links;
+            }
+
+            try {
+                // Parsen des HTML-Inhalts mit Jsoup
+                Document doc = Jsoup.parse(htmlContent);
+
+                // Alle 'a'-Tags (Anker-Tags) auswählen
+                Elements linkElements = doc.select("a[href]");
+
+                // Iterieren über die gefundenen Elemente und Extrahieren des 'href'-Attributs
+                for (Element linkElement : linkElements) {
+                    String link = linkElement.attr("href");
+                    if (!link.isEmpty()) { // Sicherstellen, dass der Link nicht leer ist
+                        links.add(link);
+                    }
+                }
+            } catch (Exception e) {
+                // Fehlerbehandlung: Wenn beim Parsen ein Problem auftritt
+                LOG.error("Fehler beim Extrahieren der Links: " + e.getMessage(), e);
+            }
+            return links;
+        }
     }
 
 
