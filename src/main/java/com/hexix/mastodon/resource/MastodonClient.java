@@ -85,4 +85,8 @@ public interface MastodonClient {
     @GET
     @Path("/statuses/{id}")
     MastodonDtos.MastodonStatus getStatus(@PathParam("id") String id, @HeaderParam("Authorization") String authorizationHeader);
+
+    @GET
+    @Path("/statuses/")
+    List<MastodonDtos.MastodonStatus> getStatuses(@QueryParam("id[]") List<String> ids, @HeaderParam("Authorization") String authorizationHeader);
 }

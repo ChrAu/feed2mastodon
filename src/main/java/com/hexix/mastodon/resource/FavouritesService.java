@@ -127,16 +127,16 @@ public class FavouritesService {
         Map<String, MastodonText> list = new HashMap<>();
 
         if(onlyText != null && !onlyText.trim().isEmpty()) {
-            list.put("MASTODON_STATUS_ID__"+ mastodonStatus.id() + "__ONLY_TEXT", new MastodonText(onlyText, null));
+            list.put("MASTODON_STATUS_ID__"+ mastodonStatus.id() + "__ONLY_TEXT", new MastodonText(onlyText, null, mastodonStatus.url()));
         }
 
         final MastodonDtos.PreviewCard card = mastodonStatus.card();
         if(card != null) {
             final String article = JsoupParser.getArticle(card.url());
             if(article != null && !article.trim().isEmpty()) {
-                list.put("MASTODON_STATUS_ID__" + mastodonStatus.id() + "__CARD_URL", new MastodonText(article, card.url()));
+                list.put("MASTODON_STATUS_ID__" + mastodonStatus.id() + "__CARD_URL", new MastodonText(article, card.url(), mastodonStatus.url()));
             }else{
-                list.put("MASTODON_STATUS_ID__" + mastodonStatus.id() + "__CARD_URL", new MastodonText(null, card.url()));
+                list.put("MASTODON_STATUS_ID__" + mastodonStatus.id() + "__CARD_URL", new MastodonText(null, card.url(), mastodonStatus.url()));
             }
         }
 
@@ -156,5 +156,5 @@ public class FavouritesService {
 
     }
 
-    record MastodonText(String text, String url){}
+    record MastodonText(String text, String url, String statusUrl){}
 }
