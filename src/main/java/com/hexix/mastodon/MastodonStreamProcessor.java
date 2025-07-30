@@ -208,6 +208,9 @@ public class MastodonStreamProcessor {
 
             MastodonDtos.MastodonStatus status = objectMapper.readValue(dataPayload, MastodonDtos.MastodonStatus.class);
 
+            if(status.account().acct().contains("heiseonlineenglish@social.heise.de")){
+                return Uni.createFrom().voidItem();
+            }
 
             final PublicMastodonPostEntity post = getPublicMastodonPostEntity(status, false);
 

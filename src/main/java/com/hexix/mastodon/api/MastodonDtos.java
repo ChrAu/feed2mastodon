@@ -21,7 +21,7 @@ public class MastodonDtos {
 
     // Record, um die Antwort von /verify_credentials abzubilden
     // Wir brauchen hier nur die ID.
-    public record MastodonAccount(String id, String username) {}
+    public record MastodonAccount(String id, String username, String acct) {}
 
     /**
      * Request-Body für das Boosten eines Status, um die Sichtbarkeit zu steuern.
