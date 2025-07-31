@@ -299,7 +299,7 @@ public class FeedToTootScheduler {
 
                 savePublicVector(mastodonId, profileVector);
             }catch (Exception e){
-                LOG.errorf("Fehler beim Vektor generieren für ID: %s", entry.getKey(), e);
+                LOG.errorf(e, "Fehler beim Vektor generieren für ID: %s", entry.getKey());
             }
 
 
@@ -373,7 +373,7 @@ public class FeedToTootScheduler {
                     try {
                         final MastodonDtos.MastodonStatus mastodonStatus = mastodonClient.boostStatus(post.getMastodonId(), new MastodonDtos.BoostStatusRequest(MastodonDtos.MastodonStatus.StatusVisibility.PRIVATE), "Bearer " + accessToken);
                     }catch (Exception e){
-                      LOG.errorf("Fehler beim Boosten der MastodonId: %s", post.getMastodonId(), e);
+                      LOG.errorf(e, "Fehler beim Boosten der MastodonId: %s", post.getMastodonId());
                       post.setCosDistance(null);
                       continue;
                     }

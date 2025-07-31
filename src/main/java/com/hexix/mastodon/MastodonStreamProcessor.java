@@ -141,13 +141,13 @@ public class MastodonStreamProcessor {
                             try {
                                 mastodonClient.deleteStatus("Bearer " + privateAccessToken, directStatus.lastStatus().id());
                             }catch (Exception e){
-                                LOG.errorf("Fehler beim löschen der Direct Nachricht Id: %s", directStatus.lastStatus().id(), e);
+                                LOG.errorf(e, "Fehler beim löschen der Direct Nachricht Id: %s", directStatus.lastStatus().id());
                             }
                             // Diese blockierende Operation wird nun auf einem Worker-Thread ausgeführt
                             return Uni.createFrom().voidItem(); // Uni<Void> benötigt einen Wert, null ist für Void ok
                         }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
                         .onFailure().invoke(e -> {
-                            Log.errorf("Fehler beim Speichern des Mastodon-Posts (ID: %s): %s", replyId, e.getMessage(), e);
+                            Log.errorf(e, "Fehler beim Speichern des Mastodon-Posts (ID: %s): %s", replyId, e.getMessage());
                         })
                         .onItem().ignore().andContinueWithNull();
             } else {
@@ -181,7 +181,7 @@ public class MastodonStreamProcessor {
         try{
             mastodonClient.unBoostStatus(replyId, "Bearer " + accessToken);
         }catch (Exception e){
-            LOG.errorf("Fehler unboost status Id: %s", replyId);
+            LOG.errorf(e,"Fehler unboost status Id: %s", replyId);
         }
 
 
@@ -228,7 +228,7 @@ public class MastodonStreamProcessor {
                         return Uni.createFrom().voidItem(); // Uni<Void> benötigt einen Wert, null ist für Void ok
                     }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
                     .onFailure().invoke(e -> {
-                        Log.errorf("Fehler beim Speichern des Mastodon-Posts (ID: %s): %s", status.id(), e.getMessage(), e);
+                        Log.errorf(e,"Fehler beim Speichern des Mastodon-Posts (ID: %s): %s", status.id(), e.getMessage());
                     })
                     .onItem().ignore().andContinueWithNull();
 
