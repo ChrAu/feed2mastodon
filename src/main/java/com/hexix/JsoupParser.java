@@ -116,8 +116,8 @@ public class JsoupParser {
             }
 
 
-        } catch (IOException e) {
-            Log.warn("", e);
+        } catch (Exception e) {
+            Log.error("Fehler beim laden der URL: " + url, e);
         }
 
         return null;
