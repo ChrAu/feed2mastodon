@@ -51,7 +51,7 @@ public class GenerateTextFromTextInput {
                     SafetySetting.builder().category(HarmCategory.Known.HARM_CATEGORY_DANGEROUS_CONTENT).threshold(HarmBlockThreshold.Known.BLOCK_MEDIUM_AND_ABOVE).build());
 
             GenerateContentResponse response =
-                    client.models.generateContent(geminiModel, sendPrompt, GenerateContentConfig.builder().safetySettings(safetySettings).maxOutputTokens(500).build());
+                    client.models.generateContent(geminiModel, sendPrompt, GenerateContentConfig.builder().safetySettings(safetySettings).maxOutputTokens(400).build());
             final Optional<GenerateContentResponseUsageMetadata> generateContentResponseUsageMetadata = response.usageMetadata();
             geminiRequestEntity.setTotalTokenCount(generateContentResponseUsageMetadata.orElse(GenerateContentResponseUsageMetadata.builder().totalTokenCount(0).build()).totalTokenCount().orElse(0));
 
