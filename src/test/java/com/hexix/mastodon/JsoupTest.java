@@ -153,4 +153,11 @@ public class JsoupTest {
 
         Assertions.assertTrue(article.contains(" es, die Bundeswehr müsse \"in allen Bereichen kriegstüchtig\" werden - ein Begriff, mit dem Pistorius jüngst auch Kritik ausgelöst hatte. Die Vorgaben der ne"), article);
     }
+
+    @Test
+    public void error(){
+        final String article = JsoupParser.getArticle("https://www.swr3.de/aktuell/nachrichten/erdbeben-neapel-angst-vor-supervulkan-100.html");
+
+        Assertions.assertNull(article);
+    }
 }
