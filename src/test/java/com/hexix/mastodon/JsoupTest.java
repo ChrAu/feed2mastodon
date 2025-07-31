@@ -160,4 +160,13 @@ public class JsoupTest {
 
         Assertions.assertNull(article);
     }
+
+    @Test
+    public void allWithArticle(){
+        final String article = JsoupParser.getArticle("https://www.presseportal.de/blaulicht/pm/161590/6087246?utm_source=directmail&utm_medium=email&utm_campaign=push");
+
+
+        Assertions.assertTrue(article.contains("insatz von sieben Pumpen und einem Wassersauger konnte das Wasser aus dem 2. Untergeschoss gepumpt werden. Ein angrenzender Kellerraum musste durch die Feuerwehr gewaltsam geöffnet werden."));
+
+    }
 }

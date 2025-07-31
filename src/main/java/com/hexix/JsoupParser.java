@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.Set;
 import java.util.StringJoiner;
 
 public class JsoupParser {
@@ -36,10 +37,16 @@ public class JsoupParser {
 
     private final static String T3N_CSS_QUERY = "div.c-entry > div > p:not(.tg-crosslinks), div.c-entry > p:not(.tg-crosslinks), div.c-entry h2";
 
+    private final static String DEFAULT_CSS_QUERY = "article";
+
+    private final static Set<String> blacklist = Set.of();
+
 
     public static String getArticle(String url){
         Document doc = null;
         String cssQuery;
+
+        try {
 
         if(url == null || url.isEmpty()){
             return null;
@@ -82,11 +89,16 @@ public class JsoupParser {
         }else if(url.contains("ntv.de") || url.contains("n-tv.de")){
             cssQuery = NTV_CSS_QUERY;
         }else{
-            return null;
+
+            if(blacklist.stream().anyMatch(url::contains)){
+                return null;
+            }
+
+            cssQuery = DEFAULT_CSS_QUERY;
         }
 
 
-        try {
+
             doc = Jsoup.connect(url).get();
             LOG.debug(doc.title());
             Elements article = doc.select(cssQuery);
