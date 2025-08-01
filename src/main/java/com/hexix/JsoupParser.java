@@ -3,6 +3,7 @@ package com.hexix;
 import io.quarkus.logging.Log;
 import org.jboss.logging.Logger;
 import org.jetbrains.annotations.NotNull;
+import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -117,6 +118,9 @@ public class JsoupParser {
 
 
         } catch (Exception e) {
+            if(e instanceof HttpStatusException && ((HttpStatusException) e).getStatusCode() == 404){
+                return null;
+            }
             Log.error("Fehler beim laden der URL: " + url, e);
         }
 
