@@ -21,18 +21,18 @@ import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
+import org.jsoup.Jsoup;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.StringJoiner;
 
 @ApplicationScoped
 public class FeedToTootScheduler {
@@ -73,6 +73,34 @@ public class FeedToTootScheduler {
     // Einfache In-Memory-Lösung zur Vermeidung von Duplikaten.
     // Für eine robuste Lösung eine Datei oder DB verwenden!
 
+    private static String getTootText(final MonitoredFeed feed, final SyndEntry entry, boolean fullContent) {
+        StringBuilder prefixText = new StringBuilder();
+        if (feed.title != null && !feed.title.isEmpty()) {
+            prefixText.append(feed.title);
+        }
+        if (feed.defaultText != null && !feed.defaultText.isEmpty()) {
+            prefixText.append(feed.defaultText);
+        }
+
+        prefixText.append(entry.getTitle());
+        if (entry.getDescription() != null && !entry.getDescription().getValue().isEmpty()) {
+            prefixText.append("\n\n");
+            prefixText.append(entry.getDescription().getValue());
+        } else if (!entry.getContents().isEmpty() && entry.getContents().getFirst().getValue() != null && !entry.getContents().getFirst().getValue().isEmpty()) {
+            prefixText.append("\n\n");
+            prefixText.append(entry.getContents().getFirst().getValue());
+        }
+
+        String link = "\n\n" + entry.getLink();
+
+        if (prefixText.length() + link.length() > (fullContent ? 25500 : 500)) {
+            prefixText = new StringBuilder(prefixText.substring(0, (fullContent ? 25500 : 497 - link.length())) + "...");
+        }
+
+        String tootText = prefixText + link;
+        return tootText;
+    }
+
     @Scheduled(every = "10m", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
         // Alle 10 Minuten ausführen
 //    @Transactional
@@ -83,10 +111,10 @@ public class FeedToTootScheduler {
             LOG.info("Verarbeite Feed: " + feed.feedUrl);
             List<SyndEntry> entriesFromFeed = feedReader.readFeedEntries(feed.feedUrl);
 
-           entriesFromFeed = entriesFromFeed.stream().filter(syndEntry -> {
+            entriesFromFeed = entriesFromFeed.stream().filter(syndEntry -> {
 
 
-               final LocalDateTime feedPublishedLocalDateTime = Optional.ofNullable(syndEntry.getPublishedDate()).orElse(syndEntry.getUpdatedDate()).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+                final LocalDateTime feedPublishedLocalDateTime = Optional.ofNullable(syndEntry.getPublishedDate()).orElse(syndEntry.getUpdatedDate()).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
                 return feed.addDate.isBefore(feedPublishedLocalDateTime);
             }).sorted(Comparator.comparing(syndEntry -> Optional.ofNullable(syndEntry.getPublishedDate()).orElse(syndEntry.getUpdatedDate()), Comparator.nullsLast(Comparator.naturalOrder()))).toList();
 
@@ -104,12 +132,12 @@ public class FeedToTootScheduler {
                     // 3. Neuer Eintrag! Posten und in der DB vermerken.
                     LOG.debug("Neuer Eintrag gefunden in " + feed.feedUrl.substring(0, 25) + ": " + entry.getTitle());
 
-                    MastodonDtos.StatusPayload statusPayload = new MastodonDtos.StatusPayload(getTootText(feed, entry, false), "unlisted", "de");;
+                    MastodonDtos.StatusPayload statusPayload = new MastodonDtos.StatusPayload(getTootText(feed, entry, false), "unlisted", "de");
                     PostedEntry newDbEntry = new PostedEntry();
-                    if(feed.tryAi != null && feed.tryAi) {
+                    if (feed.tryAi != null && feed.tryAi) {
                         final long countGeminiRequests = GeminiRequestEntity.countLast10Minutes(geminiModel);
 
-                        if(countGeminiRequests > 3){
+                        if (countGeminiRequests > 3) {
                             continue;
                         }
 
@@ -117,68 +145,35 @@ public class FeedToTootScheduler {
                         try {
                             String aiToot = generateTextFromTextInput.getAiMessage(geminiModel, getTootText(feed, entry, true));
 
-                            if(aiToot.length() > 10 && aiToot.length() < 500){
+                            if (aiToot.length() > 10 && aiToot.length() < 500) {
                                 statusPayload = new MastodonDtos.StatusPayload(aiToot, "public", "de");
                                 newDbEntry.aiToot = true;
                             }
-                        }catch (Exception e){
+                        } catch (Exception e) {
                             LOG.error("Beim generieren einer KI Nachricht ist ein Fehler aufgetreten", e);
                         }
                     }
 
                     try {
                         // An Mastodon senden
-                        if(!feed.isActive){
+                        if (!feed.isActive) {
                             continue;
                         }
                         newDbEntry.feed = feed;
                         newDbEntry.entryGuid = entryGuid;
                         newDbEntry.postedAt = Instant.now();
-                        postAndPersist( statusPayload, newDbEntry);
+                        postAndPersist(statusPayload, newDbEntry);
                     } catch (Exception e) {
                         LOG.error("Fehler beim Posten auf Mastodon für Feed " + feed.feedUrl + ": " + e.getMessage(), e);
                         // Hier wird die Schleife fortgesetzt, um andere Einträge/Feeds nicht zu blockieren
                     }
-                }else{
+                } else {
                     LOG.debug("Eintrag bereits gepostet: " + entry.getTitle() + " - " + feed.feedUrl.substring(0, 25) + " -");
                 }
             }
         }
         LOG.info("Job beendet.");
 
-//        LOG.info("Prüfe Feed auf neue Einträge...");
-//        List<SyndEntry> entries = feedReader.readFeedEntries();
-//
-//        // Einträge sind oft von neu nach alt sortiert, also kehren wir die Liste um
-//        java.util.Collections.reverse(entries);
-//
-//        for (SyndEntry entry : entries) {
-//            // Eine eindeutige ID pro Eintrag (GUID ist ideal, Link als Fallback)
-//            String entryId = entry.getUri() != null ? entry.getUri() : entry.getLink();
-//
-//            if (!postedEntryGuids.contains(entryId)) {
-//                // Neuer Eintrag gefunden!
-//                LOG.info("Neuer Eintrag gefunden: " + entry.getTitle());
-//
-//                // Toot-Text formatieren
-//                String tootText = entry.getTitle() + "\n\n" + entry.getLink();
-//                if (tootText.length() > 500) { // Mastodon-Zeichenlimit beachten
-//                    tootText = tootText.substring(0, 497) + "...";
-//                }
-//
-//                try {
-//                    // An Mastodon senden
-//                    mastodonClient.postStatus("Bearer " + accessToken, new MastodonClient.StatusPayload(tootText));
-//                    LOG.info("Erfolgreich getootet: " + entry.getTitle());
-//
-//                    // ID als "gepostet" markieren
-//                    postedEntryGuids.add(entryId);
-//                } catch (Exception e) {
-//
-//                    LOG.error("Fehler beim Posten auf Mastodon: " + e.getMessage(), e);
-//                }
-//            }
-//        }
     }
 
     @Transactional
@@ -192,36 +187,6 @@ public class FeedToTootScheduler {
 
         LOG.info("Erfolgreich getootet und in DB gespeichert. Status-ID: " + postedStatus.id());
     }
-
-    private static String getTootText(final MonitoredFeed feed, final SyndEntry entry, boolean fullContent) {
-        StringBuilder prefixText = new StringBuilder();
-        if(feed.title != null && !feed.title.isEmpty()){
-            prefixText.append(feed.title);
-        }
-        if(feed.defaultText != null && !feed.defaultText.isEmpty()){
-            prefixText.append(feed.defaultText);
-        }
-
-        prefixText.append(entry.getTitle());
-        if(entry.getDescription() != null && !entry.getDescription().getValue().isEmpty()) {
-            prefixText.append("\n\n");
-            prefixText.append(entry.getDescription().getValue());
-        }else if(!entry.getContents().isEmpty() && entry.getContents().getFirst().getValue() != null && !entry.getContents().getFirst().getValue().isEmpty()){
-            prefixText.append("\n\n");
-            prefixText.append(entry.getContents().getFirst().getValue());
-        }
-
-        String link = "\n\n" + entry.getLink();
-
-        if(prefixText.length() + link.length() > (fullContent ?25500 : 500)){
-            prefixText = new StringBuilder(prefixText.substring(0, (fullContent ?25500 :497 - link.length())) + "...");
-        }
-
-        String tootText = prefixText +  link;
-        return tootText;
-    }
-
-
 
     @Scheduled(every = "1m", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void checkMastodonStarred() {
@@ -246,7 +211,7 @@ public class FeedToTootScheduler {
 
 
     @Transactional
-    Map<String, List<EmbeddingRequest>> generateOllamaRequest(){
+    Map<String, List<EmbeddingRequest>> generateOllamaRequest() {
 
         Map<String, List<EmbeddingRequest>> allRequests = new HashMap<>();
         final List<PublicMastodonPostEntity> nextPublicMastodonPost = PublicMastodonPostEntity.findNextPublicMastodonPost();
@@ -254,10 +219,12 @@ public class FeedToTootScheduler {
         for (PublicMastodonPostEntity post : nextPublicMastodonPost) {
 
             List<EmbeddingRequest> requests = new ArrayList<>();
-            requests.add( new EmbeddingRequest("granite-embedding:278m", List.of(post.getPostText()), true));
+            if(post.getPostText() != null && !post.getPostText().isBlank()) {
+                requests.add(new EmbeddingRequest("granite-embedding:278m", List.of(post.getPostText()), true));
+            }
 
             final String urlText = post.getUrlText();
-            if(urlText != null && !urlText.isBlank()){
+            if (urlText != null && !urlText.isBlank()) {
 
                 final List<String> texte = StarredMastodonPosts.splitByLength(urlText, 500);
                 for (String subText : texte) {
@@ -271,20 +238,20 @@ public class FeedToTootScheduler {
             }
 
             allRequests.put(post.getMastodonId(), requests);
-       }
+        }
 
         return allRequests;
     }
 
-    @Scheduled(every = "1m", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
-    void calcPublicVectors(){
+    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    void calcPublicVectors() {
         int calcRequests = 0;
         final Map<String, List<EmbeddingRequest>> requests = generateOllamaRequest();
 
         LOG.debugf("Generiere für folgende Einträge Vektoren: %s", requests.keySet());
 
         for (Map.Entry<String, List<EmbeddingRequest>> entry : requests.entrySet()) {
-            try{
+            try {
                 final String mastodonId = entry.getKey();
                 final List<EmbeddingRequest> embeddingRequests = entry.getValue();
                 List<double[]> vectors = new ArrayList<>();
@@ -298,13 +265,13 @@ public class FeedToTootScheduler {
                 final double[] profileVector = VektorUtil.createProfileVector(vectors);
 
                 savePublicVector(mastodonId, profileVector);
-            }catch (Exception e){
+            } catch (Exception e) {
                 LOG.errorf(e, "Fehler beim Vektor generieren für ID: %s", entry.getKey());
             }
 
 
         }
-        if(calcRequests > 0) {
+        if (calcRequests > 0) {
             LOG.infof("Es wurden %s Ollama Vektoren berechnet", calcRequests);
         }
     }
@@ -317,9 +284,68 @@ public class FeedToTootScheduler {
     }
 
 
+
+    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    void fetchPublicText() {
+        final List<PublicMastodonPostEntity> posts = PublicMastodonPostEntity.findAllNoEmbeddingAndText();
+
+
+        for (PublicMastodonPostEntity post : posts) {
+            try {
+
+                readStatusAndLinkText(post);
+            } catch (Exception e) {
+                LOG.errorf(e, "Fehler beim bearbeiten des Posts mit Id: %s", post.getMastodonId());
+            }
+        }
+
+    }
     @Transactional
-    @Scheduled(every = "1m", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
-    void calcRecommendations(){
+    void readStatusAndLinkText(final PublicMastodonPostEntity p) {
+        final PublicMastodonPostEntity post = PublicMastodonPostEntity.findById(p.id);
+        final MastodonDtos.MastodonStatus status = mastodonClient.getStatus(post.getMastodonId(), "Bearer " + accessToken);
+        post.setPostText(Jsoup.parse(status.content()).text());
+
+        if(post.getPostText() != null && post.getPostText().isBlank()){
+            post.setPostText(null);
+        }
+
+        final Boolean noURL = post.isNoURL();
+        if (noURL == null || !noURL) {
+
+            final List<String> urls = MastodonDtos.MastodonStatus.extractLinksFromHtml(status.content());
+
+            if (!urls.isEmpty()) {
+                StringJoiner sj = new StringJoiner("\n\n");
+                for (String url : urls) {
+                    // Annahme: JsoupParser.getArticle ist synchron und blockierend.
+                    // Wenn dies auch asynchron sein sollte, müsste es ebenfalls in ein Uni gewickelt werden.
+                    final String article = JsoupParser.getArticle(url);
+                    if (article != null) {
+                        sj.add(article);
+                    }
+                }
+                if (sj.length() > 0) {
+                    post.setUrlText(sj.toString());
+                }
+            }
+        }
+
+        if(post.getPostText() == null && post.getUrlText() == null){
+            post.delete();
+        }
+    }
+
+    @Transactional
+    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    void calcRecommendations() {
+
+        List<PublicMastodonPostEntity> posts = PublicMastodonPostEntity.findAllComparable();
+
+        if(posts.isEmpty()){
+            return;
+        }
+
 
         final List<Embedding> allLocalEmbeddings = Embedding.findAllLocalEmbeddings();
 
@@ -332,9 +358,7 @@ public class FeedToTootScheduler {
 
         Map<Double, List<Embedding>> negativeEmbeddings = new HashMap<>();
 
-        allLocalEmbeddings.stream().filter(embedding -> embedding.getNegativeWeight() != null)
-                .forEach( embedding -> negativeEmbeddings.computeIfAbsent(embedding.getNegativeWeight(), k -> new ArrayList<>()).add(embedding));
-
+        allLocalEmbeddings.stream().filter(embedding -> embedding.getNegativeWeight() != null).forEach(embedding -> negativeEmbeddings.computeIfAbsent(embedding.getNegativeWeight(), k -> new ArrayList<>()).add(embedding));
 
 
         for (Map.Entry<Double, List<Embedding>> entry : negativeEmbeddings.entrySet()) {
@@ -360,7 +384,7 @@ public class FeedToTootScheduler {
         final double[] profileVector = VektorUtil.createProfileVector(positiveVektoren, negativeVektoren);
 
 
-        List<PublicMastodonPostEntity> posts = PublicMastodonPostEntity.findAllComparable();
+
 
         for (PublicMastodonPostEntity post : posts) {
             final double[] embeddingVector = post.getEmbeddingVector();
@@ -368,14 +392,14 @@ public class FeedToTootScheduler {
             final double cosineSimilarity = VektorUtil.getCosineSimilarity(profileVector, embeddingVector);
             post.setCosDistance(cosineSimilarity);
 
-            if(post.getCosDistance() > 0.825){
-                if(boostDisable != null && !boostDisable){
+            if (post.getCosDistance() > 0.825) {
+                if (boostDisable != null && !boostDisable) {
                     try {
                         final MastodonDtos.MastodonStatus mastodonStatus = mastodonClient.boostStatus(post.getMastodonId(), new MastodonDtos.BoostStatusRequest(MastodonDtos.MastodonStatus.StatusVisibility.PRIVATE), "Bearer " + accessToken);
-                    }catch (Exception e){
-                      LOG.errorf(e, "Fehler beim Boosten der MastodonId: %s", post.getMastodonId());
-                      post.setCosDistance(Double.NEGATIVE_INFINITY);
-                      continue;
+                    } catch (Exception e) {
+                        LOG.errorf(e, "Fehler beim Boosten der MastodonId: %s", post.getMastodonId());
+                        post.setCosDistance(Double.NEGATIVE_INFINITY);
+                        continue;
                     }
                 }
 
@@ -387,7 +411,7 @@ public class FeedToTootScheduler {
 
     @Scheduled(every = "P1D", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     @Transactional
-    public void removeText(){
+    public void removeText() {
 
         LOG.info("Lösche alle alten Embedding Texte");
         final List<Embedding> allCalcedEmbeddings = Embedding.findAllCalcedEmbeddings();

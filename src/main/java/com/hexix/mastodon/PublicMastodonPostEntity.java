@@ -42,6 +42,9 @@ public class PublicMastodonPostEntity extends PanacheEntity {
     @Column(name = "negative_weight")
     private Double negativeWeight;
 
+    @Column(name = "no_url")
+    private Boolean noURL;
+
 
 
 
@@ -122,28 +125,73 @@ public class PublicMastodonPostEntity extends PanacheEntity {
         return negativeWeight;
     }
 
+
+
+    /**
+     * Finds the next 10 PublicMastodonPostEntity objects that do not have an embedding vector string.
+     * @return A list of PublicMastodonPostEntity objects matching the criteria.
+     */
     public static List<PublicMastodonPostEntity> findNextPublicMastodonPost() {
-        return find("embeddingVectorString is null").range(0, 10).list();
+        return find("embeddingVectorString is null and ( postText is not null or urlText is not null)").range(0, 10).list();
     }
 
+    /**
+     * Finds all PublicMastodonPostEntity objects that have an embedding vector string but no cosine distance.
+     * @return A list of PublicMastodonPostEntity objects matching the criteria.
+     */
     public static List<PublicMastodonPostEntity> findAllComparable() {
         return find("embeddingVectorString is not null and cosDistance is null").list();
     }
 
+    /**
+     * Finds a PublicMastodonPostEntity object by its mastodonId.
+     * @param id The mastodonId of the PublicMastodonPostEntity to find.
+     * @return The PublicMastodonPostEntity object with the specified mastodonId, or null if not found.
+     */
     public static PublicMastodonPostEntity findByMastodonId(final String id) {
         return find("mastodonId", id).firstResult();
     }
 
+    /**
+     * Finds all PublicMastodonPostEntity objects that have a negative weight and an embedding vector string.
+     * @return A list of PublicMastodonPostEntity objects matching the criteria.
+     */
     public static List<PublicMastodonPostEntity> findAllNegativPosts() {
         return find("negativeWeight is not null and embeddingVectorString is not null").list();
     }
 
+
+    /**
+     * Finds all PublicMastodonPostEntity objects that have a calculated embedding and are older than 2 days.
+     * @return A list of PublicMastodonPostEntity objects matching the criteria.
+     */
     public static List<PublicMastodonPostEntity> findAllCalcedEmbeddings(){
         return find("embeddingVectorString is not null and (postText is not null or urlText is not null) and createAt< ?1", LocalDateTime.now().minusDays(2)).list();
     }
 
+
+    /**
+     * Finds all PublicMastodonPostEntity objects that have no embedding vector string,
+     * no post text, and no URL text.
+     * @return A list of PublicMastodonPostEntity objects matching the criteria.
+     */
+
+    public static List<PublicMastodonPostEntity> findAllNoEmbeddingAndText() {
+        return find("embeddingVectorString is null and postText is null and urlText is null").list();
+    }
+
+
+
     public void removeEmbeddingVektor() {
         embeddingVector = null;
         embeddingVectorString = null;
+    }
+
+    public void setNoURL(final boolean noURL) {
+        this.noURL = noURL;
+    }
+
+    public Boolean isNoURL() {
+        return noURL;
     }
 }
