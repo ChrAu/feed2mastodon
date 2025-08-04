@@ -13,7 +13,6 @@ import com.hexix.mastodon.api.MastodonDtos;
 import com.hexix.mastodon.resource.MastodonClient;
 import com.hexix.util.VektorUtil;
 import com.rometools.rome.feed.synd.SyndEntry;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -62,6 +61,10 @@ public class FeedToTootScheduler {
 
     @ConfigProperty(name = "mastodon.boost.disable", defaultValue = "true")
     Boolean boostDisable;
+
+    @ConfigProperty(name = "feed2Mastodon.minCosDistance", defaultValue = "0.825")
+    Double minCosDistance;
+
 
     @Inject
     @RestClient
@@ -346,6 +349,8 @@ public class FeedToTootScheduler {
             return;
         }
 
+        LOG.info("Schwelle für das Posten ist Distanz größer: " + minCosDistance);
+
 
         final List<Embedding> allLocalEmbeddings = Embedding.findAllLocalEmbeddings();
 
@@ -392,7 +397,7 @@ public class FeedToTootScheduler {
             final double cosineSimilarity = VektorUtil.getCosineSimilarity(profileVector, embeddingVector);
             post.setCosDistance(cosineSimilarity);
 
-            if (post.getCosDistance() > 0.825) {
+            if (post.getCosDistance() > minCosDistance) {
                 if (boostDisable != null && !boostDisable) {
                     try {
                         final MastodonDtos.MastodonStatus mastodonStatus = mastodonClient.boostStatus(post.getMastodonId(), new MastodonDtos.BoostStatusRequest(MastodonDtos.MastodonStatus.StatusVisibility.PRIVATE), "Bearer " + accessToken);
