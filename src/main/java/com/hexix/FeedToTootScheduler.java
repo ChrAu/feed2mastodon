@@ -306,32 +306,37 @@ public class FeedToTootScheduler {
     @Transactional
     void readStatusAndLinkText(final PublicMastodonPostEntity p) {
         final PublicMastodonPostEntity post = PublicMastodonPostEntity.findById(p.id);
-        final MastodonDtos.MastodonStatus status = mastodonClient.getStatus(post.getMastodonId(), "Bearer " + accessToken);
-        post.setPostText(Jsoup.parse(status.content()).text());
+        try {
+            final MastodonDtos.MastodonStatus status = mastodonClient.getStatus(post.getMastodonId(), "Bearer " + accessToken);
+            post.setPostText(Jsoup.parse(status.content()).text());
 
-        if(post.getPostText() != null && post.getPostText().isBlank()){
-            post.setPostText(null);
-        }
+            if (post.getPostText() != null && post.getPostText().isBlank()) {
+                post.setPostText(null);
+            }
 
-        final Boolean noURL = post.isNoURL();
-        if (noURL == null || !noURL) {
+            final Boolean noURL = post.isNoURL();
+            if (noURL == null || !noURL) {
 
-            final List<String> urls = MastodonDtos.MastodonStatus.extractLinksFromHtml(status.content());
+                final List<String> urls = MastodonDtos.MastodonStatus.extractLinksFromHtml(status.content());
 
-            if (!urls.isEmpty()) {
-                StringJoiner sj = new StringJoiner("\n\n");
-                for (String url : urls) {
-                    // Annahme: JsoupParser.getArticle ist synchron und blockierend.
-                    // Wenn dies auch asynchron sein sollte, müsste es ebenfalls in ein Uni gewickelt werden.
-                    final String article = JsoupParser.getArticle(url);
-                    if (article != null) {
-                        sj.add(article);
+                if (!urls.isEmpty()) {
+                    StringJoiner sj = new StringJoiner("\n\n");
+                    for (String url : urls) {
+                        // Annahme: JsoupParser.getArticle ist synchron und blockierend.
+                        // Wenn dies auch asynchron sein sollte, müsste es ebenfalls in ein Uni gewickelt werden.
+                        final String article = JsoupParser.getArticle(url);
+                        if (article != null) {
+                            sj.add(article);
+                        }
+                    }
+                    if (sj.length() > 0) {
+                        post.setUrlText(sj.toString());
                     }
                 }
-                if (sj.length() > 0) {
-                    post.setUrlText(sj.toString());
-                }
             }
+        }catch (Exception e){
+            post.setPostText(null);
+            post.setUrlText(null);
         }
 
         if(post.getPostText() == null && post.getUrlText() == null){
