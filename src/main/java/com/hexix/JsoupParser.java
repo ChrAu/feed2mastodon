@@ -121,7 +121,7 @@ public class JsoupParser {
             if(e instanceof HttpStatusException && ((HttpStatusException) e).getStatusCode() == 404){
                 return null;
             }
-            Log.error("Fehler beim laden der URL: " + url, e);
+            Log.debug("Fehler beim laden der URL: " + url, e);
         }
 
         return null;
