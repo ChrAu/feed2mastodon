@@ -66,45 +66,65 @@ public class MastodonStreamProcessor {
      */
     void onStart(@Observes StartupEvent ev) {
         LOG.info("Anwendung startet, abonniere Mastodon Stream...");
-        subscribeToMastodonStream();
+        subscribeToMastodonPublicStream();
+        subscribeToMastodonDirectStream();
     }
 
     /**
      * Abonniert den Mastodon-Stream und definiert die Verarbeitungs- und Wiederverbindungslogik.
      */
-    private void subscribeToMastodonStream() {
-        final Multi<String> directStream = mastodonStreamingService.mastodonStreamingDirect("Bearer " + accessToken);
-        directStream.onFailure(throwable -> false).retry().withBackOff(Duration.ofSeconds(5), Duration.ofSeconds(10)).atMost(Long.MAX_VALUE)
-                .onItem().call(this::processDirectPayload)
-                .subscribe().with(dataPayload -> Log.debugf("Direct-Mastodon-Payload erfolgreich verarbeitet: %s", dataPayload), failure -> Log.error("Fehler im Mastodon Stream (Direct) nach Wiederholungsversuchen: " + failure.getMessage(), failure));
-
-
-
-        final Multi<String> stringMulti = mastodonStreamingService.streamPublicTimeline("Bearer " + privateAccessToken);
-        stringMulti
-                // Wenn ein Fehler auftritt (z.B. Verbindungsabbruch), versuche die Verbindung erneut herzustellen.
-                // retry().withBackoff(initialBackoff, maxBackoff): Versucht es erneut mit exponentiellem Backoff.
-                // atMost(Long.MAX_VALUE): Versucht es unendlich oft.
-                .onFailure(throwable -> {
-                    Log.error("Fehler beim Stream-Empfang: " + throwable.getMessage(), throwable);
-                    return false; // Gibt an, dass die Wiederholung fortgesetzt werden soll
-                })
-                .retry().withBackOff(Duration.ofSeconds(5), Duration.ofSeconds(10)).atMost(Long.MAX_VALUE)
-                // WICHTIGE ÄNDERUNG: onItem().call() stellt sicher, dass jede processDataPayload-Ausführung
-                // abgeschlossen ist, bevor das nächste Element aus dem Stream verarbeitet wird.
+    private void subscribeToMastodonPublicStream() {
+        final Multi<String> publicStream = mastodonStreamingService.streamPublicTimeline("Bearer " + privateAccessToken);
+        publicStream
+                // Dieselbe robuste Logik für den öffentlichen Stream.
+                .onCompletion().failWith(new RuntimeException("Public-Stream wurde unerwartet beendet. Starte Wiederverbindung."))
+                // KORREKTUR: Protokolliert den Fehler und gibt `true` zurück, um den Wiederholungsversuch zu signalisieren.
+                .onFailure().invoke(throwable -> LOG.error("Fehler im Public-Stream. Wiederholungsversuch wird gestartet...", throwable)).onFailure()
+                .retry().withBackOff(Duration.ofSeconds(5), Duration.ofMinutes(1)).withJitter(0.5).indefinitely()
                 .onItem().call(this::processDataPayload)
                 .subscribe().with(
-                        // Dieser Consumer wird aufgerufen, nachdem jede processDataPayload-Uni abgeschlossen ist.
-                        // Der 'dataPayload' hier ist das ursprüngliche String-Payload vom Multi.
-                        dataPayload -> {
-                            Log.debugf("Mastodon-Payload erfolgreich verarbeitet: %s", dataPayload);
-                        },
+                        dataPayload -> LOG.debugf("Public-Payload erfolgreich verarbeitet."),
                         failure -> {
-                            // Fehler beim Stream-Empfang (nach allen Wiederholungsversuchen)
-                            Log.error("Fehler im Mastodon Stream nach Wiederholungsversuchen: " + failure.getMessage(), failure);
-                            // Hier könnten Sie weitere Aktionen auslösen, z.B. Benachrichtigungen.
+                            LOG.fatal("Public-Stream ist endgültig fehlgeschlagen. Starte den gesamten Abonnementprozess in 30 Sekunden neu.", failure);
+                            Uni.createFrom().item(1)
+                                    .onItem().delayIt().by(Duration.ofSeconds(30))
+                                    .invoke(this::subscribeToMastodonPublicStream)
+                                    .subscribe().with(item -> LOG.info("Neustart des Public-Stream-Abonnements eingeleitet."));
                         }
                 );
+    }
+
+    /**
+     * Abonniert den Mastodon-Stream und definiert die Verarbeitungs- und Wiederverbindungslogik.
+     */
+    private void subscribeToMastodonDirectStream() {
+        final Multi<String> directStream = mastodonStreamingService.mastodonStreamingDirect("Bearer " + accessToken);
+        directStream
+                // WICHTIGE ÄNDERUNG: Behandelt eine unerwartete Beendigung des Streams als Fehler.
+                // Ein Event-Stream sollte theoretisch nie von selbst enden. Wenn doch, wollen wir uns neu verbinden.
+                .onCompletion().failWith(new RuntimeException("Direct-Stream wurde unerwartet beendet. Starte Wiederverbindung."))
+                // Protokolliert den Fehler (entweder von der Verbindung oder von onCompletion) und löst den Wiederholungsversuch aus.
+                .onFailure().invoke(throwable -> LOG.error("Fehler im Direct-Stream. Wiederholungsversuch wird gestartet...", throwable)).onFailure()
+                // Verbesserte Wiederholungslogik mit exponentiellem Backoff und Jitter.
+                // Startet bei 5s, geht bis zu 1 Minute hoch und versucht es unendlich oft.
+                .retry().withBackOff(Duration.ofSeconds(5), Duration.ofMinutes(1)).withJitter(0.5).indefinitely()
+                // Verarbeitet jedes Element asynchron. `call` sorgt für Back-Pressure, d.h. das nächste Element
+                // wird erst angefordert, wenn die Verarbeitung des aktuellen abgeschlossen ist.
+                .onItem().call(this::processDirectPayload)
+                // Abonniert den Stream und startet die Verarbeitung.
+                .subscribe().with(
+                        dataPayload -> LOG.debugf("Direct-Payload erfolgreich verarbeitet."),
+                        // Dieser Block sollte dank .indefinitely() nie erreicht werden, ist aber ein Sicherheitsnetz.
+                        failure -> {
+                            LOG.fatal("Direct-Stream ist endgültig fehlgeschlagen. Starte den gesamten Abonnementprozess in 30 Sekunden neu.", failure);
+                            Uni.createFrom().item(1)
+                                    .onItem().delayIt().by(Duration.ofSeconds(30))
+                                    .invoke(this::subscribeToMastodonDirectStream)
+                                    .subscribe().with(item -> LOG.info("Neustart des Direct-Stream-Abonnements eingeleitet."));
+                        }
+                );
+
+
     }
 
     private Uni<?> processDirectPayload(String dataPayload) {
