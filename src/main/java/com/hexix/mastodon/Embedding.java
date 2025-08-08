@@ -278,7 +278,7 @@ public class Embedding extends PanacheEntity {
      * @return Eine Liste von bis zu 3 {@link Embedding}-Objekten, die auf die Erstellung eines lokalen Embeddings warten.
      */
     public static List<Embedding> findNextLocalEmbeddings() {
-        return find("localEmbeddingCreatedAt is null and text is not null").range(0,3).list();
+        return find("localEmbeddingCreatedAt is null and text is not null").range(0,0).list();
     }
 
     /**
