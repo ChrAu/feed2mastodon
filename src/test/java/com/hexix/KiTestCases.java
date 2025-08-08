@@ -124,7 +124,7 @@ Hier ist eine typische Einteilung, die Sie als Ausgangspunkt verwenden können:
     @Test
     @Disabled
     public void testMultiModel() {
-        List<String> models = List.of("granite-embedding:278m", "jina/jina-embeddings-v2-base-de", "nomic-embed-text:v1.5", "mxbai-embed-large:335m" ,"bge-m3:567m", "all-minilm:33m", "snowflake-arctic-embed:335m", "bge-large:335m", "snowflake-arctic-embed2:568m", "paraphrase-multilingual:278m", "Definity/snowflake-arctic-embed-l-v2.0-q8_0:latest");
+        List<String> models = List.of("granite-embedding:278m", "jina/jina-embeddings-v2-base-de", "nomic-embed-text:v1.5", "mxbai-embed-large:335m" ,"bge-m3:567m", "all-minilm:33m", "snowflake-arctic-embed:335m", "bge-large:335m", "snowflake-arctic-embed2:568m", "paraphrase-multilingual:278m", "Definity/snowflake-arctic-embed-l-v2.0-q8_0:latest", "snowflake-arctic-embed:137m", "snowflake-arctic-embed:110m", "snowflake-arctic-embed:33m", "snowflake-arctic-embed:22m");
         Map<String, Map<String, String>> resultMap = new HashMap<>();
         final List<String> keys = List.of("Ähnlichkeit zu Frage 1", "Ähnlichkeit zu Frage 2", "Profilevektor", "Profilevektor (Frage Feuerwehr)");
 
