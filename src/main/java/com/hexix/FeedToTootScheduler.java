@@ -249,7 +249,7 @@ public class FeedToTootScheduler {
         return allRequests;
     }
 
-//    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcPublicVectors() {
         int calcRequests = 0;
         final Map<String, List<EmbeddingRequest>> requests = generateOllamaRequest();
@@ -348,7 +348,7 @@ public class FeedToTootScheduler {
     }
 
     @Transactional
-//    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcRecommendations() {
 
         List<PublicMastodonPostEntity> posts = PublicMastodonPostEntity.findAllComparable();
@@ -422,7 +422,7 @@ public class FeedToTootScheduler {
     }
 
 
-    @Scheduled(every = "P1D", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "P1D",delay = 120, concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     @Transactional
     public void removeText() {
 
