@@ -2,11 +2,13 @@ package com.hexix.mastodon;
 
 import com.hexix.util.VektorUtil;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.panache.common.Sort;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
+import org.hibernate.internal.util.ZonedDateTimeComparator;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -278,7 +280,7 @@ public class Embedding extends PanacheEntity {
      * @return Eine Liste von bis zu 3 {@link Embedding}-Objekten, die auf die Erstellung eines lokalen Embeddings warten.
      */
     public static List<Embedding> findNextLocalEmbeddings() {
-        return find("localEmbeddingCreatedAt is null and text is not null").range(0,3).list();
+        return find("localEmbeddingCreatedAt is null and text is not null", Sort.by("createdAt").descending()).page(0, 10).list();
     }
 
     /**
