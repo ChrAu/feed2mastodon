@@ -343,7 +343,9 @@ public class FeedToTootScheduler {
         }
 
         if(post.getPostText() == null && post.getUrlText() == null){
-            post.delete();
+            if(post.getNegativeWeight() != null) {
+                post.delete();
+            }
         }
     }
 
