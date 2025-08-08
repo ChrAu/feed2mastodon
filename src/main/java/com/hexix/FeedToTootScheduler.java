@@ -59,6 +59,9 @@ public class FeedToTootScheduler {
     @ConfigProperty(name = "gemini.model")
     String geminiModel;
 
+    @ConfigProperty(name = "local.model", defaultValue = "granite-embedding:278m")
+    String localModel;
+
     @ConfigProperty(name = "mastodon.boost.disable", defaultValue = "true")
     Boolean boostDisable;
 
@@ -223,7 +226,7 @@ public class FeedToTootScheduler {
 
             List<EmbeddingRequest> requests = new ArrayList<>();
             if(post.getPostText() != null && !post.getPostText().isBlank()) {
-                requests.add(new EmbeddingRequest("granite-embedding:278m", List.of(post.getPostText()), true));
+                requests.add(new EmbeddingRequest(localModel, List.of(post.getPostText()), true));
             }
 
             final String urlText = post.getUrlText();
@@ -231,7 +234,7 @@ public class FeedToTootScheduler {
 
                 final List<String> texte = StarredMastodonPosts.splitByLength(urlText, 500);
                 for (String subText : texte) {
-                    final EmbeddingRequest requestUrl = new EmbeddingRequest("granite-embedding:278m", List.of(subText), false);
+                    final EmbeddingRequest requestUrl = new EmbeddingRequest(localModel, List.of(subText), false);
 
 
                     requests.add(requestUrl);
@@ -345,7 +348,7 @@ public class FeedToTootScheduler {
     }
 
     @Transactional
-    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+//    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcRecommendations() {
 
         List<PublicMastodonPostEntity> posts = PublicMastodonPostEntity.findAllComparable();

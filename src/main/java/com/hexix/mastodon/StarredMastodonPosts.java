@@ -15,11 +15,13 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -35,6 +37,13 @@ public class StarredMastodonPosts {
 
     @Inject
     GenerateEmbeddingTextInput generateEmbeddingTextInput;
+
+    @ConfigProperty(name = "local.model", defaultValue = "granite-embedding:278m")
+    String localModel;
+
+    @ConfigProperty(name = "gemini.model")
+    String geminiModel;
+
 
     @Inject
     @RestClient
@@ -54,7 +63,7 @@ public class StarredMastodonPosts {
     @Transactional
     public void generateEmbeddings() {
 
-        String model = "gemini-embedding-001";
+        String model = geminiModel;
 
         final long countLast10Minutes = GeminiRequestEntity.countLast10Minutes(model);
 
@@ -93,7 +102,7 @@ public class StarredMastodonPosts {
             List<double[]> responses = new ArrayList<>();
 
             for (String text : splitText) {
-                EmbeddingRequest request = new EmbeddingRequest("granite-embedding:278m", List.of(text), false);
+                EmbeddingRequest request = new EmbeddingRequest(localModel, List.of(text), false);
                 final EmbeddingResponse response = ollamaRestClient.generateEmbeddings(request);
 
                 responses.add(response.embeddings().getFirst().stream().mapToDouble(Double::doubleValue).toArray());
@@ -124,6 +133,9 @@ public class StarredMastodonPosts {
 
 
     public static List<String> splitByLength(String str, int laenge) {
+        if(str == null){
+            return Collections.emptyList();
+        }
         List<String> teile = new ArrayList<>();
         int laengeStr = str.length();
         for (int i = 0; i < laengeStr; i += (laenge - 20)) {
