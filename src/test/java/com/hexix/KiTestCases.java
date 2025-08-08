@@ -16,10 +16,12 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 @QuarkusTest
@@ -122,8 +124,9 @@ Hier ist eine typische Einteilung, die Sie als Ausgangspunkt verwenden können:
     @Test
     @Disabled
     public void testMultiModel() {
-        List<String> models = List.of("granite-embedding:278m", "jina/jina-embeddings-v2-base-de", "nomic-embed-text:v1.5", "mxbai-embed-large:335m" ,"bge-m3:567m", "all-minilm:33m", "snowflake-arctic-embed:335m", "bge-large:335m", "snowflake-arctic-embed2:568m", "paraphrase-multilingual:278m");
-
+        List<String> models = List.of("granite-embedding:278m", "jina/jina-embeddings-v2-base-de", "nomic-embed-text:v1.5", "mxbai-embed-large:335m" ,"bge-m3:567m", "all-minilm:33m", "snowflake-arctic-embed:335m", "bge-large:335m", "snowflake-arctic-embed2:568m", "paraphrase-multilingual:278m", "Definity/snowflake-arctic-embed-l-v2.0-q8_0:latest");
+        Map<String, Map<String, String>> resultMap = new HashMap<>();
+        final List<String> keys = List.of("Ähnlichkeit zu Frage 1", "Ähnlichkeit zu Frage 2", "Profilevektor", "Profilevektor (Frage Feuerwehr)");
 
         for (String model : models) {
 
@@ -153,12 +156,49 @@ Hier ist eine typische Einteilung, die Sie als Ausgangspunkt verwenden können:
             System.out.println("Ähnlichkeit zu Frage 2: " + cosineSimilarity1);
 
             final double[] profileVector = VektorUtil.createProfileVector(List.of(vector1, vector2));
-            System.out.println("Profilevektor: " + VektorUtil.getCosineSimilarity(profileVector, f2));
+            final double cosineSimilarity2 = VektorUtil.getCosineSimilarity(profileVector, f2);
+            System.out.println("Profilevektor: " + cosineSimilarity2);
 
-            System.out.println("Profilevektor (Frage Feuerwehr): " + VektorUtil.getCosineSimilarity(profileVector, f1));
+            final double cosineSimilarity3 = VektorUtil.getCosineSimilarity(profileVector, f1);
+            System.out.println("Profilevektor (Frage Feuerwehr): " + cosineSimilarity3);
 
             System.out.println("#################################### ");
+
+
+
+
+            resultMap.computeIfAbsent(keys.get(0), k -> new HashMap<>()).put( String.valueOf(cosineSimilarity), model);
+            resultMap.computeIfAbsent(keys.get(1), k -> new HashMap<>()).put(String.valueOf(cosineSimilarity1), model);
+            resultMap.computeIfAbsent(keys.get(2), k -> new HashMap<>()).put(String.valueOf(cosineSimilarity2), model);
+
+            resultMap.computeIfAbsent(keys.get(3), k -> new HashMap<>()).put(String.valueOf(cosineSimilarity3), model);
+
+
+
+
+
+
+
+
         }
+
+
+
+        for(String key : keys){
+            final StringJoiner sj = new StringJoiner(", ");
+            resultMap.get(key).keySet().stream().sorted((o1, o2) -> Double.compare(Double.parseDouble(o2), Double.parseDouble(o1))).forEach(s -> {
+                sj.add("[" + s + ": " + resultMap.get(key).get(s) + "]");
+            });
+
+            System.out.println(key + ": " + sj);
+        }
+
+
+
+
+
+
+
 
 
     }
@@ -172,14 +212,9 @@ Hier ist eine typische Einteilung, die Sie als Ausgangspunkt verwenden können:
 
         final List<Embedding> embeddings = Embedding.<Embedding>findAll().list().stream().filter(embedding -> embedding.getEmbedding() != null).toList();
 
-        double[] gemini = null;
-        for (Embedding embedding : embeddings) {
-            if(gemini == null){
-                gemini = embedding.getEmbedding();
-            }else{
-                gemini = VektorUtil.createProfileVector(List.of(gemini, embedding.getEmbedding()));
-            }
-        }
+        double[] gemini = VektorUtil.createProfileVector(embeddings.stream().map(embedding -> new VektorUtil.VektorWeight(embedding.getEmbedding(), 1.0) ).toList(), Collections.emptyList());;
+
+
         Map<String, String> geminiMap = new HashMap<>();
 
         geminiMap.put("test", "Moderne KI Systeme können mehrere Millionen Anfragen parallel durchführen, benötigen aber extrem viel Strom.");
