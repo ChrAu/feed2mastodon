@@ -194,12 +194,12 @@ public class FeedToTootScheduler {
         LOG.info("Erfolgreich getootet und in DB gespeichert. Status-ID: " + postedStatus.id());
     }
 
-    @Scheduled(every = "1m", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void checkMastodonStarred() {
         starredMastodonPosts.collectNewStarredPosts();
     }
 
-    @Scheduled(every = "1m", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcEmbeddings() {
         starredMastodonPosts.generateEmbeddings();
         starredMastodonPosts.generateLocalEmbeddings();
@@ -249,7 +249,7 @@ public class FeedToTootScheduler {
         return allRequests;
     }
 
-    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+//    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcPublicVectors() {
         int calcRequests = 0;
         final Map<String, List<EmbeddingRequest>> requests = generateOllamaRequest();
