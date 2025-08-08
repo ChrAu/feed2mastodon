@@ -120,7 +120,7 @@ public class VektorUtil {
         } else {
             dimension = 0;
             // Keine Vektoren zum Erstellen eines Profils vorhanden.
-            return new double[768]; // Oder eine andere Standarddimension
+            return new double[1024]; // Oder eine andere Standarddimension
         }
 
         // Überprüfe, ob alle Vektoren die gleiche Dimension haben (optional, aber gute Praxis)
