@@ -2,6 +2,7 @@ package com.hexix.mastodon;
 
 import com.hexix.util.VektorUtil;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.panache.common.Sort;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
@@ -132,7 +133,7 @@ public class PublicMastodonPostEntity extends PanacheEntity {
      * @return A list of PublicMastodonPostEntity objects matching the criteria.
      */
     public static List<PublicMastodonPostEntity> findNextPublicMastodonPost() {
-        return find("embeddingVectorString is null and ( postText is not null or urlText is not null)").range(0, 10).list();
+        return find("embeddingVectorString is null and ( postText is not null or urlText is not null)", Sort.by("createAt").descending()).range(0, 10).list();
     }
 
     /**
