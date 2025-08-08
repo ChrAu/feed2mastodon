@@ -6,10 +6,13 @@ import com.hexix.mastodon.api.MastodonDtos;
 import com.hexix.mastodon.resource.MastodonClient;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
@@ -201,6 +204,37 @@ public class GreetingResource {
         }
         return result;
     }
+
+    @POST
+    @Path("/negativ/")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional
+    public Response receiveIdFromBody(IdPayload idPayload) {
+
+        final PublicMastodonPostEntity post = PublicMastodonPostEntity.findByMastodonId(idPayload.getId());
+        post.setNegativeWeight(1.0);
+
+        mastodonClient.unBoostStatus(idPayload.getId(), "Bearer " + accessToken);
+
+        return Response.ok().build();
+    }
+
+    /**
+     * Eine Hilfsklasse (POJO), um den JSON-Body zu binden.
+     * Jackson oder JSON-B mappen den eingehenden JSON automatisch auf dieses Objekt.
+     */
+    public static class IdPayload {
+        private String id;
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+    }
+
 
 //    @GET
 //    @Path("/delete")
