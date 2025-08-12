@@ -11,6 +11,7 @@ import com.hexix.mastodon.PublicMastodonPostEntity;
 import com.hexix.mastodon.StarredMastodonPosts;
 import com.hexix.mastodon.api.MastodonDtos;
 import com.hexix.mastodon.resource.MastodonClient;
+import com.hexix.urlshortener.UrlShortenerService;
 import com.hexix.util.VektorUtil;
 import com.rometools.rome.feed.synd.SyndEntry;
 import io.quarkus.scheduler.Scheduled;
@@ -75,11 +76,14 @@ public class FeedToTootScheduler {
     @Inject
     GenerateEmbeddingTextInput generateEmbeddingTextInput;
 
+    @Inject
+    UrlShortenerService urlShortenerService;
+
 
     // Einfache In-Memory-Lösung zur Vermeidung von Duplikaten.
     // Für eine robuste Lösung eine Datei oder DB verwenden!
 
-    private static String getTootText(final MonitoredFeed feed, final SyndEntry entry, boolean fullContent) {
+    private String getTootText(final MonitoredFeed feed, final SyndEntry entry, boolean fullContent) {
         StringBuilder prefixText = new StringBuilder();
         if (feed.title != null && !feed.title.isEmpty()) {
             prefixText.append(feed.title);
@@ -97,7 +101,12 @@ public class FeedToTootScheduler {
             prefixText.append(entry.getContents().getFirst().getValue());
         }
 
-        String link = "\n\n" + entry.getLink();
+        String originalLink = entry.getLink();
+        if(originalLink.length() > 27){
+            originalLink = urlShortenerService.shortenUrl(originalLink);
+        }
+        String link = "\n\n" + originalLink;
+
 
         if (prefixText.length() + link.length() > (fullContent ? 25500 : 500)) {
             prefixText = new StringBuilder(prefixText.substring(0, (fullContent ? 25500 : 497 - link.length())) + "...");
