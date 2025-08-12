@@ -151,7 +151,14 @@ public class FeedToTootScheduler {
                         try {
                             String aiToot = generateTextFromTextInput.getAiMessage(geminiModel, getTootText(feed, entry, true));
 
-                            if (aiToot.length() > 10 && aiToot.length() < 500) {
+                            int maxLength = 500;
+
+                            if(entry.getUri().length()< 25){
+                                maxLength = maxLength + (entry.getUri().length() - 25);
+                            }
+
+
+                            if (aiToot.length() > 10 && aiToot.length() < maxLength) {
                                 statusPayload = new MastodonDtos.StatusPayload(aiToot, "public", "de");
                                 newDbEntry.aiToot = true;
                             }
