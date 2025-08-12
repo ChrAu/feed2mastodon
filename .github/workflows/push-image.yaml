@@ -50,7 +50,7 @@ jobs:
     steps:
       # Schritt 1: Code aus dem Repository auschecken
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Schritt 2: Java JDK 21 (Zulu) einrichten
       # Richtet die angeforderte Java-Version und Distribution ein.

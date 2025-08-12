@@ -57,7 +57,7 @@ jobs:
     steps:
       # Schritt 1: Code aus dem ausgewählten Repository-Branch auschecken
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # Verwendet den Branch, der beim manuellen Starten ausgewählt wurde
           ref: ${{ github.event.inputs.branch }}
@@ -117,7 +117,7 @@ jobs:
     steps:
       # Schritt 1: Code auschecken (wird für das Dockerfile benötigt)
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.inputs.branch }}
 
@@ -168,7 +168,7 @@ jobs:
   #     contents: read
   #   steps:
   #     - name: Checkout repository
-  #       uses: actions/checkout@v4
+  #       uses: actions/checkout@v5
   #       with:
   #         ref: ${{ github.event.inputs.branch }}
   #
