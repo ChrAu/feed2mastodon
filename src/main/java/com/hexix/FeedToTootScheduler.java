@@ -355,7 +355,7 @@ public class FeedToTootScheduler {
     }
 
     @Transactional
-//    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcRecommendations() {
 
         List<PublicMastodonPostEntity> posts = PublicMastodonPostEntity.findAllComparable();
