@@ -41,7 +41,7 @@ public class StarredMastodonPosts {
     @ConfigProperty(name = "local.model", defaultValue = "granite-embedding:278m")
     String localModel;
 
-    @ConfigProperty(name = "gemini.model")
+    @ConfigProperty(name = "gemini.embedding.model")
     String geminiModel;
 
 

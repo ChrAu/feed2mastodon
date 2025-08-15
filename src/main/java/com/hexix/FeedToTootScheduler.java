@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.StringJoiner;
+import java.util.concurrent.TimeUnit;
 
 @ApplicationScoped
 public class FeedToTootScheduler {
@@ -107,7 +108,7 @@ public class FeedToTootScheduler {
         return tootText;
     }
 
-    @Scheduled(every = "10m", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "10m",delay = 30, delayUnit = TimeUnit.SECONDS,  concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
         // Alle 10 Minuten ausführen
 //    @Transactional
     void checkFeedAndPost() {
@@ -201,19 +202,19 @@ public class FeedToTootScheduler {
         LOG.info("Erfolgreich getootet und in DB gespeichert. Status-ID: " + postedStatus.id());
     }
 
-    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "10s",delay = 30, delayUnit = TimeUnit.SECONDS, concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void checkMastodonStarred() {
         starredMastodonPosts.collectNewStarredPosts();
     }
 
-    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "10s", delay = 30, delayUnit = TimeUnit.SECONDS, concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcEmbeddings() {
         starredMastodonPosts.generateEmbeddings();
         starredMastodonPosts.generateLocalEmbeddings();
     }
 
     @Transactional
-    @Scheduled(every = "24h", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "24h", delay = 60, delayUnit = TimeUnit.SECONDS, concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcEmbeddingsArticles() {
 
 
@@ -256,7 +257,7 @@ public class FeedToTootScheduler {
         return allRequests;
     }
 
-    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "10s", delay = 30, delayUnit = TimeUnit.SECONDS,  concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcPublicVectors() {
         int calcRequests = 0;
         final Map<String, List<EmbeddingRequest>> requests = generateOllamaRequest();
@@ -298,7 +299,7 @@ public class FeedToTootScheduler {
 
 
 
-    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "10s", delay = 30, delayUnit = TimeUnit.SECONDS,  concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void fetchPublicText() {
         final List<PublicMastodonPostEntity> posts = PublicMastodonPostEntity.findAllNoEmbeddingAndText();
 
@@ -357,7 +358,7 @@ public class FeedToTootScheduler {
     }
 
     @Transactional
-    @Scheduled(every = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "10s",delay = 30, delayUnit = TimeUnit.SECONDS,  concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcRecommendations() {
 
         List<PublicMastodonPostEntity> posts = PublicMastodonPostEntity.findAllComparable();
