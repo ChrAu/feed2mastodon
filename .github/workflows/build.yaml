@@ -73,7 +73,7 @@ jobs:
           GEMINIE_ACCESS_TOKEN: ${{ secrets.GEMINIE_ACCESS_TOKEN}}
           MASTODON_PRIVATE_ACCESS_TOKEN: ${{ secrets.MASTODON_PRIVATE_ACCESS_TOKEN}}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
-          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
           chmod +x mvnw
           ./mvnw -B package -Dquarkus.profile=prod --file pom.xml
