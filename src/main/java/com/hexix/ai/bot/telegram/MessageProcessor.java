@@ -169,7 +169,9 @@ public class MessageProcessor implements Processor {
 
         if (text.trim().equals("/negativ")) {
             startNegativeFlow(exchange, chatId);
-        } else if (text.trim().equals("/start")) {
+        }else if(text.trim().equals("/clear")){
+            clearFlow(exchange, chatId);
+        }else if (text.trim().equals("/start")) {
             createStartMessage(exchange, chatId);
         } else if (text.trim().equals("/help")) {
             createHelpMessage(exchange, chatId);
@@ -178,6 +180,14 @@ public class MessageProcessor implements Processor {
             exchange.getMessage().setBody(responseMessage);
             exchange.getMessage().setHeader("CamelTelegramChatId", chatId);
         }
+    }
+
+    private void clearFlow(final Exchange exchange, final String chatId) {
+        chatStates.remove(chatId);
+        String messageText = "Der State wurde gelöscht.";
+        exchange.getMessage().setBody(messageText);
+        exchange.getMessage().setHeader("CamelTelegramChatId", chatId);
+        LOG.infof("Warte auf URL von Chat {}", chatId);
     }
 
     private void startNegativeFlow(Exchange exchange, String chatId) {
@@ -260,6 +270,7 @@ public class MessageProcessor implements Processor {
             📚 Hilfe - Telegram Bot
             
             🔹 Sende /negativ, um eine URL zu bewerten.
+            🔹 Sende /clear, um deinen State zurück zu setzten.
             🔹 Sende /start für das Hauptmenü.
             🔹 Schreibe mir einfach eine Nachricht für ein Echo.
             
