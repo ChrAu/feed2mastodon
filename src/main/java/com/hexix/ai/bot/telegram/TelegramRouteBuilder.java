@@ -4,11 +4,14 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.camel.builder.RouteBuilder;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logmanager.Logger;
 
 @ApplicationScoped
 public class TelegramRouteBuilder extends RouteBuilder {
 
-    @ConfigProperty(name = "telegram.bot.token", defaultValue = "emptyStringWithLengthGreater1ß")
+    static Logger LOG = Logger.getLogger(TelegramRouteBuilder.class.getName());
+
+    @ConfigProperty(name = "telegram.bot.token", defaultValue = "emptyStringWithLengthGreater10")
     String telegramBotToken;
 
     @Inject
@@ -16,6 +19,8 @@ public class TelegramRouteBuilder extends RouteBuilder {
 
     @Override
     public void configure() throws Exception {
+
+        LOG.info("Starte Telegram Bot");
 
         // Exception Handler für bessere Fehlerbehandlung
         onException(Exception.class)
@@ -37,5 +42,7 @@ public class TelegramRouteBuilder extends RouteBuilder {
         from("timer:healthCheck?period=300000&delay=10000") // Alle 5 Minuten
                 .routeId("health-check-route")
                 .log("Bot läuft... Token: " + telegramBotToken.substring(0, 10) + "...");
+
+        LOG.info("Telegram Bot initialisiert");
     }
 }
