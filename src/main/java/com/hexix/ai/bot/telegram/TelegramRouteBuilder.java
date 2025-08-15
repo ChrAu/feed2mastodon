@@ -8,7 +8,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 @ApplicationScoped
 public class TelegramRouteBuilder extends RouteBuilder {
 
-    @ConfigProperty(name = "telegram.bot.token", defaultValue = "empty")
+    @ConfigProperty(name = "telegram.bot.token", defaultValue = "emptyStringWithLengthGreater1ß")
     String telegramBotToken;
 
     @Inject
@@ -33,9 +33,9 @@ public class TelegramRouteBuilder extends RouteBuilder {
                 .log("Sende Antwort: ${body}")
                 .to("telegram:bots?authorizationToken=" + telegramBotToken);
 
-//        // Health Check Route (optional)
-//        from("timer:healthCheck?period=300000&delay=10000") // Alle 5 Minuten
-//                .routeId("health-check-route")
-//                .log("Bot läuft... Token: " + telegramBotToken.substring(0, 10) + "...");
+        // Health Check Route (optional)
+        from("timer:healthCheck?period=300000&delay=10000") // Alle 5 Minuten
+                .routeId("health-check-route")
+                .log("Bot läuft... Token: " + telegramBotToken.substring(0, 10) + "...");
     }
 }
