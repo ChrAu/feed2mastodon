@@ -235,7 +235,7 @@ public class MessageProcessor implements Processor {
 
         if (text.trim().equals("/negativ")) {
             startNegativeFlow(exchange, chatId);
-        }else if(text.trim().equals("/klein_Viki")){
+        }else if(text.trim().equals("/klein_viki")){
             startVikiFlow(exchange, chatId);
         }else if(text.trim().equals("/clear")){
             clearFlow(exchange, chatId);
@@ -374,7 +374,7 @@ public class MessageProcessor implements Processor {
             
             Verfügbare Kommandos:
             /negativ - Negative Bewertung mit Tastatur
-            /klein_Viki - Erstellt einen Mastodon Post von klein Viki zum übergebenen Post
+            /klein_viki - Erstellt einen Mastodon Post von klein Viki zum übergebenen Post
             /help - Hilfe anzeigen
             
             Du kannst mir auch einfach eine Nachricht schreiben!
@@ -389,7 +389,7 @@ public class MessageProcessor implements Processor {
             📚 Hilfe - Telegram Bot
             
             🔹 Sende /negativ, um eine URL zu bewerten.
-            🔹 Sende /klein_Viki, um einen Mastodon Post von klein Viki zum übergebenen Thema zu posten
+            🔹 Sende /klein_viki, um einen Mastodon Post von klein Viki zum übergebenen Thema zu posten
             🔹 Sende /clear, um deinen State zurück zu setzten.
             🔹 Sende /start für das Hauptmenü.
             🔹 Schreibe mir einfach eine Nachricht für ein Echo.
