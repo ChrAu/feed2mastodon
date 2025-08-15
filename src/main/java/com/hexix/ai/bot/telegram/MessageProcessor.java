@@ -220,6 +220,10 @@ public class MessageProcessor implements Processor {
             return;
         }
 
+        if (text.trim().equals("/start")){
+            chatStates.remove(chatId);
+        }
+
         ChatState currentState = chatStates.get(chatId);
         if (currentState != null && currentState.step == ConversationStep.AWAITING_URL) {
             handleUrlInput(exchange, chatId, text);
