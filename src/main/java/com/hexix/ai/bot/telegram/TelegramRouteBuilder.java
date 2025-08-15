@@ -8,7 +8,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 @ApplicationScoped
 public class TelegramRouteBuilder extends RouteBuilder {
 
-    @ConfigProperty(name = "telegram.bot.token")
+    @ConfigProperty(name = "telegram.bot.token", defaultValue = "empty")
     String telegramBotToken;
 
     @Inject
