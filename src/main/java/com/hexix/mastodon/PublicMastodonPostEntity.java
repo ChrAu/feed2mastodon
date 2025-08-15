@@ -46,6 +46,9 @@ public class PublicMastodonPostEntity extends PanacheEntity {
     @Column(name = "no_url")
     private Boolean noURL;
 
+    // Dieses Feld speichert, ob Viki bereits einen Kommentar zu diesem Post generiert hat.
+    @Column(name = "viki_commented")
+    private Boolean vikiCommented = false;
 
 
 
@@ -126,7 +129,13 @@ public class PublicMastodonPostEntity extends PanacheEntity {
         return negativeWeight;
     }
 
+    public boolean isVikiCommented() {
+        return vikiCommented;
+    }
 
+    public void setVikiCommented(final boolean vikiCommented) {
+        this.vikiCommented = vikiCommented;
+    }
 
     /**
      * Finds the next 10 PublicMastodonPostEntity objects that do not have an embedding vector string.
