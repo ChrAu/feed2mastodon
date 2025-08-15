@@ -17,4 +17,12 @@ public record VikiResponse(String content, List<String> hashTags) {
         this.content = content;
         this.hashTags = hashTags;
     }
+
+    @Override
+    public String toString() {
+        return "VikiResponse{" +
+                "content='" + content + '\'' +
+                ", hashTags=" + hashTags +
+                '}';
+    }
 }

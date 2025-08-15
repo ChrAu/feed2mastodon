@@ -1,6 +1,8 @@
 package com.hexix.ai.bot.telegram;
 
 import com.hexix.JsoupParser;
+import com.hexix.ai.bot.VikiAiService;
+import com.hexix.ai.bot.VikiResponse;
 import com.hexix.mastodon.PublicMastodonPostEntity;
 import com.hexix.mastodon.api.MastodonDtos;
 import com.hexix.mastodon.resource.MastodonClient;
@@ -12,6 +14,7 @@ import org.apache.camel.Processor;
 import org.apache.camel.component.telegram.model.IncomingCallbackQuery;
 import org.apache.camel.component.telegram.model.IncomingMessage;
 import org.apache.camel.component.telegram.model.InlineKeyboardButton;
+import org.apache.camel.component.telegram.model.InlineKeyboardMarkup;
 import org.apache.camel.component.telegram.model.OutgoingTextMessage;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
@@ -25,6 +28,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -35,6 +39,9 @@ public class MessageProcessor implements Processor {
     @Inject
     MastodonClient mastodonClient;
 
+    @Inject
+    VikiAiService vikiAiService;
+
     @ConfigProperty(name = "mastodon.access.token")
     String accessToken;
 
@@ -43,8 +50,9 @@ public class MessageProcessor implements Processor {
     private final Map<String, ChatState> chatStates = new ConcurrentHashMap<>();
 
     private static class ChatState {
+        public String originalText;
         ConversationStep step;
-        String data;
+        Object data;
 
         ChatState(ConversationStep step) {
             this.step = step;
@@ -52,7 +60,7 @@ public class MessageProcessor implements Processor {
     }
 
     private enum ConversationStep {
-        AWAITING_URL
+        KLEIN_VIKI, AWAITING_URL
     }
 
     @Override
@@ -84,8 +92,59 @@ public class MessageProcessor implements Processor {
     private void handleCallbackQuery(Exchange exchange, String chatId, String callbackQueryId, String callbackData) {
         LOG.infof("Callback Query empfangen - Chat: {}, Data: {}", chatId, callbackData);
 
-        String responseMessage;
 
+
+        ChatState currentState = chatStates.get(chatId);
+
+        if(currentState.step == ConversationStep.KLEIN_VIKI) {
+            handleVikiCallbackQuery(exchange, chatId, callbackQueryId, callbackData);
+        }else if(currentState.step == ConversationStep.AWAITING_URL) {
+            handleNegativCallbackQuery(exchange, chatId, callbackQueryId, callbackData);
+        }
+
+
+
+    }
+
+    private void handleVikiCallbackQuery(Exchange exchange, String chatId, String callbackQueryId, String callbackData){
+        String responseMessage = "Unbekannter Fehler aufgetreten";
+
+        //todo Mastodon Post senden
+
+        ChatState currentState = chatStates.get(chatId);
+        final VikiResponse data = (VikiResponse) currentState.data;
+        switch (callbackData) {
+            case "viki_no":
+                handleVikiInput(exchange, chatId, currentState.originalText);
+                return;
+            case "viki_yes":
+                responseMessage = data.content() + " - wurde gepostet.";
+                break;
+
+            case "back_to_main":
+                responseMessage = "🔙 Zurück zum Hauptmenü. Sende /start um zu erfahren was ich für dich machen kann.";
+                break;
+
+
+        }
+
+
+        // Antwort-Nachricht setzen
+        OutgoingTextMessage outgoingMessage = new OutgoingTextMessage();
+
+        outgoingMessage.setText(responseMessage);
+        outgoingMessage.setChatId(chatId);
+
+        exchange.getIn().setBody(outgoingMessage);
+
+        // Callback Query bestätigen (entfernt das "Loading" auf dem Button)
+        exchange.getIn().setHeader("CamelTelegramAnswerCallbackQueryId", callbackQueryId);
+        exchange.getIn().setHeader("CamelTelegramAnswerCallbackQueryText", "Auswahl verarbeitet!");
+        chatStates.remove(chatId);
+    }
+
+    private void handleNegativCallbackQuery(Exchange exchange, String chatId, String callbackQueryId, String callbackData){
+        String responseMessage;
         ChatState currentState = chatStates.get(chatId);
         String urlInfo = "";
         if (currentState != null && currentState.data instanceof String) {
@@ -126,7 +185,7 @@ public class MessageProcessor implements Processor {
 
         if(weight > 0){
             try{
-                final MastodonDtos.MastodonSearchResult search = mastodonClient.search("Bearer " + accessToken, currentState.data, true);
+                final MastodonDtos.MastodonSearchResult search = mastodonClient.search("Bearer " + accessToken, String.valueOf(currentState.data), true);
                 final Optional<MastodonDtos.MastodonStatus> status = search.statuses().stream().findFirst();
 
                 if(status.isPresent()){
@@ -165,10 +224,15 @@ public class MessageProcessor implements Processor {
         if (currentState != null && currentState.step == ConversationStep.AWAITING_URL) {
             handleUrlInput(exchange, chatId, text);
             return;
+        }else if(currentState != null && currentState.step == ConversationStep.KLEIN_VIKI){
+            handleVikiInput(exchange, chatId, text);
+            return;
         }
 
         if (text.trim().equals("/negativ")) {
             startNegativeFlow(exchange, chatId);
+        }else if(text.trim().equals("/klein_Viki")){
+            startVikiFlow(exchange, chatId);
         }else if(text.trim().equals("/clear")){
             clearFlow(exchange, chatId);
         }else if (text.trim().equals("/start")) {
@@ -199,6 +263,16 @@ public class MessageProcessor implements Processor {
         LOG.infof("Warte auf URL von Chat {}", chatId);
     }
 
+    private void startVikiFlow(Exchange exchange, String chatId){
+        chatStates.put(chatId, new ChatState(ConversationStep.KLEIN_VIKI));
+
+        String messageText = "Bitte sende mir ein Thema, damit klein Viki dazu einen Beitrag erstelle kann.";
+        exchange.getMessage().setBody(messageText);
+        exchange.getMessage().setHeader("CamelTelegramChatId", chatId);
+        LOG.infof("Warte auf Thema von Chat {}", chatId);
+    }
+
+
     private void handleUrlInput(Exchange exchange, String chatId, String text) {
         try {
             new URL(text);
@@ -218,6 +292,20 @@ public class MessageProcessor implements Processor {
         }
     }
 
+    private void handleVikiInput(Exchange exchange, String chatId, String text) {
+        ChatState currentState = chatStates.get(chatId);
+
+
+        LOG.infof("Text '{}' von Chat {} erhalten.", text, chatId);
+
+        final VikiResponse vikiResponse = vikiAiService.generatePostContent(text);
+        currentState.data = vikiResponse;
+        currentState.originalText = text;
+        LOG.infof("Generierte Nachricht: {}", vikiResponse);
+
+        createVikiKeyboard(exchange, chatId, vikiResponse.content());
+    }
+
 
     private void createNegativeKeyboard(Exchange exchange, String chatId) {
         String messageText = "😔 Du möchtest eine negative Bewertung abgeben?\nWähle aus, wie schlecht es dir geht:";
@@ -233,8 +321,8 @@ public class MessageProcessor implements Processor {
         InlineKeyboardButton back = InlineKeyboardButton.builder()
                 .text("🔙 Abbrechen").callbackData("back_to_main").build();
 
-        org.apache.camel.component.telegram.model.InlineKeyboardMarkup inlineKeyboard =
-                org.apache.camel.component.telegram.model.InlineKeyboardMarkup.builder()
+        InlineKeyboardMarkup inlineKeyboard =
+                InlineKeyboardMarkup.builder()
                         .addRow(Arrays.asList(n4, n3))
                         .addRow(Arrays.asList(n2, n1))
                         .addRow(Collections.singletonList(back))
@@ -250,12 +338,39 @@ public class MessageProcessor implements Processor {
         LOG.infof("Inline Keyboard für Chat {} erstellt", chatId);
     }
 
+    private void createVikiKeyboard(Exchange exchange, String chatId, String content){
+        String messageText = "Ich habe dir folgenden Post erstellt, bist da damit einverstanden?\n\n" + content;
+        InlineKeyboardButton vYes = InlineKeyboardButton.builder()
+                .text("Ja, posten").callbackData("viki_yes").build();
+
+        InlineKeyboardButton vNo = InlineKeyboardButton.builder()
+                .text("Nein, neu generieren").callbackData("viki_no").build();
+        InlineKeyboardButton cancel = InlineKeyboardButton.builder()
+                .text("Abbrechen").callbackData("back_to_main").build();
+
+        final InlineKeyboardMarkup keyboard = InlineKeyboardMarkup.builder()
+                .addRow(Arrays.asList(vYes, vNo))
+                .addRow(Collections.singletonList(cancel))
+                .build();
+
+        OutgoingTextMessage outgoingMessage = new OutgoingTextMessage();
+        outgoingMessage.setText(messageText);
+        outgoingMessage.setReplyMarkup(keyboard);
+        outgoingMessage.setChatId(chatId);
+
+        exchange.getIn().setBody(outgoingMessage);
+
+        LOG.infof("Inline Keyboard für Chat {} erstellt", chatId);
+
+    }
+
     private void createStartMessage(Exchange exchange, String chatId) {
         String startMessage = """
             🤖 Willkommen beim Telegram Bot!
             
             Verfügbare Kommandos:
             /negativ - Negative Bewertung mit Tastatur
+            /klein_Viki - Erstellt einen Mastodon Post von klein Viki zum übergebenen Post
             /help - Hilfe anzeigen
             
             Du kannst mir auch einfach eine Nachricht schreiben!
@@ -270,6 +385,7 @@ public class MessageProcessor implements Processor {
             📚 Hilfe - Telegram Bot
             
             🔹 Sende /negativ, um eine URL zu bewerten.
+            🔹 Sende /klein_Viki, um einen Mastodon Post von klein Viki zum übergebenen Thema zu posten
             🔹 Sende /clear, um deinen State zurück zu setzten.
             🔹 Sende /start für das Hauptmenü.
             🔹 Schreibe mir einfach eine Nachricht für ein Echo.
