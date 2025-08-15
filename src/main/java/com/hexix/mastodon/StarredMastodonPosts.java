@@ -50,7 +50,6 @@ public class StarredMastodonPosts {
     OllamaRestClient ollamaRestClient;
 
 
-    @Transactional
     public void collectNewStarredPosts(){
         final List<MastodonDtos.MastodonStatus> newFavourites = favouritesService.getNewFavourites();
 
