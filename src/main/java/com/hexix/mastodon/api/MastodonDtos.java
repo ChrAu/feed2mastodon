@@ -30,6 +30,11 @@ public class MastodonDtos {
 
     public record DirectStatus(String id, boolean unread, List<MastodonAccount> accounts, @JsonProperty("last_status") MastodonStatus lastStatus){}
 
+    public record MastodonSearchResult(
+            List<MastodonAccount> accounts,
+            List<MastodonStatus> statuses
+    ) {}
+
     // Record, um einen einzelnen empfangenen Status abzubilden
     // @JsonProperty wird verwendet, um JSON-Felder (snake_case) auf Java-Felder (camelCase) zu mappen.
     public record MastodonStatus(

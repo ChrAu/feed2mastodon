@@ -2,6 +2,7 @@ package com.hexix.ai;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.inject.Inject;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
@@ -16,10 +17,13 @@ import java.util.UUID;
 })
 public class ThemenEntity extends PanacheEntity {
 
+    @Column(name = "uuid", unique = true, nullable = false)
     String uuid = UUID.randomUUID().toString();
 
+    @Column(name = "thema", columnDefinition = "TEXT", unique = true, nullable = false)
     String thema;
 
+    @Column(name = "last")
     LocalDate lastPost;
 
     public String getUuid() {

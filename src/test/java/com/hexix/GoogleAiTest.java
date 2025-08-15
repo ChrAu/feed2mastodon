@@ -35,6 +35,9 @@ public class GoogleAiTest {
     @ConfigProperty(name = "gemini.model")
     String geminiModel;
 
+    @ConfigProperty(name = "gemini.embedding.model")
+    String geminiEmbeddingModel;
+
     static Integer EMBEDDING_DIMENSION = 768;
 
 
@@ -47,7 +50,7 @@ public class GoogleAiTest {
 
             System.out.println("Rufe Embeddings mit dem Google Gen AI SDK ab...");
 
-            final EmbedContentResponse embedContentResponse = client.models.embedContent("gemini-embedding-001",List.of("Patchday: Adobe schützt After Effects & Co. vor möglichen Attacken\n" +
+            final EmbedContentResponse embedContentResponse = client.models.embedContent(geminiEmbeddingModel,List.of("Patchday: Adobe schützt After Effects & Co. vor möglichen Attacken\n" +
                     "\n" +
                     "Mehrere Adobe-Anwendungen sind unter anderem für DoS- und Schadcode-Attacken anfällig. Sicherheitsupdates schaffen Abhilfe. " +
                     "https://www.heise.de/news/Patchday-Adobe-schuetzt-After-Effects-Co-vor-moeglichen-Attacken-10479838.html?wt_mc=sm.red.ho.mastodon.mastodon.md_beitraege.md_beitraege&utm_source=mastodon" +
@@ -68,7 +71,7 @@ public class GoogleAiTest {
             final List<ContentEmbedding> contentEmbeddings = embedContentResponse.embeddings().get();
 
 
-            final List<ContentEmbedding> compareExample = client.models.embedContent("gemini-embedding-001", "Patchday: Adobe schützt After Effects & Co. vor möglichen Attacken\n" +
+            final List<ContentEmbedding> compareExample = client.models.embedContent(geminiEmbeddingModel, "Patchday: Adobe schützt After Effects & Co. vor möglichen Attacken\n" +
                     "\n" +
                     "Mehrere Adobe-Anwendungen sind unter anderem für DoS- und Schadcode-Attacken anfällig. Sicherheitsupdates schaffen Abhilfe.", EmbedContentConfig.builder().taskType("SEMANTIC_SIMILARITY").build()).embeddings().get();
 
@@ -155,7 +158,7 @@ public class GoogleAiTest {
         try(Client client = Client.builder().apiKey(accessToken).build()) {
             System.out.println("Rufe Embeddings mit dem Google Gen AI SDK ab...");
 
-            final EmbedContentResponse embedContentResponse = client.models.embedContent("gemini-embedding-001","Patchday: Adobe schützt After Effects & Co. vor möglichen Attacken\n" +
+            final EmbedContentResponse embedContentResponse = client.models.embedContent(geminiEmbeddingModel,"Patchday: Adobe schützt After Effects & Co. vor möglichen Attacken\n" +
                     "\n" +
                     "Mehrere Adobe-Anwendungen sind unter anderem für DoS- und Schadcode-Attacken anfällig. Sicherheitsupdates schaffen Abhilfe. " +
                     "https://www.heise.de/news/Patchday-Adobe-schuetzt-After-Effects-Co-vor-moeglichen-Attacken-10479838.html?wt_mc=sm.red.ho.mastodon.mastodon.md_beitraege.md_beitraege&utm_source=mastodon" +
@@ -176,7 +179,7 @@ public class GoogleAiTest {
             final List<ContentEmbedding> contentEmbeddings = embedContentResponse.embeddings().get();
 
 
-            final List<ContentEmbedding> compareExample = client.models.embedContent("gemini-embedding-001", "Patchday: Adobe schützt After Effects & Co. vor möglichen Attacken\n" +
+            final List<ContentEmbedding> compareExample = client.models.embedContent(geminiEmbeddingModel, "Patchday: Adobe schützt After Effects & Co. vor möglichen Attacken\n" +
                     "\n" +
                     "Mehrere Adobe-Anwendungen sind unter anderem für DoS- und Schadcode-Attacken anfällig. Sicherheitsupdates schaffen Abhilfe.", EmbedContentConfig.builder().taskType("SEMANTIC_SIMILARITY").build()).embeddings().get();
 

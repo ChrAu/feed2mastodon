@@ -41,7 +41,7 @@ public class StarredMastodonPosts {
     @ConfigProperty(name = "local.model", defaultValue = "granite-embedding:278m")
     String localModel;
 
-    @ConfigProperty(name = "gemini.model")
+    @ConfigProperty(name = "gemini.embedding.model")
     String geminiModel;
 
 
@@ -50,7 +50,6 @@ public class StarredMastodonPosts {
     OllamaRestClient ollamaRestClient;
 
 
-    @Transactional
     public void collectNewStarredPosts(){
         final List<MastodonDtos.MastodonStatus> newFavourites = favouritesService.getNewFavourites();
 

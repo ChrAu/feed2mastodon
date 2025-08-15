@@ -4,7 +4,7 @@ services:
   # Unser Datenbank-Service.
   db:
     # Das Docker-Image, das verwendet werden soll.
-    image: postgres:17 # Es wird empfohlen, eine spezifischere Version als 'latest' oder '17' zu verwenden, die noch nicht final ist.
+    image: pgvector/pgvector:pg17 # Es wird empfohlen, eine spezifischere Version als 'latest' oder '17' zu verwenden, die noch nicht final ist.
     # Name des Containers, der erstellt wird.
     container_name: feed2toot-postgres-db
     # Umgebungsvariablen, die an den Container übergeben werden.
