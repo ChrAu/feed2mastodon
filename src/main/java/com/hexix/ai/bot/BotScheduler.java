@@ -22,14 +22,14 @@ public class BotScheduler {
      * It finds the most relevant, uncommented post and generates a response from Viki.
      * The cron expression "0 0/15 * * * ?" means "every 15 minutes".
      */
-    @Scheduled(cron = "0 0/15 * * * ?")
+    @Scheduled(cron = "0 * * * * ?")
     @Transactional
     public void triggerBot() {
         LOG.info("🤖 Bot Scheduler triggered. Looking for a new post to comment on...");
 
         // 1. Find the best post that Viki hasn't commented on yet.
         PublicMastodonPostEntity postToComment = PublicMastodonPostEntity.find(
-                "vikiCommented = false",
+                "vikiCommented = false and cosDistance is not null",
                 Sort.by("cosDistance").descending()
         ).firstResult();
 
