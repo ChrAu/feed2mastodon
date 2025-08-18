@@ -202,7 +202,7 @@ public class FeedToTootScheduler {
         LOG.info("Erfolgreich getootet und in DB gespeichert. Status-ID: " + postedStatus.id());
     }
 
-    @Scheduled(every = "10s",delay = 30, delayUnit = TimeUnit.SECONDS, concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "300s",delay = 30, delayUnit = TimeUnit.SECONDS, concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void checkMastodonStarred() {
         starredMastodonPosts.collectNewStarredPosts();
     }
@@ -299,7 +299,7 @@ public class FeedToTootScheduler {
 
 
 
-    @Scheduled(every = "10s", delay = 30, delayUnit = TimeUnit.SECONDS,  concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "600s", delay = 30, delayUnit = TimeUnit.SECONDS,  concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void fetchPublicText() {
         final List<PublicMastodonPostEntity> posts = PublicMastodonPostEntity.findAllNoEmbeddingAndText();
 

@@ -86,7 +86,7 @@ public class MastodonDtos {
         public static List<String> extractLinksFromHtml(String htmlContent) {
             List<String> links = new ArrayList<>();
             if (htmlContent == null || htmlContent.trim().isEmpty()) {
-                System.err.println("Fehler: HTML-Inhalt ist null oder leer.");
+//                System.err.println("Fehler: HTML-Inhalt ist null oder leer.");
                 return links;
             }
 
