@@ -52,8 +52,10 @@ public class StarredMastodonPosts {
 
     public void collectNewStarredPosts(){
         final List<MastodonDtos.MastodonStatus> newFavourites = favouritesService.getNewFavourites();
+        if(!newFavourites.isEmpty()){
+            LOG.infof("Neue Favourites: %s",  newFavourites.size());
+        }
 
-        LOG.infof("Neue Favourites: %s",  newFavourites.size());
 
 
         newFavourites.forEach(mastodonStatus -> favouritesService.createEmbedding(mastodonStatus));
