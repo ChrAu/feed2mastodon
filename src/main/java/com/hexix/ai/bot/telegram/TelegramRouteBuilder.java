@@ -38,6 +38,12 @@ public class TelegramRouteBuilder extends RouteBuilder {
                 .log("Sende Antwort: ${body}")
                 .to("telegram:bots?authorizationToken=" + telegramBotToken);
 
+        // Route zum Senden von Direktnachrichten
+        from("direct:sendDirectMessage")
+                .routeId("send-direct-message-route")
+                .log("Sende Direktnachricht an Chat-ID ${header.chatId}: ${body}")
+                .toD("telegram:bots?authorizationToken=" + telegramBotToken + "&chatId=${header.chatId}");
+
         // Health Check Route (optional)
         from("timer:healthCheck?period=300000&delay=10000") // Alle 5 Minuten
                 .routeId("health-check-route")
