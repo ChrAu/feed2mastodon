@@ -149,6 +149,9 @@ create table  if not exists monitoredfeed
     tryai       boolean
 );
 
+CREATE SEQUENCE if not exists monitoredfeed_seq START 1 INCREMENT 50;
+
+
 
 create index  if not exists idx_monitoredfeed_isactive
     on monitoredfeed (isactive);
