@@ -7,7 +7,7 @@
 -- DROP TABLE telegram_subscribers CASCADE;
 -- DROP SEQUENCE telegram_subscribers_seq;
 
-CREATE TABLE telegram_subscribers (
+CREATE TABLE  if not exists telegram_subscribers (
     id BIGINT NOT NULL,
     chat_id VARCHAR(255) NOT NULL,
     active BOOLEAN NOT NULL,
@@ -15,4 +15,4 @@ CREATE TABLE telegram_subscribers (
     CONSTRAINT uk_subscriber_chat_id UNIQUE (chat_id)
 );
 
-CREATE SEQUENCE telegram_subscribers_seq START 1 INCREMENT 50;
+CREATE SEQUENCE  if not exists telegram_subscribers_seq START 1 INCREMENT 50;
