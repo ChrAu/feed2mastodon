@@ -42,6 +42,9 @@ public class MessageProcessor implements Processor {
     @Inject
     VikiAiService vikiAiService;
 
+    @Inject
+    SubscriptionService subscriptionService;
+
     @ConfigProperty(name = "mastodon.access.token")
     String accessToken;
 
@@ -65,22 +68,20 @@ public class MessageProcessor implements Processor {
 
     @Override
     public void process(Exchange exchange) throws Exception {
-        // KORREKTUR: Wir prüfen den Typ des Bodys, um zwischen
-        // einer normalen Nachricht und einem Button-Klick (CallbackQuery) zu unterscheiden.
         Object body = exchange.getIn().getBody();
 
         if (body instanceof IncomingCallbackQuery callbackQuery) {
-            // Dies ist ein Button-Klick (CallbackQuery)
-            LOG.info("Verarbeite IncomingCallbackQuery...");
             String chatId = callbackQuery.getMessage().getChat().getId().toString();
+            subscriptionService.addSubscriber(chatId);
+            LOG.info("Verarbeite IncomingCallbackQuery...");
             String callbackQueryId = callbackQuery.getId();
-            String data = callbackQuery.getData(); // Daten direkt aus dem Callback-Objekt holen
+            String data = callbackQuery.getData();
             handleCallbackQuery(exchange, chatId, callbackQueryId, data);
 
         } else if (body instanceof IncomingMessage incomingMessage) {
-            // Dies ist eine reguläre Textnachricht
-            LOG.info("Verarbeite IncomingMessage...");
             String chatId = incomingMessage.getChat().getId().toString();
+            subscriptionService.addSubscriber(chatId);
+            LOG.info("Verarbeite IncomingMessage...");
             handleTextMessage(exchange, chatId, incomingMessage);
 
         } else {
@@ -92,8 +93,6 @@ public class MessageProcessor implements Processor {
     private void handleCallbackQuery(Exchange exchange, String chatId, String callbackQueryId, String callbackData) {
         LOG.infof("Callback Query empfangen - Chat: {}, Data: {}", chatId, callbackData);
 
-
-
         ChatState currentState = chatStates.get(chatId);
 
         if(currentState.step == ConversationStep.KLEIN_VIKI) {
@@ -101,9 +100,6 @@ public class MessageProcessor implements Processor {
         }else if(currentState.step == ConversationStep.AWAITING_URL) {
             handleNegativCallbackQuery(exchange, chatId, callbackQueryId, callbackData);
         }
-
-
-
     }
 
     private void handleVikiCallbackQuery(Exchange exchange, String chatId, String callbackQueryId, String callbackData){
@@ -124,10 +120,7 @@ public class MessageProcessor implements Processor {
             case "back_to_main":
                 responseMessage = "🔙 Zurück zum Hauptmenü. Sende /start um zu erfahren was ich für dich machen kann.";
                 break;
-
-
         }
-
 
         // Antwort-Nachricht setzen
         OutgoingTextMessage outgoingMessage = new OutgoingTextMessage();
@@ -179,8 +172,6 @@ public class MessageProcessor implements Processor {
                 weight = 0;
         }
 
-
-
         chatStates.remove(chatId);
 
         if(weight > 0){
@@ -195,9 +186,6 @@ public class MessageProcessor implements Processor {
                 responseMessage = "Es ist ein Fehler aufgetreten, die URL wird nicht als negativ bewertet";
                 LOG.error("Fehler beim Laden des Status", e);
             }
-
-
-
         }
 
         // Antwort-Nachricht setzen
@@ -235,19 +223,29 @@ public class MessageProcessor implements Processor {
 
         if (text.trim().equals("/negativ")) {
             startNegativeFlow(exchange, chatId);
-        }else if(text.trim().equals("/klein_viki")){
+        } else if(text.trim().equals("/klein_viki")){
             startVikiFlow(exchange, chatId);
-        }else if(text.trim().equals("/clear")){
+        } else if(text.trim().equals("/clear")){
             clearFlow(exchange, chatId);
-        }else if (text.trim().equals("/start")) {
+        } else if (text.trim().equals("/start")) {
             createStartMessage(exchange, chatId);
         } else if (text.trim().equals("/help")) {
             createHelpMessage(exchange, chatId);
+        } else if (text.trim().equals("/stop")) {
+            handleStopCommand(exchange, chatId);
         } else {
             String responseMessage = processMessage(text);
             exchange.getMessage().setBody(responseMessage);
             exchange.getMessage().setHeader("CamelTelegramChatId", chatId);
         }
+    }
+
+    private void handleStopCommand(Exchange exchange, String chatId) {
+        subscriptionService.removeSubscriber(chatId);
+        String messageText = "Du hast dein Abonnement beendet. Sende /start, um es wieder zu aktivieren.";
+        exchange.getMessage().setBody(messageText);
+        exchange.getMessage().setHeader("CamelTelegramChatId", chatId);
+        LOG.infof("Subscriber mit ChatID {} wurde deaktiviert.", chatId);
     }
 
     private void clearFlow(final Exchange exchange, final String chatId) {
@@ -376,6 +374,7 @@ public class MessageProcessor implements Processor {
             /negativ - Negative Bewertung mit Tastatur
             /klein_viki - Erstellt einen Mastodon Post von klein Viki zum übergebenen Post
             /help - Hilfe anzeigen
+            /stop - Benachrichtigungen deaktivieren
             
             Du kannst mir auch einfach eine Nachricht schreiben!
             """;
@@ -392,6 +391,7 @@ public class MessageProcessor implements Processor {
             🔹 Sende /klein_viki, um einen Mastodon Post von klein Viki zum übergebenen Thema zu posten
             🔹 Sende /clear, um deinen State zurück zu setzten.
             🔹 Sende /start für das Hauptmenü.
+            🔹 Sende /stop, um Benachrichtigungen zu pausieren.
             🔹 Schreibe mir einfach eine Nachricht für ein Echo.
             
             💡 Tipp: Die Buttons in der Tastatur sind interaktiv!
