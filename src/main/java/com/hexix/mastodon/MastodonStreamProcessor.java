@@ -277,6 +277,8 @@ public class MastodonStreamProcessor {
 
         final String text = Jsoup.parse(status.content()).text();
 
+        post.setPostText(text);
+
         post.setNoURL(noUrl);
 
         LOG.infof("Empfangener Status (ID: %s, Account: %s, Inhalt: \"%s\", URL: %s)\n",
