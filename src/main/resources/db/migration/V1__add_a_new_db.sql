@@ -47,6 +47,7 @@ create table if not exists  embedding
     negative_weight               double precision,
     status_original_url           text
 );
+CREATE SEQUENCE if not exists embedding_seq START 1 INCREMENT 50;
 
 
 create index if not exists  idx_embedding_mastodon_status_id
@@ -78,6 +79,7 @@ create table  if not exists eventplanentity
         constraint idx_eventplanentity_uuid
             unique
 );
+CREATE SEQUENCE if not exists eventplanentity_seq START 1 INCREMENT 50;
 
 
 create index  if not exists idx_eventplanentity_createdat
@@ -106,6 +108,7 @@ create table  if not exists geminirequestentity
     totaltokencount integer,
     response        text
 );
+CREATE SEQUENCE if not exists geminirequestentity_seq START 1 INCREMENT 50;
 
 
 
@@ -129,6 +132,7 @@ create table  if not exists mastodon_paging_config
             unique,
     sinceid  text
 );
+CREATE SEQUENCE if not exists mastodon_paging_config_seq START 1 INCREMENT 50;
 
 -- auto-generated definition
 create table  if not exists monitoredfeed
@@ -168,6 +172,7 @@ create table  if not exists postedentry
     constraint ukrext8lm2fokqnkks3uo7ygjlx
         unique (feed_id, entryguid)
 );
+CREATE SEQUENCE if not exists postedentry_seq START 1 INCREMENT 50;
 
 
 create index  if not exists idx_postedentry_entryguid_feedid
@@ -185,35 +190,12 @@ create table  if not exists promptentity
             unique
 );
 
+CREATE SEQUENCE if not exists promptentity_seq START 1 INCREMENT 50;
 
 create index if not exists  idx_promptentity_createdat
     on promptentity (createdat);
 
 
--- auto-generated definition
-create table  if not exists public_mastodon_posts
-(
-    id                      bigint not null
-        primary key,
-    cosinus_distance        double precision,
-    create_at               timestamp(6),
-    embedding_vector_string text,
-    mastodon_id             text
-        constraint idx_embedding_mastodonid
-            unique,
-    post_text               text,
-    status_original_url     text,
-    url_text                text,
-    negative_weight         double precision,
-    no_url                  boolean
-);
-
-
-create index  if not exists idx_embedding_create_at
-    on public_mastodon_posts (create_at);
-
-create index if not exists  idx_embedding_cosdistance
-    on public_mastodon_posts (cosinus_distance);
 
 
 -- auto-generated definition
@@ -231,3 +213,4 @@ create table  if not exists themenentity
 );
 
 
+CREATE SEQUENCE if not exists themenentity_seq START 1 INCREMENT 50;
