@@ -1,5 +1,6 @@
 package com.hexix.ai.bot;
 
+import com.hexix.ai.ExecutionJob;
 import com.hexix.ai.ThemenEntity;
 import com.hexix.ai.bot.telegram.TelegramNotificationService;
 import com.hexix.mastodon.PublicMastodonPostEntity;
@@ -11,11 +12,10 @@ import jakarta.transaction.Transactional;
 import org.jboss.logging.Logger;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
 
 @ApplicationScoped
 public class BotScheduler {
@@ -28,157 +28,153 @@ public class BotScheduler {
     @Inject
     TelegramNotificationService telegramNotificationService;
 
-
-    @Scheduled(cron = "0 0 6-20/2 * * ?", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "2h", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     @Transactional
-    public void wissenBot() {
+    public void scheduleWissenBot() {
+        createExecutionJob("wissenBot");
+    }
 
-        try {
-            // Berechne eine zufällige Verzögerung in Sekunden (0 bis 7199 Sekunden).
-            // 2 Stunden = 120 Minuten = 7200 Sekunden.
-            long randomDelayInSeconds = ThreadLocalRandom.current().nextLong(7200);
+    @Scheduled(every = "2h", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Transactional
+    public void scheduleTriggerBot() {
+        createExecutionJob("triggerBot");
+    }
 
-            System.out.println(
-                    "Scheduler-Prozess gestartet um " + LocalTime.now() +
-                            ". Warte für " + randomDelayInSeconds + " Sekunden."
-            );
+    private void createExecutionJob(String schedulerName) {
+        // Check if an uncompleted job for this scheduler already exists.
+        long existingJobs = ExecutionJob.count("schedulerName = ?1 and completed = false", schedulerName);
+        if (existingJobs > 0) {
+            LOG.infof("Job for scheduler '%s' already exists. Skipping creation.", schedulerName);
+            return;
+        }
 
-            // Lege den Thread für die zufällige Zeit schlafen.
-            TimeUnit.SECONDS.sleep(randomDelayInSeconds);
+        long randomDelayInSeconds = ThreadLocalRandom.current().nextLong(7200);
+        LocalDateTime executionTime = LocalDateTime.now().plusSeconds(randomDelayInSeconds);
 
-            // Nach der Wartezeit wird die eigentliche Logik ausgeführt.
-            System.out.println("Führe die Bot-Logik aus um " + LocalTime.now());
+        ExecutionJob job = new ExecutionJob();
+        job.schedulerName = schedulerName;
+        job.executionTime = executionTime;
+        job.completed = false;
+        job.persist();
 
+        LOG.infof("Scheduled new job '%s' to run at %s", schedulerName, executionTime);
+    }
 
+    @Scheduled(cron = "0/10 * * * * ?", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Transactional
+    public void processExecutionJobs() {
+        LOG.debug("Checking for pending execution jobs...");
+        List<ExecutionJob> pendingJobs = ExecutionJob.find(
+                "completed = false AND executionTime <= ?1",
+                LocalDateTime.now()
+        ).list();
 
-            LOG.info("🤖 Bot Scheduler triggered. Looking for a new post to comment on...");
+        if (pendingJobs.isEmpty()) {
+            LOG.debug("No pending jobs found.");
+            return;
+        }
 
-            final List<ThemenEntity> list = ThemenEntity.findAll().<ThemenEntity>stream().filter(themenEntity -> themenEntity.getLastPost() == null || themenEntity.getLastPost().isBefore(LocalDate.now().minusDays(15))).toList();
+        LOG.infof("Found %d pending jobs to execute.", pendingJobs.size());
 
-            if(list.isEmpty()) {
-                LOG.info("No new posts found for Viki to comment on. Will try again later.");
-                return;
+        for (ExecutionJob job : pendingJobs) {
+            try {
+                LOG.infof("Executing job: %s (ID: %d)", job.schedulerName, job.id);
+                if ("wissenBot".equals(job.schedulerName)) {
+                    executeWissenBotLogic();
+                } else if ("triggerBot".equals(job.schedulerName)) {
+                    executeTriggerBotLogic();
+                }
+                job.completed = true;
+                job.persist();
+                LOG.infof("Successfully executed and marked job as completed: %s (ID: %d)", job.schedulerName, job.id);
+            } catch (Exception e) {
+                LOG.errorf(e, "Error executing job: %s (ID: %d)", job.schedulerName, job.id);
+                // Optionally, handle failed jobs (e.g., retry logic, marking as failed)
             }
-            final int nextIndex = new Random().nextInt(list.size());
-            final ThemenEntity themenEntity = list.get(nextIndex);
-
-
-
-            LOG.infof("Found a post to comment on with ID: %s", themenEntity.getThema());
-
-            themenEntity.setLastPost(LocalDate.now());
-
-
-            // 3. Call our AI service to generate Viki's response.
-            VikiResponse vikiResponse = vikiAiService.generatePostContent(themenEntity.getThema().trim());
-
-            if (vikiResponse == null) {
-                LOG.error("Failed to generate content from VikiAiService. The original post will not be marked as commented.");
-                return;
-            }
-
-            // 4. Log the generated content.
-            LOG.infof("🎉 Successfully generated a comment from Viki!");
-            LOG.infof("   Content: %s", vikiResponse.content());
-            LOG.infof("   Hashtags: %s", vikiResponse.hashTags());
-
-
-            // 6. Broadcast the new post to all subscribers using the notification service.
-            String hashtags = String.join(" ", vikiResponse.hashTags()); // Format hashtags for user-facing message
-            String broadcastMessage = String.format("%s\n\n%s", vikiResponse.content(), hashtags);
-
-            LOG.infof("Ein neuer Beitrag wurde von Viki erstellt: %s", broadcastMessage);
-            telegramNotificationService.broadcastMessage(broadcastMessage);
-        } catch (InterruptedException e) {
-            // Gute Praxis: Den Interrupt-Status wiederherstellen.
-            Thread.currentThread().interrupt();
-            LOG.error("Der Scheduler-Thread wurde unterbrochen.", e);
         }
     }
 
 
-    /**
-     * This method is executed automatically by the scheduler.
-     * It finds the most relevant, uncommented post and generates a response from Viki.
-     * The cron expression "0 0/15 * * * ?" means "every 15 minutes".
-     */
-    @Scheduled(cron = "0 0 7-19/2 * * ?", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
-    @Transactional
-    public void triggerBot() {
-        try {
-            // Berechne eine zufällige Verzögerung in Sekunden (0 bis 7199 Sekunden).
-            // 2 Stunden = 120 Minuten = 7200 Sekunden.
-            long randomDelayInSeconds = ThreadLocalRandom.current().nextLong(7200);
+    private void executeWissenBotLogic() {
+        LOG.info("🤖 Executing wissenBot logic...");
 
-            System.out.println(
-                    "Scheduler-Prozess gestartet um " + LocalTime.now() +
-                            ". Warte für " + randomDelayInSeconds + " Sekunden."
-            );
+        final List<ThemenEntity> list = ThemenEntity.findAll().<ThemenEntity>stream().filter(themenEntity -> themenEntity.getLastPost() == null || themenEntity.getLastPost().isBefore(LocalDate.now().minusDays(15))).toList();
 
-            // Lege den Thread für die zufällige Zeit schlafen.
-            TimeUnit.SECONDS.sleep(randomDelayInSeconds);
+        if(list.isEmpty()) {
+            LOG.info("No new posts found for Viki to comment on. Will try again later.");
+            return;
+        }
+        final int nextIndex = new Random().nextInt(list.size());
+        final ThemenEntity themenEntity = list.get(nextIndex);
 
-            // Nach der Wartezeit wird die eigentliche Logik ausgeführt.
-            System.out.println("Führe die Bot-Logik aus um " + LocalTime.now());
+        LOG.infof("Found a post to comment on with ID: %s", themenEntity.getThema());
 
+        themenEntity.setLastPost(LocalDate.now());
 
+        VikiResponse vikiResponse = vikiAiService.generatePostContent(themenEntity.getThema().trim());
 
-            LOG.info("🤖 Bot Scheduler triggered. Looking for a new post to comment on...");
+        if (vikiResponse == null) {
+            LOG.error("Failed to generate content from VikiAiService. The original post will not be marked as commented.");
+            return;
+        }
 
-            // 1. Find the best post that Viki hasn't commented on yet.
-            PublicMastodonPostEntity postToComment = PublicMastodonPostEntity.find(
-                    "vikiCommented = false and cosDistance is not null",
-                    Sort.by("cosDistance").descending()
-            ).firstResult();
+        LOG.infof("🎉 Successfully generated a comment from Viki!");
+        LOG.infof("   Content: %s", vikiResponse.content());
+        LOG.infof("   Hashtags: %s", vikiResponse.hashTags());
 
-            if (postToComment == null) {
-                LOG.info("No new posts found for Viki to comment on. Will try again later.");
-                return;
-            }
+        String hashtags = String.join(" ", vikiResponse.hashTags());
+        String broadcastMessage = String.format("%s\n\n%s", vikiResponse.content(), hashtags);
 
-            LOG.infof("Found a post to comment on with ID: %s and cosDistance: %f",
-                    postToComment.getMastodonId(), postToComment.getCosDistance());
+        LOG.infof("Ein neuer Beitrag wurde von Viki erstellt: %s", broadcastMessage);
+        telegramNotificationService.broadcastMessage(broadcastMessage);
+    }
 
-            // 2. Create the topic for the AI from the post's content.
-            String topic = (postToComment.getPostText() != null ? postToComment.getPostText() : "") +
-                    "\n" +
-                    (postToComment.getUrlText() != null ? postToComment.getUrlText() : "");
+    private void executeTriggerBotLogic() {
+        LOG.info("🤖 Executing triggerBot logic...");
 
-            if (topic.isBlank()) {
-                LOG.warnf("Post with ID %s has no text content. Marking as commented to avoid re-processing.", postToComment.getMastodonId());
-                postToComment.setVikiCommented(true);
-                postToComment.persist();
-                return;
-            }
+        PublicMastodonPostEntity postToComment = PublicMastodonPostEntity.find(
+                "vikiCommented = false and cosDistance is not null",
+                Sort.by("cosDistance").descending()
+        ).firstResult();
 
-            // 3. Call our AI service to generate Viki's response.
-            VikiResponse vikiResponse = vikiAiService.generatePostContent(topic.trim());
+        if (postToComment == null) {
+            LOG.info("No new posts found for Viki to comment on. Will try again later.");
+            return;
+        }
 
-            if (vikiResponse == null) {
-                LOG.error("Failed to generate content from VikiAiService. The original post will not be marked as commented.");
-                return;
-            }
+        LOG.infof("Found a post to comment on with ID: %s and cosDistance: %f",
+                postToComment.getMastodonId(), postToComment.getCosDistance());
 
-            // 4. Log the generated content.
-            LOG.infof("🎉 Successfully generated a comment from Viki!");
-            LOG.infof("   Content: %s", vikiResponse.content());
-            LOG.infof("   Hashtags: %s", vikiResponse.hashTags());
+        String topic = (postToComment.getPostText() != null ? postToComment.getPostText() : "") +
+                "\n" +
+                (postToComment.getUrlText() != null ? postToComment.getUrlText() : "");
 
-            // 5. Mark the post as commented to prevent it from being processed again.
+        if (topic.isBlank()) {
+            LOG.warnf("Post with ID %s has no text content. Marking as commented to avoid re-processing.", postToComment.getMastodonId());
             postToComment.setVikiCommented(true);
             postToComment.persist();
-            LOG.infof("Post with ID %s has been marked as 'commented'.", postToComment.getMastodonId());
-
-            // 6. Broadcast the new post to all subscribers using the notification service.
-            String hashtags = String.join(" ", vikiResponse.hashTags()); // Format hashtags for user-facing message
-            String broadcastMessage = String.format("%s\n\n%s", vikiResponse.content(), hashtags);
-
-            LOG.infof("Ein neuer Beitrag wurde von Viki erstellt: %s", broadcastMessage);
-            telegramNotificationService.broadcastMessage(broadcastMessage);
-        } catch (InterruptedException e) {
-            // Gute Praxis: Den Interrupt-Status wiederherstellen.
-            Thread.currentThread().interrupt();
-            LOG.error("Der Scheduler-Thread wurde unterbrochen.", e);
+            return;
         }
+
+        VikiResponse vikiResponse = vikiAiService.generatePostContent(topic.trim());
+
+        if (vikiResponse == null) {
+            LOG.error("Failed to generate content from VikiAiService. The original post will not be marked as commented.");
+            return;
+        }
+
+        LOG.infof("🎉 Successfully generated a comment from Viki!");
+        LOG.infof("   Content: %s", vikiResponse.content());
+        LOG.infof("   Hashtags: %s", vikiResponse.hashTags());
+
+        postToComment.setVikiCommented(true);
+        postToComment.persist();
+        LOG.infof("Post with ID %s has been marked as 'commented'.", postToComment.getMastodonId());
+
+        String hashtags = String.join(" ", vikiResponse.hashTags());
+        String broadcastMessage = String.format("%s\n\n%s", vikiResponse.content(), hashtags);
+
+        LOG.infof("Ein neuer Beitrag wurde von Viki erstellt: %s", broadcastMessage);
+        telegramNotificationService.broadcastMessage(broadcastMessage);
     }
 }
