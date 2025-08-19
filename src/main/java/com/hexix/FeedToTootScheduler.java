@@ -299,7 +299,7 @@ public class FeedToTootScheduler {
 
 
 
-    @Scheduled(every = "600s", delay = 30, delayUnit = TimeUnit.SECONDS,  concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "10s", delay = 30, delayUnit = TimeUnit.SECONDS,  concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void fetchPublicText() {
         final List<PublicMastodonPostEntity> posts = PublicMastodonPostEntity.findAllNoEmbeddingAndText();
 
@@ -318,17 +318,23 @@ public class FeedToTootScheduler {
     void readStatusAndLinkText(final PublicMastodonPostEntity p) {
         final PublicMastodonPostEntity post = PublicMastodonPostEntity.findById(p.id);
         try {
-            final MastodonDtos.MastodonStatus status = mastodonClient.getStatus(post.getMastodonId(), "Bearer " + accessToken);
-            post.setPostText(Jsoup.parse(status.content()).text());
+            if(p.getPostText() == null){
+                final MastodonDtos.MastodonStatus status = mastodonClient.getStatus(post.getMastodonId(), "Bearer " + accessToken);
+                post.setPostText(Jsoup.parse(status.content()).text());
+            }
 
-            if (post.getPostText() != null && post.getPostText().isBlank()) {
-                post.setPostText(null);
+
+            if (post.getPostText() == null || post.getPostText().isBlank()) {
+                if(post.getNegativeWeight() != null) {
+                    post.delete();
+                    return;
+                }
             }
 
             final Boolean noURL = post.isNoURL();
             if (noURL == null || !noURL) {
 
-                final List<String> urls = MastodonDtos.MastodonStatus.extractLinksFromHtml(status.content());
+                final List<String> urls = MastodonDtos.MastodonStatus.extractLinksFromHtml(post.getPostText());
 
                 if (!urls.isEmpty()) {
                     StringJoiner sj = new StringJoiner("\n\n");
@@ -346,7 +352,6 @@ public class FeedToTootScheduler {
                 }
             }
         }catch (Exception e){
-            post.setPostText(null);
             post.setUrlText(null);
         }
 
