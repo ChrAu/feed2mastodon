@@ -202,7 +202,7 @@ create index if not exists  idx_promptentity_createdat
 
 
 -- auto-generated definition
-create table  if not exists themenentity
+create table themenentity
 (
     id       bigint not null
         primary key,
@@ -212,7 +212,8 @@ create table  if not exists themenentity
             unique,
     uuid     varchar(255)
         constraint idx_themenentity_uuid
-            unique
+            unique,
+    last     date
 );
 
 
