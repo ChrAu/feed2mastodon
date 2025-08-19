@@ -202,7 +202,7 @@ create index if not exists  idx_promptentity_createdat
 
 
 -- auto-generated definition
-create table themenentity
+create table if not exists themenentity
 (
     id       bigint not null
         primary key,
