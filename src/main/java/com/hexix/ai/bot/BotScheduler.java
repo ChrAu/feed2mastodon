@@ -60,7 +60,7 @@ public class BotScheduler {
         LOG.infof("Scheduled new job '%s' to run at %s", schedulerName, executionTime);
     }
 
-    @Scheduled(cron = "0/10 * * * * ?", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(cron = "0/10 * 6-20 * * ?", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     @Transactional
     public void processExecutionJobs() {
         LOG.debug("Checking for pending execution jobs...");
