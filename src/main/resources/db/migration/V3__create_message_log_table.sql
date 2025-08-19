@@ -1,5 +1,6 @@
--- Create the message log table to track all outgoing broadcast messages
-CREATE TABLE telegram_message_log (
+-- V2: Create the message log table to track all outgoing broadcast messages
+
+CREATE TABLE  if not exists telegram_message_log (
     id BIGINT NOT NULL,
     subscriber_id BIGINT NOT NULL,
     message_content VARCHAR(4096),
@@ -12,5 +13,4 @@ CREATE TABLE telegram_message_log (
         REFERENCES telegram_subscribers(id)
 );
 
--- Create a sequence for the primary key of the message log table, which is standard for Panache entities
-CREATE SEQUENCE telegram_message_log_seq START 1 INCREMENT 50;
+CREATE SEQUENCE  if not exists telegram_message_log_seq START 1 INCREMENT 50;
