@@ -242,6 +242,9 @@ public class FeedToTootScheduler {
 
                 final List<String> texte = StarredMastodonPosts.splitByLength(urlText, 500);
                 for (String subText : texte) {
+                    if(subText.isBlank()){
+                        continue;
+                    }
                     final EmbeddingRequest requestUrl = new EmbeddingRequest(localModel, List.of(subText), false);
 
 
@@ -278,7 +281,6 @@ public class FeedToTootScheduler {
                     calcRequests++;
                     vectors.add(postResponse.embeddings().getFirst().stream().mapToDouble(Double::doubleValue).toArray());
                 }
-
                 final double[] profileVector = VektorUtil.createProfileVector(vectors);
 
                 savePublicVector(mastodonId, profileVector);
