@@ -417,10 +417,15 @@ public class FeedToTootScheduler {
         for (PublicMastodonPostEntity post : posts) {
             final double[] embeddingVector = post.getEmbeddingVector();
 
-            final double cosineSimilarity = VektorUtil.getCosineSimilarity(profileVector, embeddingVector);
-            post.setCosDistance(cosineSimilarity);
+            try{
 
-            if (post.getCosDistance() > minCosDistance) {
+
+                final double cosineSimilarity = VektorUtil.getCosineSimilarity(profileVector, embeddingVector);
+                post.setCosDistance(cosineSimilarity);
+            }catch (IllegalArgumentException e){
+               LOG.error("Fehler mit PublicMastodonPostEntity: " + post.getMastodonId(), e);
+            }
+            if (post.getCosDistance() != null && post.getCosDistance() > minCosDistance) {
                 if (boostDisable != null && !boostDisable) {
                     try {
                         final MastodonDtos.MastodonStatus mastodonStatus = mastodonClient.boostStatus(post.getMastodonId(), new MastodonDtos.BoostStatusRequest(MastodonDtos.MastodonStatus.StatusVisibility.PRIVATE), "Bearer " + accessToken);
