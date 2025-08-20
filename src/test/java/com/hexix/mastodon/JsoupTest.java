@@ -73,7 +73,6 @@ public class JsoupTest {
 
     }
 
-    @Disabled
     @Test
     public void bw(){
         final String article = JsoupParser.getArticle("https://www.baden-wuerttemberg.de/de/service/presse/pressemitteilung/pid/land-startet-neues-informationssystem-zum-waldbrandmanagement");
