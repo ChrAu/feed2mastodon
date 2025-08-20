@@ -362,11 +362,6 @@ public class FeedToTootScheduler {
             post.setUrlText(null);
         }
 
-        if(post.getPostText() == null && post.getUrlText() == null){
-            if(post.getNegativeWeight() != null) {
-                post.delete();
-            }
-        }
     }
 
     @Transactional
