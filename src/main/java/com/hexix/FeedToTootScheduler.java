@@ -310,11 +310,20 @@ public class FeedToTootScheduler {
     void fetchPublicText() {
         final List<PublicMastodonPostEntity> posts = PublicMastodonPostEntity.findAllNoEmbeddingAndText();
 
+        if(posts.isEmpty()){
+            return;
+        }
+        final List<MastodonDtos.MastodonStatus> statuses = mastodonClient.getStatuses(posts.stream().map(PublicMastodonPostEntity::getMastodonId).toList(), "Bearer " + accessToken);
+        Map<String, MastodonDtos.MastodonStatus> statusMap = new HashMap<>();
+        for (MastodonDtos.MastodonStatus status : statuses) {
+            statusMap.put(status.id(), status);
+        }
+
 
         for (PublicMastodonPostEntity post : posts) {
             try {
 
-                readStatusAndLinkText(post);
+                readStatusAndLinkText(post, statusMap.get(post.getMastodonId()));
             } catch (Exception e) {
                 LOG.errorf(e, "Fehler beim bearbeiten des Posts mit Id: %s", post.getMastodonId());
             }
@@ -322,12 +331,11 @@ public class FeedToTootScheduler {
 
     }
     @Transactional
-    void readStatusAndLinkText(final PublicMastodonPostEntity p) {
+    void readStatusAndLinkText(final PublicMastodonPostEntity p, final MastodonDtos.MastodonStatus mastodonStatus) {
         final PublicMastodonPostEntity post = PublicMastodonPostEntity.findById(p.id);
         try {
-            if(p.getPostText() == null){
-                final MastodonDtos.MastodonStatus status = mastodonClient.getStatus(post.getMastodonId(), "Bearer " + accessToken);
-                post.setPostText(Jsoup.parse(status.content()).text());
+            if(p.getPostText() == null && mastodonStatus != null){
+                post.setPostText(Jsoup.parse(mastodonStatus.content()).text());
             }
 
 
