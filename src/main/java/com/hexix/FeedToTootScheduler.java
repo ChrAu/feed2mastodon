@@ -262,7 +262,10 @@ public class FeedToTootScheduler {
         int calcRequests = 0;
         final Map<String, List<EmbeddingRequest>> requests = generateOllamaRequest();
 
-        LOG.debugf("Generiere für folgende Einträge Vektoren: %s", requests.keySet());
+        if(!requests.isEmpty()){
+            LOG.infof("Generiere für folgende Einträge Vektoren: %s", requests.keySet());
+        }
+
 
         for (Map.Entry<String, List<EmbeddingRequest>> entry : requests.entrySet()) {
             try {
