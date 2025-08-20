@@ -11,7 +11,7 @@ public class TelegramRouteBuilder extends RouteBuilder {
 
     static Logger LOG = Logger.getLogger(TelegramRouteBuilder.class.getName());
 
-    @ConfigProperty(name = "telegram.bot.token", defaultValue = "emptyStringWithLengthGreater10")
+    @ConfigProperty(name = "telegram.bot.token", defaultValue = "YOUR_TELEGRAM_BOT_TOKEN_HERE")
     String telegramBotToken;
 
     @Inject

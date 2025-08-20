@@ -16,7 +16,7 @@ import java.util.Map;
 @ApplicationScoped
 public class BotHealthCheck {
 
-    @ConfigProperty(name = "telegram.bot.token", defaultValue = "empty")
+    @ConfigProperty(name = "telegram.bot.token", defaultValue = "YOUR_TELEGRAM_BOT_TOKEN_HERE")
     String telegramBotToken;
 
     @GET
