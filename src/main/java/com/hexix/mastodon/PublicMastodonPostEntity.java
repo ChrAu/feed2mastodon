@@ -187,7 +187,7 @@ public class PublicMastodonPostEntity extends PanacheEntity {
      */
 
     public static List<PublicMastodonPostEntity> findAllNoEmbeddingAndText() {
-        return find("embeddingVectorString is null").<PublicMastodonPostEntity>stream().limit(30).toList();
+        return find("embeddingVectorString is null and postText is null and urlText is null").<PublicMastodonPostEntity>stream().limit(30).toList();
     }
 
 
