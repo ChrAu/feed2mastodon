@@ -329,7 +329,7 @@ public class FeedToTootScheduler {
             }
 
 
-            if (post.getPostText() == null || post.getPostText().isBlank()) {
+            if (post.getPostText() == null || post.getPostText().isBlank() || post.getPostText().isEmpty()) {
                 if(post.getNegativeWeight() != null) {
                     post.delete();
                     return;
