@@ -281,10 +281,12 @@ public class FeedToTootScheduler {
                     calcRequests++;
                     vectors.add(postResponse.embeddings().getFirst().stream().mapToDouble(Double::doubleValue).toArray());
                 }
+
                 final double[] profileVector = VektorUtil.createProfileVector(vectors);
 
                 savePublicVector(mastodonId, profileVector);
             } catch (Exception e) {
+
                 LOG.errorf(e, "Fehler beim Vektor generieren für ID: %s", entry.getKey());
             }
 
@@ -330,7 +332,7 @@ public class FeedToTootScheduler {
 
 
             if (post.getPostText() == null || post.getPostText().isBlank() || post.getPostText().isEmpty()) {
-                if(post.getNegativeWeight() != null) {
+                if(post.getNegativeWeight() == null) {
                     post.delete();
                     return;
                 }
