@@ -377,9 +377,11 @@ public class FeedToTootScheduler {
     @Scheduled(every = "10s",delay = 30, delayUnit = TimeUnit.SECONDS,  concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcRecommendations() {
 
+        final boolean embeddingsAllCalced = Embedding.findNextLocalEmbeddings().isEmpty();
+
         List<PublicMastodonPostEntity> posts = PublicMastodonPostEntity.findAllComparable();
 
-        if(posts.isEmpty()){
+        if(posts.isEmpty() && !embeddingsAllCalced){
             return;
         }
 
