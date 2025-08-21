@@ -240,7 +240,7 @@ public class FeedToTootScheduler {
             final String urlText = post.getUrlText();
             if (urlText != null && !urlText.isBlank()) {
 
-                final List<String> texte = StarredMastodonPosts.splitByLength(urlText, 500);
+                final List<String> texte = StarredMastodonPosts.splitByLength(urlText, "bge-m3:567m".equalsIgnoreCase(localModel) ? 8000 : 500);
                 for (String subText : texte) {
                     if(subText.isBlank()){
                         continue;

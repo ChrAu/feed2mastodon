@@ -98,7 +98,7 @@ public class StarredMastodonPosts {
 
         for (Embedding embedding : nextEmbeddings) {
 
-            final List<String> splitText = splitByLength(embedding.getText(), 500);
+            final List<String> splitText = splitByLength(embedding.getText(), "bge-m3:567m".equalsIgnoreCase(localModel) ? 8000 : 500);
 
             List<double[]> responses = new ArrayList<>();
 
