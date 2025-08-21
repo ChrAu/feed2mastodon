@@ -29,17 +29,13 @@ public class BotScheduler {
     TelegramNotificationService telegramNotificationService;
 
     @Scheduled(every = "2h", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
-    @Transactional
     public void scheduleWissenBot() {
         createExecutionJob("wissenBot");
-    }
-
-    @Scheduled(every = "2h", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
-    @Transactional
-    public void scheduleTriggerBot() {
         createExecutionJob("triggerBot");
     }
 
+
+    @Transactional
     private void createExecutionJob(String schedulerName) {
         // Check if an uncompleted job for this scheduler already exists.
         long existingJobs = ExecutionJob.count("schedulerName = ?1 and completed = false", schedulerName);
