@@ -238,7 +238,7 @@ Hier ist eine typische Einteilung, die Sie als Ausgangspunkt verwenden können:
             for (Embedding embedding : embeddings) {
 
                 final String text = embedding.getText();
-                final List<String> texte = StarredMastodonPosts.splitByLength(text, 500);
+                final List<String> texte = StarredMastodonPosts.splitByLength(text, "bge-m3:567m".equalsIgnoreCase(model) ? 8000 : 500);
 
                 for (String values : texte) {
                     final EmbeddingResponse response1 = ollamaRestClient.generateEmbeddings(new EmbeddingRequest(model, List.of(values), false));
