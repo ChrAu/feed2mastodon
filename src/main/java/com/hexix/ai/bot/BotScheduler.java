@@ -36,7 +36,7 @@ public class BotScheduler {
 
 
     @Transactional
-    private void createExecutionJob(String schedulerName) {
+    void createExecutionJob(String schedulerName) {
         // Check if an uncompleted job for this scheduler already exists.
         long existingJobs = ExecutionJob.count("schedulerName = ?1 and completed = false", schedulerName);
         if (existingJobs > 0) {
