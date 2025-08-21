@@ -381,7 +381,7 @@ public class FeedToTootScheduler {
 
         List<PublicMastodonPostEntity> posts = PublicMastodonPostEntity.findAllComparable();
 
-        if(posts.isEmpty() && embeddingsAllCalced){
+        if(posts.isEmpty() && !embeddingsAllCalced){
             return;
         }
 
