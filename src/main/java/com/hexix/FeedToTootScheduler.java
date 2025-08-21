@@ -262,6 +262,10 @@ public class FeedToTootScheduler {
 
     @Scheduled(every = "10s", delay = 30, delayUnit = TimeUnit.SECONDS,  concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcPublicVectors() {
+        if(!Embedding.findNextLocalEmbeddings().isEmpty()){
+            return;
+        }
+
         int calcRequests = 0;
         final Map<String, List<EmbeddingRequest>> requests = generateOllamaRequest();
 
