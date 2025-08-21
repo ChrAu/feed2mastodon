@@ -117,6 +117,9 @@ public class Embedding extends PanacheEntity {
     @Column(name = "status_original_url", columnDefinition = "TEXT")
     private String statusOriginalUrl;
 
+    @Column(name = "local_embedding_model", columnDefinition = "TEXT")
+    private String localEmbeddingModel;
+
     public static Embedding findByUUID(final String uuid) {
         return find("uuid = ?1", uuid).firstResult();
     }
@@ -325,5 +328,13 @@ public class Embedding extends PanacheEntity {
                 ", negativeWeight=" + negativeWeight +
                 ", statusOriginalUrl='" + statusOriginalUrl +
                 '}';
+    }
+
+    public void setLocalEmbeddingModel(final String localEmbeddingModel) {
+        this.localEmbeddingModel = localEmbeddingModel;
+    }
+
+    public String getLocalEmbeddingModel() {
+        return localEmbeddingModel;
     }
 }
