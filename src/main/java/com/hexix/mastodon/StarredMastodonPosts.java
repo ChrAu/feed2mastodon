@@ -128,6 +128,8 @@ public class StarredMastodonPosts {
         final Embedding embedding = Embedding.findById(embeddingId);
 
         embedding.setLocalEmbedding(profileVector);
+
+        embedding.setLocalEmbeddingModel(localModel);
     }
 
 

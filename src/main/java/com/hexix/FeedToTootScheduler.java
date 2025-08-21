@@ -301,6 +301,7 @@ public class FeedToTootScheduler {
     void savePublicVector(final String mastodonId, final double[] profileVector) {
         final PublicMastodonPostEntity mastodonPost = PublicMastodonPostEntity.<PublicMastodonPostEntity>find("mastodonId = ?1", mastodonId).firstResult();
         mastodonPost.setEmbeddingVector(profileVector);
+        mastodonPost.setEmbeddingModel(localModel);
         LOG.debugf("Speichere Vektor für Id: %s", mastodonPost.getMastodonId());
     }
 

@@ -50,6 +50,8 @@ public class PublicMastodonPostEntity extends PanacheEntity {
     @Column(name = "viki_commented")
     private Boolean vikiCommented = false;
 
+    @Column(name = "embedding_model", columnDefinition = "TEXT")
+    private String localModel;
 
 
     public String getMastodonId() {
@@ -203,5 +205,13 @@ public class PublicMastodonPostEntity extends PanacheEntity {
 
     public Boolean isNoURL() {
         return noURL;
+    }
+
+    public void setEmbeddingModel(final String localModel) {
+        this.localModel = localModel;
+    }
+
+    public String getEmbeddingModel() {
+        return localModel;
     }
 }
