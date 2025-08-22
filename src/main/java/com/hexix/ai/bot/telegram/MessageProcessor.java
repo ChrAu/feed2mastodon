@@ -179,8 +179,19 @@ public class MessageProcessor implements Processor {
                 final MastodonDtos.MastodonSearchResult search = mastodonClient.search("Bearer " + accessToken, String.valueOf(currentState.data), true);
                 final Optional<MastodonDtos.MastodonStatus> status = search.statuses().stream().findFirst();
 
+                LOG.infof("Status gefunden: %s", status.isPresent());
+
                 if(status.isPresent()){
                     unBoost(status.get().id(), weight, false);
+                } else {
+                    final String url = String.valueOf(currentState.data);
+
+                    final String[] urlSplit = url.split("/");
+
+                    final String statusId = urlSplit[urlSplit.length - 1];
+
+                    unBoost(statusId, weight, false);
+
                 }
             }catch (Exception e){
                 responseMessage = "Es ist ein Fehler aufgetreten, die URL wird nicht als negativ bewertet";

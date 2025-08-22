@@ -262,6 +262,10 @@ public class FeedToTootScheduler {
 
     @Scheduled(every = "10s", delay = 30, delayUnit = TimeUnit.SECONDS,  concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcPublicVectors() {
+        if(!Embedding.findNextLocalEmbeddings().isEmpty()){
+            return;
+        }
+
         int calcRequests = 0;
         final Map<String, List<EmbeddingRequest>> requests = generateOllamaRequest();
 
@@ -301,6 +305,7 @@ public class FeedToTootScheduler {
     void savePublicVector(final String mastodonId, final double[] profileVector) {
         final PublicMastodonPostEntity mastodonPost = PublicMastodonPostEntity.<PublicMastodonPostEntity>find("mastodonId = ?1", mastodonId).firstResult();
         mastodonPost.setEmbeddingVector(profileVector);
+        mastodonPost.setEmbeddingModel(localModel);
         LOG.debugf("Speichere Vektor für Id: %s", mastodonPost.getMastodonId());
     }
 
@@ -376,9 +381,11 @@ public class FeedToTootScheduler {
     @Scheduled(every = "10s",delay = 30, delayUnit = TimeUnit.SECONDS,  concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcRecommendations() {
 
+        final boolean embeddingsAllCalced = Embedding.findNextLocalEmbeddings().isEmpty();
+
         List<PublicMastodonPostEntity> posts = PublicMastodonPostEntity.findAllComparable();
 
-        if(posts.isEmpty()){
+        if(posts.isEmpty() || !embeddingsAllCalced){
             return;
         }
 
