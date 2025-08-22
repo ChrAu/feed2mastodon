@@ -107,7 +107,7 @@ public class BotScheduler {
 
         themenEntity.setLastPost(LocalDate.now());
 
-        VikiResponse vikiResponse = vikiAiService.generatePostContent(themenEntity.getThema().trim());
+        VikiResponse vikiResponse = vikiAiService.generatePostContent(String.format("Fakten über %s", themenEntity.getThema().trim()));
 
         if (vikiResponse == null) {
             LOG.error("Failed to generate content from VikiAiService. The original post will not be marked as commented.");
@@ -152,7 +152,7 @@ public class BotScheduler {
             return;
         }
 
-        VikiResponse vikiResponse = vikiAiService.generatePostContent(topic.trim());
+        VikiResponse vikiResponse = vikiAiService.generatePostContent(String.format("Gibt einen Kommentar zur '%s'", topic.trim()));
 
         if (vikiResponse == null) {
             LOG.error("Failed to generate content from VikiAiService. The original post will not be marked as commented.");
