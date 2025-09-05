@@ -25,7 +25,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
 import org.jsoup.Jsoup;
-
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -79,10 +78,10 @@ public class FeedToTootScheduler {
     OllamaRestClient ollamaRestClient;
     @Inject
     GenerateEmbeddingTextInput generateEmbeddingTextInput;
-  
+
   @Inject
   UrlShortenerService urlShortenerService;
-  
+
     @Inject
     PublicMastodonPostRepository publicMastodonPostRepository;
 
