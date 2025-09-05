@@ -16,12 +16,12 @@ import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 import java.time.ZonedDateTime;
 import java.util.List;
 
-@Path("/api/v1")
+@Path("/api")
 @RegisterRestClient
 public interface MastodonClient {
 
     @POST
-    @Path("/statuses")
+    @Path("/v1/statuses")
     @Produces(MediaType.APPLICATION_JSON)
     MastodonDtos.MastodonStatus postStatus(@HeaderParam("Authorization") String accessToken, MastodonDtos.StatusPayload status);
 
@@ -32,7 +32,7 @@ public interface MastodonClient {
      * @return Ein MastodonAccount-Objekt.
      */
     @GET
-    @Path("/accounts/verify_credentials")
+    @Path("/v1/accounts/verify_credentials")
     MastodonDtos.MastodonAccount verifyCredentials(@HeaderParam("Authorization") String accessToken);
 
     /**
@@ -43,7 +43,7 @@ public interface MastodonClient {
      * @return Eine Liste von MastodonStatus-Objekten.
      */
     @GET
-    @Path("/accounts/{id}/statuses")
+    @Path("/v1/accounts/{id}/statuses")
     List<MastodonDtos.MastodonStatus> getAccountStatuses(
             @HeaderParam("Authorization") String accessToken,
             @PathParam("id") String accountId,
@@ -57,7 +57,7 @@ public interface MastodonClient {
      * @return Der gelöschte MastodonStatus als Bestätigung.
      */
     @DELETE
-    @Path("/statuses/{id}")
+    @Path("/v1/statuses/{id}")
     MastodonDtos.MastodonStatus deleteStatus(
             @HeaderParam("Authorization") String accessToken,
             @PathParam("id") String statusId
@@ -73,20 +73,27 @@ public interface MastodonClient {
      * @return Das geboostete Status-Objekt.
      */
     @POST
-    @Path("/statuses/{id}/reblog")
+    @Path("/v1/statuses/{id}/reblog")
     MastodonDtos.MastodonStatus boostStatus(@PathParam("id") String id, MastodonDtos.BoostStatusRequest boostStatusRequest, @HeaderParam("Authorization") String authorizationHeader);
 
 
     @POST
-    @Path("/statuses/{id}/unreblog")
+    @Path("/v1/statuses/{id}/unreblog")
     MastodonDtos.MastodonStatus unBoostStatus(@PathParam("id") String id, @HeaderParam("Authorization") String authorizationHeader);
 
 
     @GET
-    @Path("/statuses/{id}")
+    @Path("/v1/statuses/{id}")
     MastodonDtos.MastodonStatus getStatus(@PathParam("id") String id, @HeaderParam("Authorization") String authorizationHeader);
 
     @GET
-    @Path("/statuses/")
+    @Path("/v1/statuses/")
     List<MastodonDtos.MastodonStatus> getStatuses(@QueryParam("id[]") List<String> ids, @HeaderParam("Authorization") String authorizationHeader);
+
+    @GET
+    @Path("/v2/search")
+    MastodonDtos.MastodonSearchResult search(@HeaderParam("Authorization") String accessToken,
+                                       @QueryParam("q") String query,
+                                       @QueryParam("resolve") boolean resolve);
+
 }

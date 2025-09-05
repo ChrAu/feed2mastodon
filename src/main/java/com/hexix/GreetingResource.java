@@ -2,14 +2,20 @@ package com.hexix;
 
 import com.hexix.mastodon.Embedding;
 import com.hexix.mastodon.PublicMastodonPostEntity;
+import com.hexix.mastodon.PublicMastodonPostRepository;
+import com.hexix.mastodon.TextEntity;
+import com.hexix.mastodon.TextEntityRepository;
 import com.hexix.mastodon.api.MastodonDtos;
 import com.hexix.mastodon.resource.MastodonClient;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
@@ -22,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
@@ -36,6 +43,12 @@ public class GreetingResource {
     @Inject
     @RestClient
     MastodonClient mastodonClient;
+
+    @Inject
+    PublicMastodonPostRepository publicMastodonPostRepository;
+
+    @Inject
+    TextEntityRepository textEntityRepository;
 
     @ConfigProperty(name = "mastodon.access.token")
     String accessToken;
@@ -76,27 +89,51 @@ public class GreetingResource {
             // Annahme: JsoupParser.getArticle ist synchron und blockierend.
             // Wenn dies auch asynchron sein sollte, müsste es ebenfalls in ein Uni gewickelt werden.
             final String article = JsoupParser.getArticle(url);
-            sj.add(article            );
+            sj.add(article);
         }
 
 
-        final PublicMastodonPostEntity post = PublicMastodonPostEntity.findByMastodonId(mastodonId);
-        post.setPostText(Jsoup.parse(mastodonStatus.content()).text());
+        final PublicMastodonPostEntity post = publicMastodonPostRepository.findByMastodonId(mastodonId).orElseThrow();
+        final String text = Jsoup.parse(mastodonStatus.content()).text();
+        final TextEntity textEntity = new TextEntity(text);
+        if(textEntity.getText() != null && !textEntity.getText().isBlank()){
+            textEntityRepository.persist(textEntity);
+            post.setPostText(textEntity);
+        }
+
         if(!sj.toString().isBlank()){
-            post.setUrlText(sj.toString());
+            final String urlText = sj.toString();
+            final TextEntity urlTextEntity = new TextEntity(urlText);
+            if(urlTextEntity.getText() != null && !urlTextEntity.getText().isBlank()){
+                textEntityRepository.persist(urlTextEntity);
+                post.setUrlText(urlTextEntity);
+            }
+
         }
     }
 
 
     @Transactional
-    void saveEmbeddingText(String uuid, MastodonDtos.MastodonStatus mastodonStatus) {
+    void saveEmbeddingText(UUID uuid, MastodonDtos.MastodonStatus mastodonStatus) {
         final Embedding embedding = Embedding.findByUUID(uuid);
 
 
         if(embedding.getResource().endsWith("__ONLY_TEXT")){
-            embedding.setText(Jsoup.parse(mastodonStatus.content()).text());
+            final String text = Jsoup.parse(mastodonStatus.content()).text();
+            final TextEntity textEntity = new TextEntity(text);
+            if(textEntity.getText() != null && !textEntity.getText().isBlank()){
+                textEntityRepository.persist(textEntity);
+                embedding.setText(textEntity);
+            }
+
         }else if(embedding.getResource().endsWith("__CARD_URL")){
-            embedding.setText(JsoupParser.getArticle(embedding.getUrl()));
+            final String article = JsoupParser.getArticle(embedding.getUrl());
+            final TextEntity textEntity = new TextEntity(article);
+            if(textEntity.getText() != null && !textEntity.getText().isBlank()){
+                textEntityRepository.persist(textEntity);
+                embedding.setText(textEntity);
+            }
+
         }
     }
 
@@ -105,7 +142,7 @@ public class GreetingResource {
 
 
 
-        final List<PublicMastodonPostEntity[]> listOfPublicMastodonPosts = convertListToArrays(PublicMastodonPostEntity.<PublicMastodonPostEntity>findAll().list(), 20);
+        final List<PublicMastodonPostEntity[]> listOfPublicMastodonPosts = convertListToArrays(publicMastodonPostRepository.findAll(), 20);
 
 
         for (PublicMastodonPostEntity[] publicMastodonPostEntities : listOfPublicMastodonPosts) {
@@ -137,7 +174,7 @@ public class GreetingResource {
     }
 
 
-    private List<Embedding> callEmbeddings(BiConsumer<String, MastodonDtos.MastodonStatus> save){
+    private List<Embedding> callEmbeddings(BiConsumer<UUID, MastodonDtos.MastodonStatus> save){
 
 
 
@@ -145,7 +182,7 @@ public class GreetingResource {
 
 
         for (Embedding[] embeddings : listOfEmbeddings) {
-            Map<String, List<String>> uuidStatusIdMap = new HashMap<>();
+            Map<String, List<UUID>> uuidStatusIdMap = new HashMap<>();
             for (Embedding embedding : embeddings) {
                 uuidStatusIdMap.computeIfAbsent(embedding.getMastodonStatusId(), k -> new ArrayList<>()).add(embedding.getUuid());
             }
@@ -156,9 +193,9 @@ public class GreetingResource {
             final List<MastodonDtos.MastodonStatus> statuses = mastodonClient.getStatuses(array, "Bearer " + accessToken);
 
             for (MastodonDtos.MastodonStatus status : statuses) {
-                final List<String> uuids = uuidStatusIdMap.get(status.id());
+                final List<UUID> uuids = uuidStatusIdMap.get(status.id());
 
-                for (String uuid : uuids) {
+                for (UUID uuid : uuids) {
 
                     save.accept(uuid, status);
                 }
@@ -173,7 +210,7 @@ public class GreetingResource {
     }
 
     @Transactional
-    void saveEmbeddingURL(final String uuid, final MastodonDtos.MastodonStatus status) {
+    void saveEmbeddingURL(final UUID uuid, final MastodonDtos.MastodonStatus status) {
         Embedding.findByUUID(uuid).setStatusOriginalUrl(status.url());
     }
 
@@ -201,6 +238,37 @@ public class GreetingResource {
         }
         return result;
     }
+
+    @POST
+    @Path("/negativ/")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional
+    public Response receiveIdFromBody(IdPayload idPayload) {
+
+        final PublicMastodonPostEntity post = publicMastodonPostRepository.findByMastodonId(idPayload.getId()).orElseThrow();
+        post.setNegativeWeight(1.0);
+
+        mastodonClient.unBoostStatus(idPayload.getId(), "Bearer " + accessToken);
+
+        return Response.ok().build();
+    }
+
+    /**
+     * Eine Hilfsklasse (POJO), um den JSON-Body zu binden.
+     * Jackson oder JSON-B mappen den eingehenden JSON automatisch auf dieses Objekt.
+     */
+    public static class IdPayload {
+        private String id;
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+    }
+
 
 //    @GET
 //    @Path("/delete")

@@ -30,6 +30,11 @@ public class MastodonDtos {
 
     public record DirectStatus(String id, boolean unread, List<MastodonAccount> accounts, @JsonProperty("last_status") MastodonStatus lastStatus){}
 
+    public record MastodonSearchResult(
+            List<MastodonAccount> accounts,
+            List<MastodonStatus> statuses
+    ) {}
+
     // Record, um einen einzelnen empfangenen Status abzubilden
     // @JsonProperty wird verwendet, um JSON-Felder (snake_case) auf Java-Felder (camelCase) zu mappen.
     public record MastodonStatus(
@@ -81,7 +86,7 @@ public class MastodonDtos {
         public static List<String> extractLinksFromHtml(String htmlContent) {
             List<String> links = new ArrayList<>();
             if (htmlContent == null || htmlContent.trim().isEmpty()) {
-                System.err.println("Fehler: HTML-Inhalt ist null oder leer.");
+//                System.err.println("Fehler: HTML-Inhalt ist null oder leer.");
                 return links;
             }
 

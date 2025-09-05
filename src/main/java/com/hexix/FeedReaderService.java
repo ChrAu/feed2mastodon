@@ -19,7 +19,7 @@ public class FeedReaderService {
             SyndFeed feed = new SyndFeedInput().build(reader);
             return feed.getEntries();
         } catch (Exception e) {
-            System.err.println("Fehler beim Lesen des Feeds: " + e.getMessage());
+//            System.err.println("Fehler beim Lesen des Feeds: " + e.getMessage());
             return Collections.emptyList();
         }
     }

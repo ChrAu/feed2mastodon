@@ -1,40 +1,114 @@
 package com.hexix.mastodon;
 
+import com.hexix.BaseEntity;
 import com.hexix.util.VektorUtil;
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.NamedQueries;
+import jakarta.persistence.NamedQuery;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
 @Entity
-@Table(name = "public_mastodon_posts", indexes = {@Index(name = "idx_Embedding_cosDistance", columnList = "cosinus_distance"), @Index(name = "idx_Embedding_create_at", columnList = "create_at"), @Index(name = "idx_Embedding_mastodonId", columnList = "mastodon_id", unique = true)})
-public class PublicMastodonPostEntity extends PanacheEntity {
+@Table(name = "mastodon_posts")
+@NamedQueries({
+        @NamedQuery(
+                name = PublicMastodonPostEntity.FIND_ALL,
+                query = "SELECT p FROM PublicMastodonPostEntity p ORDER BY p.createdAt DESC"
+        ),
+        @NamedQuery(
+                name = PublicMastodonPostEntity.FIND_NEXT_PUBLIC_MASTODON_POST,
+                query = "SELECT p FROM PublicMastodonPostEntity p " +
+                        "LEFT JOIN p.postText pt " +
+                        "LEFT JOIN p.urlText ut " +
+                        "WHERE p.embeddingVectorString IS NULL AND (pt.text IS NOT NULL OR ut.text IS NOT NULL) ORDER BY p.createdAt DESC"
+        ),
+        @NamedQuery(
+                name = PublicMastodonPostEntity.FIND_ALL_COMPARABLE,
+                query = "SELECT p FROM PublicMastodonPostEntity p WHERE p.embeddingVectorString IS NOT NULL AND p.cosDistance IS NULL"
+        ),
+        @NamedQuery(
+                name = PublicMastodonPostEntity.FIND_BY_MASTODON_ID,
+                query = "SELECT p FROM PublicMastodonPostEntity p WHERE p.mastodonId = :" + PublicMastodonPostEntity.PARAM_MASTODON_ID
+        ),
+        @NamedQuery(
+                name = PublicMastodonPostEntity.FIND_ALL_NEGATIVE_POSTS,
+                query = "SELECT p FROM PublicMastodonPostEntity p WHERE p.negativeWeight IS NOT NULL AND p.embeddingVectorString IS NOT NULL"
+        ),
+        @NamedQuery(
+                name = PublicMastodonPostEntity.FIND_ALL_CALCED_EMBEDDINGS,
+                query = "SELECT p FROM PublicMastodonPostEntity p " +
+                        "LEFT JOIN p.postText pt " +
+                        "LEFT JOIN p.urlText ut " +
+                        "WHERE p.embeddingVectorString IS NOT NULL AND (pt.text IS NOT NULL OR ut.text IS NOT NULL) AND p.createdAt < :date"
+        ),
+        @NamedQuery(
+                name = PublicMastodonPostEntity.FIND_ALL_NO_EMBEDDING_AND_TEXT,
+                query = "SELECT p FROM PublicMastodonPostEntity p " +
+                        "LEFT JOIN p.postText pt " +
+                        "LEFT JOIN p.urlText ut " +
+                        "WHERE p.embeddingVectorString IS NULL AND (pt.text IS NULL OR ut.text IS NULL) AND p.urlText IS NULL"
+        ),
+        @NamedQuery(
+                name = PublicMastodonPostEntity.FIND_BY_NO_VIKI_COMMENT,
+                query = "SELECT p from PublicMastodonPostEntity p WHERE p.vikiCommented = false and p.cosDistance IS NOT NULL ORDER BY p.cosDistance DESC LIMIT 1"
+        )
+})
+public class PublicMastodonPostEntity extends BaseEntity {
+
+    // Named Query Constants
+    public static final String FIND_ALL = "PublicMastodonPostEntity.findAll";
+    public static final String FIND_NEXT_PUBLIC_MASTODON_POST = "PublicMastodonPostEntity.findNextPublicMastodonPost";
+    public static final String FIND_ALL_COMPARABLE = "PublicMastodonPostEntity.findAllComparable";
+    public static final String FIND_BY_MASTODON_ID = "PublicMastodonPostEntity.findByMastodonId";
+    public static final String FIND_ALL_NEGATIVE_POSTS = "PublicMastodonPostEntity.findAllNegativPosts";
+    public static final String FIND_ALL_CALCED_EMBEDDINGS = "PublicMastodonPostEntity.findAllCalcedEmbeddings";
+    public static final String FIND_ALL_NO_EMBEDDING_AND_TEXT = "PublicMastodonPostEntity.findAllNoEmbeddingAndText";
+
+    // Parameter Constants
+    public static final String PARAM_MASTODON_ID = "mastodonId";
+    public static final String FIND_BY_NO_VIKI_COMMENT = "PublicMastodonPostEntity.findByNoVikiComment";
+
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_generator")
+    @SequenceGenerator(
+            name = "id_generator",
+            sequenceName = "mastodon_posts_id_seq", // WICHTIG: Passe dies an den Namen deiner DB-Sequenz an
+            allocationSize = 1
+    )
+    @Column(name = "id")
+    public Long id;
 
     @Column(name = "mastodon_id", columnDefinition = "TEXT")
     String mastodonId;
 
-    @Column(name = "post_text", columnDefinition = "TEXT")
-    String postText;
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "post_text_id", referencedColumnName = "id")
+    TextEntity postText;
 
-    @Column(name = "url_text", columnDefinition = "TEXT")
-    String urlText;
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "url_text_id", referencedColumnName = "id")
+    public TextEntity urlText;
 
     @Column(name = "cosinus_distance")
     Double cosDistance;
 
-    @Column(name = "embedding_vector_string", columnDefinition = "TEXT")
-    String embeddingVectorString;
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "embedding_id", referencedColumnName = "id")
+    TextEntity embeddingVectorString;
 
     @Transient
     double[] embeddingVector;
-
-    @Column(name = "create_at")
-    LocalDateTime createAt = LocalDateTime.now();
 
     @Column(name = "status_original_url", columnDefinition = "TEXT")
     private String statusOriginalUrl;
@@ -45,7 +119,21 @@ public class PublicMastodonPostEntity extends PanacheEntity {
     @Column(name = "no_url")
     private Boolean noURL;
 
+    // Dieses Feld speichert, ob Viki bereits einen Kommentar zu diesem Post generiert hat.
+    @Column(name = "viki_commented")
+    private Boolean vikiCommented = false;
 
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(final Long id) {
+        this.id = id;
+    }
+
+    @Column(name = "embedding_model", columnDefinition = "TEXT")
+    private String localModel;
 
 
     public String getMastodonId() {
@@ -56,19 +144,19 @@ public class PublicMastodonPostEntity extends PanacheEntity {
         this.mastodonId = mastodonId;
     }
 
-    public String getPostText() {
+    public TextEntity getPostText() {
         return postText;
     }
 
-    public void setPostText(final String postText) {
+    public void setPostText(final TextEntity postText) {
         this.postText = postText;
     }
 
-    public String getUrlText() {
+    public TextEntity getUrlText() {
         return urlText;
     }
 
-    public void setUrlText(final String urlText) {
+    public void setUrlText(final TextEntity urlText) {
         this.urlText = urlText;
     }
 
@@ -80,17 +168,17 @@ public class PublicMastodonPostEntity extends PanacheEntity {
         this.cosDistance = cosDistance;
     }
 
-    String getEmbeddingVectorString() {
+    TextEntity getEmbeddingVectorString() {
         return embeddingVectorString;
     }
 
-    void setEmbeddingVectorString(final String embeddingVectorString) {
+    void setEmbeddingVectorString(final TextEntity embeddingVectorString) {
         this.embeddingVectorString = embeddingVectorString;
     }
 
     public double[] getEmbeddingVector() {
         if (embeddingVector == null && embeddingVectorString != null) {
-            embeddingVector = VektorUtil.DoubleArrayConverter.stringToArray(embeddingVectorString);
+            embeddingVector = VektorUtil.DoubleArrayConverter.stringToArray(embeddingVectorString.getText());
         }
 
         return embeddingVector;
@@ -98,15 +186,11 @@ public class PublicMastodonPostEntity extends PanacheEntity {
 
     public void setEmbeddingVector(final double[] embeddingVector) {
         this.embeddingVector = embeddingVector;
-        embeddingVectorString = VektorUtil.DoubleArrayConverter.arrayToString(embeddingVector);
-    }
+        final String embeddingVectorString1 = VektorUtil.DoubleArrayConverter.arrayToString(embeddingVector);
+        if(embeddingVectorString1 != null){
+            embeddingVectorString = new TextEntity(embeddingVectorString1);
+        }
 
-    public LocalDateTime getCreateAt() {
-        return createAt;
-    }
-
-    public void setCreate_at(final LocalDateTime createAt) {
-        this.createAt = createAt;
     }
 
     public String getStatusOriginalUrl() {
@@ -125,62 +209,13 @@ public class PublicMastodonPostEntity extends PanacheEntity {
         return negativeWeight;
     }
 
-
-
-    /**
-     * Finds the next 10 PublicMastodonPostEntity objects that do not have an embedding vector string.
-     * @return A list of PublicMastodonPostEntity objects matching the criteria.
-     */
-    public static List<PublicMastodonPostEntity> findNextPublicMastodonPost() {
-        return find("embeddingVectorString is null and ( postText is not null or urlText is not null)").range(0, 10).list();
+    public boolean isVikiCommented() {
+        return vikiCommented;
     }
 
-    /**
-     * Finds all PublicMastodonPostEntity objects that have an embedding vector string but no cosine distance.
-     * @return A list of PublicMastodonPostEntity objects matching the criteria.
-     */
-    public static List<PublicMastodonPostEntity> findAllComparable() {
-        return find("embeddingVectorString is not null and cosDistance is null").list();
+    public void setVikiCommented(final boolean vikiCommented) {
+        this.vikiCommented = vikiCommented;
     }
-
-    /**
-     * Finds a PublicMastodonPostEntity object by its mastodonId.
-     * @param id The mastodonId of the PublicMastodonPostEntity to find.
-     * @return The PublicMastodonPostEntity object with the specified mastodonId, or null if not found.
-     */
-    public static PublicMastodonPostEntity findByMastodonId(final String id) {
-        return find("mastodonId", id).firstResult();
-    }
-
-    /**
-     * Finds all PublicMastodonPostEntity objects that have a negative weight and an embedding vector string.
-     * @return A list of PublicMastodonPostEntity objects matching the criteria.
-     */
-    public static List<PublicMastodonPostEntity> findAllNegativPosts() {
-        return find("negativeWeight is not null and embeddingVectorString is not null").list();
-    }
-
-
-    /**
-     * Finds all PublicMastodonPostEntity objects that have a calculated embedding and are older than 2 days.
-     * @return A list of PublicMastodonPostEntity objects matching the criteria.
-     */
-    public static List<PublicMastodonPostEntity> findAllCalcedEmbeddings(){
-        return find("embeddingVectorString is not null and (postText is not null or urlText is not null) and createAt< ?1", LocalDateTime.now().minusDays(2)).list();
-    }
-
-
-    /**
-     * Finds all PublicMastodonPostEntity objects that have no embedding vector string,
-     * no post text, and no URL text.
-     * @return A list of PublicMastodonPostEntity objects matching the criteria.
-     */
-
-    public static List<PublicMastodonPostEntity> findAllNoEmbeddingAndText() {
-        return find("embeddingVectorString is null and postText is null and urlText is null").list();
-    }
-
-
 
     public void removeEmbeddingVektor() {
         embeddingVector = null;
@@ -194,4 +229,13 @@ public class PublicMastodonPostEntity extends PanacheEntity {
     public Boolean isNoURL() {
         return noURL;
     }
+
+    public void setEmbeddingModel(final String localModel) {
+        this.localModel = localModel;
+    }
+
+    public String getEmbeddingModel() {
+        return localModel;
+    }
 }
+

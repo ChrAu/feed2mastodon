@@ -25,7 +25,7 @@ public class ThemenResource {
 
         final List<ThemenEntity> themenEntities = ThemenEntity.<ThemenEntity>findAll().stream().sorted(Comparator.comparing(ThemenEntity::getLastPost, Comparator.nullsLast(Comparator.reverseOrder()))).toList();
 
-        return themenEntities.stream().map(themenEntity -> new ThemenDTO(themenEntity.uuid, themenEntity.thema, themenEntity.lastPost)).toList();
+        return themenEntities.stream().map(themenEntity -> new ThemenDTO(themenEntity.getUuid(), themenEntity.getThema(), themenEntity.getLastPost())).toList();
     }
 
 
@@ -35,7 +35,7 @@ public class ThemenResource {
     public ThemenDTO create(String thema){
 
         final ThemenEntity themenEntity = new ThemenEntity();
-        themenEntity.thema = thema;
+        themenEntity.setThema( thema);
         themenEntity.persist();
         return ThemenDTO.export(themenEntity);
     }

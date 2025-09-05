@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @QuarkusTest
@@ -124,7 +125,7 @@ Hier ist eine typische Einteilung, die Sie als Ausgangspunkt verwenden können:
     @Test
     @Disabled
     public void testMultiModel() {
-        List<String> models = List.of("granite-embedding:278m", "jina/jina-embeddings-v2-base-de", "nomic-embed-text:v1.5", "mxbai-embed-large:335m" ,"bge-m3:567m", "all-minilm:33m", "snowflake-arctic-embed:335m", "bge-large:335m", "snowflake-arctic-embed2:568m", "paraphrase-multilingual:278m", "Definity/snowflake-arctic-embed-l-v2.0-q8_0:latest");
+        List<String> models = List.of("granite-embedding:278m", "jina/jina-embeddings-v2-base-de", "nomic-embed-text:v1.5", "mxbai-embed-large:335m" ,"bge-m3:567m", "all-minilm:33m", "snowflake-arctic-embed:335m", "bge-large:335m", "snowflake-arctic-embed2:568m", "paraphrase-multilingual:278m", "Definity/snowflake-arctic-embed-l-v2.0-q8_0:latest", "snowflake-arctic-embed:137m", "snowflake-arctic-embed:110m", "snowflake-arctic-embed:33m", "snowflake-arctic-embed:22m");
         Map<String, Map<String, String>> resultMap = new HashMap<>();
         final List<String> keys = List.of("Ähnlichkeit zu Frage 1", "Ähnlichkeit zu Frage 2", "Profilevektor", "Profilevektor (Frage Feuerwehr)");
 
@@ -212,13 +213,14 @@ Hier ist eine typische Einteilung, die Sie als Ausgangspunkt verwenden können:
 
         final List<Embedding> embeddings = Embedding.<Embedding>findAll().list().stream().filter(embedding -> embedding.getEmbedding() != null).toList();
 
-        double[] gemini = VektorUtil.createProfileVector(embeddings.stream().map(embedding -> new VektorUtil.VektorWeight(embedding.getEmbedding(), 1.0) ).toList(), Collections.emptyList());;
+        double[] gemini = VektorUtil.createProfileVector(embeddings.stream().map(embedding -> new VektorUtil.VektorWeight(embedding.getEmbedding(), 1.0) ).toList(), Collections.emptyList());
 
 
-        Map<String, String> geminiMap = new HashMap<>();
+        Map<UUID, String> geminiMap = new HashMap<>();
 
-        geminiMap.put("test", "Moderne KI Systeme können mehrere Millionen Anfragen parallel durchführen, benötigen aber extrem viel Strom.");
-        final ContentEmbedding test = generateEmbeddingTextInput.getEmbedding("gemini-embedding-001", geminiMap).get("test");
+        final UUID key = UUID.randomUUID();
+        geminiMap.put(key, "Moderne KI Systeme können mehrere Millionen Anfragen parallel durchführen, benötigen aber extrem viel Strom.");
+        final ContentEmbedding test = generateEmbeddingTextInput.getEmbedding("gemini-embedding-001", geminiMap).get(key);
 
         final double[] array1 = test.values().get().stream().mapToDouble(Float::doubleValue).toArray();
 
@@ -237,8 +239,8 @@ Hier ist eine typische Einteilung, die Sie als Ausgangspunkt verwenden können:
 
             for (Embedding embedding : embeddings) {
 
-                final String text = embedding.getText();
-                final List<String> texte = StarredMastodonPosts.splitByLength(text, 500);
+                final String text = embedding.getText().getText();
+                final List<String> texte = StarredMastodonPosts.splitByLength(text, "bge-m3:567m".equalsIgnoreCase(model) ? 8000 : 500);
 
                 for (String values : texte) {
                     final EmbeddingResponse response1 = ollamaRestClient.generateEmbeddings(new EmbeddingRequest(model, List.of(values), false));

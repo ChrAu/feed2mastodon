@@ -4,6 +4,7 @@ import com.google.genai.Client;
 import com.google.genai.types.ContentEmbedding;
 import com.google.genai.types.EmbedContentConfig;
 import com.google.genai.types.EmbedContentResponse;
+import com.hexix.mastodon.TextEntity;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 
@@ -28,15 +30,15 @@ public class GenerateEmbeddingTextInput {
 
 
     @Transactional
-    public Map<String, ContentEmbedding> getEmbedding(String geminiModel, Map<String, String> keyContentList){
-        Map<String, ContentEmbedding> results = new HashMap<>();
+    public Map<UUID, ContentEmbedding> getEmbedding(String geminiModel, Map<UUID, String> keyContentList){
+        Map<UUID, ContentEmbedding> results = new HashMap<>();
 
         try(Client client = Client.builder().apiKey(accessToken).build()) {
 
-            List<String> keys = new ArrayList<>(keyContentList.size());
+            List<UUID> keys = new ArrayList<>(keyContentList.size());
             List<String> contentEmbeddings = new ArrayList<>(keyContentList.size());
 
-            for (String key : keyContentList.keySet()) {
+            for (UUID key : keyContentList.keySet()) {
                 if (keyContentList.get(key) != null && !keyContentList.get(key).trim().isEmpty()) {
                     keys.add(key);
                     contentEmbeddings.add(keyContentList.get(key));

@@ -33,7 +33,7 @@ jobs:
     # Dieser Block startet einen PostgreSQL-Container, der für die Dauer des Jobs verfügbar ist.
     services:
       postgres:
-        image: postgres:latest
+        image: pgvector/pgvector:pg17
         # Umgebungsvariablen zum Initialisieren der Test-Datenbank.
         # Diese Anmeldedaten werden im Build-Schritt unten verwendet.
         env:
@@ -65,12 +65,20 @@ jobs:
       # Schritt 2: Java JDK 21 (Zulu) einrichten
       # Richtet die angeforderte Java-Version und Distribution ein.
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'zulu'
 
-      # Schritt 3: Mit Maven Wrapper bauen (JVM Build)
+      # Schritt 3: Node.js einrichten
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+          cache: 'npm'
+          cache-dependency-path: 'src/main/webui/package-lock.json'
+
+      # Schritt 4: Mit Maven Wrapper bauen (JVM Build)
       # Stellt sicher, dass die mvnw-Datei ausführbar ist und führt dann den Build aus.
       - name: Build with Maven Wrapper
         # Umgebungsvariablen, um Quarkus mit der Test-DB zu verbinden.
@@ -82,12 +90,13 @@ jobs:
           GEMINIE_ACCESS_TOKEN: ${{ secrets.GEMINIE_ACCESS_TOKEN}}
           MASTODON_PRIVATE_ACCESS_TOKEN: ${{ secrets.MASTODON_PRIVATE_ACCESS_TOKEN}}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
           chmod +x mvnw
           ./mvnw -B package --file pom.xml
           
 
-      # Schritt 4: Build-Artefakte hochladen
+      # Schritt 5: Build-Artefakte hochladen
       # Das 'target'-Verzeichnis enthält die gebaute JAR-Datei, die für den Docker-Build benötigt wird.
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
