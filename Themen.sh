@@ -2116,7 +2116,7 @@ for thema in "${themen[@]}"; do
 
   # Führe den cURL-Befehl aus
   echo "Sende Thema: $data"
-  curl -X POST http://localhost:8080/themen \
+  curl -X POST https://s.hexix.de/themen \
   -H "Content-Type: text/plain" \
   -d "$data"
 

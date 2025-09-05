@@ -490,7 +490,7 @@ public class FeedToTootScheduler {
     }
 
 
-    @Scheduled(every = "P1D",delay = 120, concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+//    @Scheduled(every = "P1D",delay = 120, concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     @Transactional
     public void removeText() {
 
@@ -501,8 +501,14 @@ public class FeedToTootScheduler {
 
         final List<PublicMastodonPostEntity> allComparable = publicMastodonPostRepository.findAllCalcedEmbeddings();
         allComparable.forEach(post -> {
+            final TextEntity postText = post.getPostText();
+            final TextEntity urlText = post.urlText;
+
             post.setPostText(null);
             post.setUrlText(null);
+
+            textEntityRepository.delete(postText);
+            textEntityRepository.delete(urlText);
         });
 
         LOG.info("Löschen abgeschlossen");
