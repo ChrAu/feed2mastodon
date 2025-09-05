@@ -72,7 +72,7 @@ jobs:
 
       # Schritt 4: Mit Maven Wrapper bauen
       # Stellt sicher, dass die mvnw-Datei ausführbar ist und führt dann den Build aus.
-      - name: Build with Maven Wrapper
+#      - name: Build with Maven Wrapper
       # NEU: Umgebungsvariablen, um Quarkus mit der Test-DB zu verbinden.
       # Diese überschreiben die Werte aus deiner application.properties nur für diesen Schritt.
       env:
