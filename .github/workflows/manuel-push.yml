@@ -70,7 +70,15 @@ jobs:
           java-version: '21'
           distribution: 'zulu'
 
-      # Schritt 3: Mit Maven Wrapper bauen (JVM Build)
+      # Schritt 3: Node.js einrichten
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.10.0'
+          cache: 'npm'
+          cache-dependency-path: 'src/main/webui/package-lock.json'
+
+      # Schritt 4: Mit Maven Wrapper bauen (JVM Build)
       # Stellt sicher, dass die mvnw-Datei ausführbar ist und führt dann den Build aus.
       - name: Build with Maven Wrapper
         # Umgebungsvariablen, um Quarkus mit der Test-DB zu verbinden.
@@ -88,7 +96,7 @@ jobs:
           ./mvnw -B package --file pom.xml
           
 
-      # Schritt 4: Build-Artefakte hochladen
+      # Schritt 5: Build-Artefakte hochladen
       # Das 'target'-Verzeichnis enthält die gebaute JAR-Datei, die für den Docker-Build benötigt wird.
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
