@@ -1,5 +1,7 @@
 package com.hexix.ai.bot;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.Client;
 import com.google.genai.types.GenerateContentConfig;
@@ -51,7 +53,7 @@ public class VikiAiService {
             // Return a new VikiResponse with the corrected hashtags
             return new VikiResponse(initialResponse.content(), formattedHashtags);
 
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             LOG.error("Error generating content from AI", e);
             return null;
         }
