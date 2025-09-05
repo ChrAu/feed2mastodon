@@ -33,11 +33,11 @@ public class InitialDataSetup {
             if (MonitoredFeed.findByUrl(myBlogFeed.feedUrl) == null) {
                 LOG.info("Füge initialen Feed hinzu: " + myBlogFeed);
                 MonitoredFeed feed = new MonitoredFeed();
-                feed.feedUrl = myBlogFeed.feedUrl;
-                feed.title = myBlogFeed.title;
-                feed.defaultText = myBlogFeed.defaultText;
-                feed.isActive = myBlogFeed.isActive();
-                feed.tryAi = myBlogFeed.tryAi;
+                feed.setFeedUrl( myBlogFeed.feedUrl);
+                feed.setTitle( myBlogFeed.title);
+                feed.setDefaultText(myBlogFeed.defaultText);
+                feed.setActive( myBlogFeed.isActive());
+                feed.setTryAi( myBlogFeed.tryAi);
                 feed.persist();
             } else {
                 LOG.debug("Feed " + myBlogFeed + " ist bereits in der Datenbank.");
@@ -115,7 +115,7 @@ public class InitialDataSetup {
                 "**Text zur Verarbeitung:**\n");
 
         final PromptEntity latestPrompt = PromptEntity.findLatest();
-        if(latestPrompt == null || !prompt.prompt.equals(latestPrompt.prompt)){
+        if(latestPrompt == null || !prompt.getPrompt().equals(latestPrompt.getPrompt())){
             prompt.persist();
         }
 

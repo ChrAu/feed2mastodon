@@ -75,7 +75,7 @@ public class RandomDateTimeGenerator {
 //                randomMinutesOffset = (long) (minutesBeforePreferred * (1 - Math.sqrt(1 - r)));
                 // randomMinutesOffset = (long) (minutesBeforePreferred * r * r); // Alternative für andere Verteilung
 
-                randomMinutesOffset = (long) getSkewedRandom(minutesBeforePreferred, 3.0);
+                randomMinutesOffset = getSkewedRandom(minutesBeforePreferred, 3.0);
             } else { // Zeitpunkt nach 17:30
                 // Generiere eine Zufallszahl im Bereich [0, minutesAfterPreferred]
                 // Wende eine Transformation an, die höhere Werte (näher an 17:00) bevorzugt

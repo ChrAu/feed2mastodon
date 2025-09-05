@@ -1,16 +1,33 @@
 package com.hexix.ai.bot.telegram;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "telegram_message_log")
-public class MessageLog extends PanacheEntity {
+@Table(name = "telegram_message_logs")
+public class MessageLog extends PanacheEntityBase {
+
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_generator")
+    @SequenceGenerator(
+            name = "id_generator",
+            sequenceName = "telegram_message_logs_id_seq", // WICHTIG: Passe dies an den Namen deiner DB-Sequenz an
+            allocationSize = 1
+    )
+    @Column(name = "id")
+    private Long id;
+
 
     @ManyToOne
     @JoinColumn(name = "subscriber_id", nullable = false)
@@ -36,6 +53,14 @@ public class MessageLog extends PanacheEntity {
         this.subscriber = subscriber;
         this.messageContent = messageContent;
         this.sentAt = LocalDateTime.now();
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(final Long id) {
+        this.id = id;
     }
 
     // Getters and Setters
@@ -77,5 +102,18 @@ public class MessageLog extends PanacheEntity {
 
     public void setDeliveryTimestamp(LocalDateTime deliveryTimestamp) {
         this.deliveryTimestamp = deliveryTimestamp;
+    }
+
+
+    @Override
+    public String toString() {
+        return "MessageLog{" +
+                "id=" + id +
+                ", subscriber=" + subscriber +
+                ", messageContent='" + messageContent + '\'' +
+                ", sentAt=" + sentAt +
+                ", successfullySent=" + successfullySent +
+                ", deliveryTimestamp=" + deliveryTimestamp +
+                '}';
     }
 }

@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @QuarkusTest
@@ -212,13 +213,14 @@ Hier ist eine typische Einteilung, die Sie als Ausgangspunkt verwenden können:
 
         final List<Embedding> embeddings = Embedding.<Embedding>findAll().list().stream().filter(embedding -> embedding.getEmbedding() != null).toList();
 
-        double[] gemini = VektorUtil.createProfileVector(embeddings.stream().map(embedding -> new VektorUtil.VektorWeight(embedding.getEmbedding(), 1.0) ).toList(), Collections.emptyList());;
+        double[] gemini = VektorUtil.createProfileVector(embeddings.stream().map(embedding -> new VektorUtil.VektorWeight(embedding.getEmbedding(), 1.0) ).toList(), Collections.emptyList());
 
 
-        Map<String, String> geminiMap = new HashMap<>();
+        Map<UUID, String> geminiMap = new HashMap<>();
 
-        geminiMap.put("test", "Moderne KI Systeme können mehrere Millionen Anfragen parallel durchführen, benötigen aber extrem viel Strom.");
-        final ContentEmbedding test = generateEmbeddingTextInput.getEmbedding("gemini-embedding-001", geminiMap).get("test");
+        final UUID key = UUID.randomUUID();
+        geminiMap.put(key, "Moderne KI Systeme können mehrere Millionen Anfragen parallel durchführen, benötigen aber extrem viel Strom.");
+        final ContentEmbedding test = generateEmbeddingTextInput.getEmbedding("gemini-embedding-001", geminiMap).get(key);
 
         final double[] array1 = test.values().get().stream().mapToDouble(Float::doubleValue).toArray();
 
@@ -237,7 +239,7 @@ Hier ist eine typische Einteilung, die Sie als Ausgangspunkt verwenden können:
 
             for (Embedding embedding : embeddings) {
 
-                final String text = embedding.getText();
+                final String text = embedding.getText().getText();
                 final List<String> texte = StarredMastodonPosts.splitByLength(text, "bge-m3:567m".equalsIgnoreCase(model) ? 8000 : 500);
 
                 for (String values : texte) {

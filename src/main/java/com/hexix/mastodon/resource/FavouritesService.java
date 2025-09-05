@@ -4,6 +4,8 @@ import com.hexix.JsoupParser;
 import com.hexix.ai.GenerateEmbeddingTextInput;
 import com.hexix.mastodon.Embedding;
 import com.hexix.mastodon.PagingConfigEntity;
+import com.hexix.mastodon.TextEntity;
+import com.hexix.mastodon.TextEntityRepository;
 import com.hexix.mastodon.api.MastodonDtos;
 import com.hexix.mastodon.resource.client.FavouritesClient;
 import jakarta.enterprise.context.RequestScoped;
@@ -40,6 +42,8 @@ public class FavouritesService {
 
     @ConfigProperty(name = "mastodon.private.access.token")
     String privateAccessToken;
+    @Inject
+    TextEntityRepository textEntityRepository;
 
     public List<MastodonDtos.MastodonStatus> getAllFavourites() {
         return getNewFavourites();
@@ -146,7 +150,12 @@ public class FavouritesService {
 
         list.forEach((key, value) -> {
             final Embedding embedding = new Embedding();
-            embedding.setText(value.text);
+            final TextEntity textEntity = new TextEntity(value.text);
+            if(textEntity.getText() != null && !textEntity.getText().isBlank()){
+                textEntityRepository.persist(textEntity);
+                embedding.setText(textEntity);
+            }
+
             embedding.setMastodonStatusId(mastodonStatus.id());
             embedding.setResource(key);
             embedding.setUrl(value.url);

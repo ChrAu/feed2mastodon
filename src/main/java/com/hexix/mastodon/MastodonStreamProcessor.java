@@ -51,6 +51,9 @@ public class MastodonStreamProcessor {
     @Inject
     ObjectMapper objectMapper;
 
+    @Inject
+    PublicMastodonPostRepository publicMastodonPostRepository;
+
 
     @ConfigProperty(name = "mastodon.access.token")
     String accessToken;
@@ -137,11 +140,7 @@ public class MastodonStreamProcessor {
             boolean noUrl;
             if(content.contains("negativ")) {
 
-                if (content.toLowerCase().contains("no_url")) {
-                    noUrl = true;
-                } else {
-                    noUrl = false;
-                }
+                noUrl = content.toLowerCase().contains("no_url");
 
                 final String[] negativs = content.split("negativ");
 
@@ -178,12 +177,12 @@ public class MastodonStreamProcessor {
 
     @Transactional
     void createPostAndUpdate(final String replyId, final Double negativeWeight, boolean noUrl) {
-        PublicMastodonPostEntity post = PublicMastodonPostEntity.findByMastodonId(replyId);
+        PublicMastodonPostEntity post = publicMastodonPostRepository.findByMastodonId(replyId).orElse(null);
 
         if(post == null){
             MastodonDtos.MastodonStatus status = mastodonClient.getStatus(replyId, "Bearer " + privateAccessToken);
             post = getPublicMastodonPostEntity(status, noUrl);
-            savePostInPipeline(post);
+            publicMastodonPostRepository.persist(post);
         }else{
             if(noUrl){
                 post.setUrlText(null);
@@ -231,11 +230,11 @@ public class MastodonStreamProcessor {
 
             // WICHTIGE ÄNDERUNG: post.persist() auf einen Worker-Thread auslagern
             return Uni.createFrom().item(() -> {
-                        final PublicMastodonPostEntity currentEntity = PublicMastodonPostEntity.findByMastodonId(status.id());
+                        final PublicMastodonPostEntity currentEntity = publicMastodonPostRepository.findByMastodonId(status.id()).orElse(null);
 
                         if (currentEntity == null) {
                             // Zuerst versuchen, als MastodonStatus zu parsen (für 'update' oder 'status.update' Events)
-                            savePostInPipeline(post);
+                            publicMastodonPostRepository.persist(post);
                         }
 
 
@@ -270,14 +269,19 @@ public class MastodonStreamProcessor {
 
 
 
-    private static PublicMastodonPostEntity getPublicMastodonPostEntity(final MastodonDtos.MastodonStatus status, boolean noUrl) {
+    private PublicMastodonPostEntity getPublicMastodonPostEntity(final MastodonDtos.MastodonStatus status, boolean noUrl) {
         final PublicMastodonPostEntity post = new PublicMastodonPostEntity();
         post.setMastodonId(status.id());
         post.setStatusOriginalUrl(status.url());
 
         final String text = Jsoup.parse(status.content()).text();
 
-        post.setPostText(text);
+        final TextEntity textEntity = new TextEntity(text);
+        if(textEntity.getText() != null && !textEntity.getText().isBlank()){
+            post.setPostText(textEntity);
+        }
+
+
 
         post.setNoURL(noUrl);
 
@@ -288,10 +292,7 @@ public class MastodonStreamProcessor {
         return post;
     }
 
-    @Transactional
-    public void savePostInPipeline(final PublicMastodonPostEntity post) {
-        post.persist();
-    }
+
 
 
 

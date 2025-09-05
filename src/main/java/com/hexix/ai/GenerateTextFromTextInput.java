@@ -39,7 +39,7 @@ public class GenerateTextFromTextInput {
             final PromptEntity prompt = PromptEntity.findLatest();
 
 
-            final String sendPrompt = String.format("%s \n\n'%s'", prompt.prompt, initPost);
+            final String sendPrompt = String.format("%s \n\n'%s'", prompt.getPrompt(), initPost);
 
             final GeminiRequestEntity geminiRequestEntity = new GeminiRequestEntity();
             geminiRequestEntity.setModel(geminiModel);

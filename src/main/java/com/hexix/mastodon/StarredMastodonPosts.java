@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RequestScoped
@@ -71,7 +72,7 @@ public class StarredMastodonPosts {
         if(countLast10Minutes < 3) {
             final List<Embedding> nextEmbedding = Embedding.findNextEmbeddings();
 
-            final Map<String, ContentEmbedding> results = generateEmbeddingTextInput.getEmbedding(model, nextEmbedding.stream().collect(Collectors.toMap(Embedding::getUuid, Embedding::getText)));
+            final Map<UUID, ContentEmbedding> results = generateEmbeddingTextInput.getEmbedding(model, nextEmbedding.stream().collect(Collectors.toMap(Embedding::getUuid, embedding -> embedding.getText().getText())));
 
             nextEmbedding.forEach(embedding -> {
                 final ContentEmbedding result = results.get(embedding.getUuid());
@@ -98,7 +99,7 @@ public class StarredMastodonPosts {
 
         for (Embedding embedding : nextEmbeddings) {
 
-            final List<String> splitText = splitByLength(embedding.getText(), "bge-m3:567m".equalsIgnoreCase(localModel) ? 8000 : 500);
+            final List<String> splitText = splitByLength(embedding.getText().getText(), "bge-m3:567m".equalsIgnoreCase(localModel) ? 8000 : 500);
 
             List<double[]> responses = new ArrayList<>();
 
@@ -113,9 +114,9 @@ public class StarredMastodonPosts {
 
             final double[] profileVector = VektorUtil.createProfileVector(responses);
 
-            saveEmbedding(embedding.id, profileVector);
+            saveEmbedding(embedding.getId(), profileVector);
 
-            LOG.infof("Save local vector for embedding with uuid: %s", embedding.uuid);
+            LOG.infof("Save local vector for embedding with uuid: %s", embedding.getUuid());
 
 
         }

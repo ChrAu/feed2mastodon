@@ -1,220 +1,193 @@
--- V3: Create the public_mastodon_posts table
+-- ========= V1: Finales Optimiertes Datenbankschema =========
+-- Dieses Skript ist für die vollständige Neuinstallation der Datenbank konzipiert.
+-- Es konsolidiert alle bisherigen Migrationen und wendet Best Practices an:
+-- 1. Konsistente Namensgebung (snake_case).
+-- 2. Optimale Datentypen (UUID, TIMESTAMPTZ, ENUM).
+-- 3. Automatische Sequenzerstellung durch BIGSERIAL.
+-- 4. Logische Indizierung für bessere Performance.
 
-CREATE TABLE IF NOT EXISTS public_mastodon_posts (
-    id BIGINT NOT NULL,
-    mastodon_id TEXT,
-    post_text TEXT,
-    url_text TEXT,
-    cosinus_distance DOUBLE PRECISION,
-    embedding_vector_string TEXT,
-    create_at TIMESTAMP,
-    status_original_url TEXT,
-    negative_weight DOUBLE PRECISION,
-    no_url BOOLEAN,
-    viki_commented BOOLEAN,
-    PRIMARY KEY (id)
+-- Erforderliche Extension für Vektor-Operationen
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- ========= Benutzerdefinierte Typen =========
+-- Ein ENUM-Typ für Event-Typen sorgt für Typsicherheit und ist performanter als Strings.
+CREATE TYPE event_type AS ENUM ('MASTODON_NOTIFICATION', 'LITTLE_VIKI', 'BABY_VIKI');
+
+
+-- ========= Tabellendefinitionen =========
+
+-- Die Tabelle 'text_contents' (vorher 'text') wird zuerst erstellt,
+-- da viele andere Tabellen darauf verweisen.
+CREATE TABLE IF NOT EXISTS text_contents (
+                                             id            BIGSERIAL PRIMARY KEY,
+                                             content       TEXT,
+                                             created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                                             updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Create a sequence for the primary key
-CREATE SEQUENCE if not exists public_mastodon_posts_seq START 1 INCREMENT 50;
-
--- Create indexes for performance
-CREATE INDEX if not exists idx_Embedding_cosDistance ON public_mastodon_posts (cosinus_distance);
-CREATE INDEX if not exists idx_Embedding_create_at ON public_mastodon_posts (create_at);
-CREATE UNIQUE INDEX if not exists idx_Embedding_mastodonId ON public_mastodon_posts (mastodon_id);
-
-
-create table if not exists  embedding
-(
-    id                            bigint       not null
-        primary key,
-    created_at                    timestamp(6) not null,
-    embedding_created_at          timestamp(6),
-    embedding_vector_string       text,
-    mastodon_status_id            text,
-    resource                      text         not null
-        constraint idx_embedding_resource
-            unique,
-    text                          text,
-    uuid                          text         not null
-        constraint uk1mhegu6yqtfkd0a21o2g0vhv7
-            unique
-        constraint idx_embedding_uuid
-            unique,
-    local_embedding_created_at    timestamp(6),
-    local_embedding_vector_string text,
-    url                           text,
-    negative_weight               double precision,
-    status_original_url           text
-);
-CREATE SEQUENCE if not exists embedding_seq START 1 INCREMENT 50;
-
-
-create index if not exists  idx_embedding_mastodon_status_id
-    on embedding (mastodon_status_id);
-
-create index if not exists  idx_embedding_embedding_created_at
-    on embedding (embedding_created_at);
-
-create index if not exists  idx_embedding_local_embedding_created_at
-    on embedding (local_embedding_created_at);
-
-
--- auto-generated definition
-create table  if not exists eventplanentity
-(
-    id            bigint  not null
-        primary key,
-    createdat     timestamp(6),
-    details       varchar(255),
-    eventtype     varchar(255)
-        constraint eventplanentity_eventtype_check
-            check ((eventtype)::text = ANY
-                   ((ARRAY ['MASTODON_NOTIFICATION'::character varying, 'LITTLE_VIKI'::character varying, 'BABY_VIKI'::character varying])::text[])),
-    executed      boolean not null,
-    executedat    timestamp(6),
-    result        varchar(255),
-    scheduledtime timestamp(6),
-    uuid          varchar(255)
-        constraint idx_eventplanentity_uuid
-            unique
-);
-CREATE SEQUENCE if not exists eventplanentity_seq START 1 INCREMENT 50;
-
-
-create index  if not exists idx_eventplanentity_createdat
-    on eventplanentity (createdat);
-
-create index  if not exists idx_eventplanentity_eventtype
-    on eventplanentity (eventtype);
-
-create index  if not exists idx_eventplanentity_scheduledtime
-    on eventplanentity (scheduledtime);
-
-create index  if not exists idx_eventplanentity_executed
-    on eventplanentity (executed);
-
--- auto-generated definition
-create table  if not exists geminirequestentity
-(
-    id              bigint not null
-        primary key,
-    model           varchar(255),
-    text            text,
-    timestamp       timestamp(6),
-    uuid            varchar(255)
-        constraint idx_requestentity_uuid
-            unique,
-    totaltokencount integer,
-    response        text
-);
-CREATE SEQUENCE if not exists geminirequestentity_seq START 1 INCREMENT 50;
-
-
-
-create index if not exists  idx_requestentity_model
-    on geminirequestentity (model);
-
-create index if not exists  idx_requestentity_timestamp
-    on geminirequestentity (timestamp);
-
-
-
--- auto-generated definition
-create table  if not exists mastodon_paging_config
-(
-    id       bigint not null
-        primary key,
-    max_id   text,
-    min_id   text,
-    resource text   not null
-        constraint idx_pagingconfigentity_resource
-            unique,
-    sinceid  text
-);
-CREATE SEQUENCE if not exists mastodon_paging_config_seq START 1 INCREMENT 50;
-
--- auto-generated definition
-create table  if not exists monitoredfeed
-(
-    id          bigint       not null
-        primary key,
-    adddate     timestamp(6) not null,
-    defaulttext text,
-    feedurl     text         not null
-        constraint ukle7yaucmo69mv9b2ui4r4wuu1
-            unique,
-    isactive    boolean      not null,
-    title       text,
-    tryai       boolean
+-- Die Tabelle 'monitored_feeds' (vorher 'monitoredfeed')
+CREATE TABLE IF NOT EXISTS monitored_feeds (
+                                               id           BIGSERIAL PRIMARY KEY,
+                                               feed_url     TEXT NOT NULL UNIQUE,
+                                               title        TEXT,
+                                               default_text TEXT,
+                                               is_active    BOOLEAN NOT NULL DEFAULT TRUE,
+                                               try_ai       BOOLEAN DEFAULT FALSE,
+                                               added_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE SEQUENCE if not exists monitoredfeed_seq START 1 INCREMENT 50;
-
-
-
-create index  if not exists idx_monitoredfeed_isactive
-    on monitoredfeed (isactive);
-
-create index  if not exists idx_monitoredfeed_feedurl
-    on monitoredfeed (feedurl);
-
-
--- auto-generated definition
-create table  if not exists postedentry
-(
-    id               bigint not null
-        primary key,
-    entryguid        text   not null,
-    mastodonstatusid text   not null,
-    postedat         timestamp(6) with time zone,
-    feed_id          bigint not null
-        constraint fkgj0wj2m7vv4756whefts4pyrm
-            references monitoredfeed,
-    aitoot           boolean,
-    constraint ukrext8lm2fokqnkks3uo7ygjlx
-        unique (feed_id, entryguid)
-);
-CREATE SEQUENCE if not exists postedentry_seq START 1 INCREMENT 50;
-
-
-create index  if not exists idx_postedentry_entryguid_feedid
-    on postedentry (entryguid, feed_id);
-
--- auto-generated definition
-create table  if not exists promptentity
-(
-    id        bigint       not null
-        primary key,
-    createdat timestamp(6) not null,
-    prompt    text,
-    uuid      varchar(255) not null
-        constraint idx_promptentity_uuid
-            unique
+-- Die Tabelle 'telegram_subscribers'
+CREATE TABLE IF NOT EXISTS telegram_subscribers (
+                                                    id         BIGSERIAL PRIMARY KEY,
+                                                    chat_id    TEXT NOT NULL UNIQUE, -- Telegram Chat-IDs sind numerisch
+                                                    is_active  BOOLEAN NOT NULL DEFAULT TRUE
 );
 
-CREATE SEQUENCE if not exists promptentity_seq START 1 INCREMENT 50;
+-- Die Tabelle 'themes' (vorher 'themenentity')
+CREATE TABLE IF NOT EXISTS themes (
+                                      id         BIGSERIAL PRIMARY KEY,
+                                      uuid       UUID NOT NULL UNIQUE,
+                                      theme      VARCHAR(255) UNIQUE,
+                                      last_post  DATE
+);
 
-create index if not exists  idx_promptentity_createdat
-    on promptentity (createdat);
+-- Die Tabelle 'prompts' (vorher 'promptentity')
+CREATE TABLE IF NOT EXISTS prompts (
+                                       id         BIGSERIAL PRIMARY KEY,
+                                       uuid       UUID NOT NULL UNIQUE,
+                                       prompt     TEXT,
+                                       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
+-- Die Tabelle 'mastodon_posts' (vorher 'public_mastodon_posts')
+CREATE TABLE IF NOT EXISTS mastodon_posts (
+                                              id                    BIGSERIAL PRIMARY KEY,
+                                              mastodon_id           TEXT UNIQUE,
+                                              post_text_id          BIGINT REFERENCES text_contents(id),
+                                              url_text_id           BIGINT REFERENCES text_contents(id),
+                                              status_original_url   TEXT,
+                                              embedding_id          BIGINT REFERENCES text_contents(id),
+                                              embedding_model       TEXT,
+                                              cosinus_distance      DOUBLE PRECISION,
+                                              negative_weight       DOUBLE PRECISION,
+                                              no_url                BOOLEAN DEFAULT FALSE,
+                                              viki_commented        BOOLEAN DEFAULT FALSE,
+                                              posted_at             TIMESTAMPTZ, -- 'create_at' umbenannt für Klarheit
+                                              created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                                              updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
+-- Die Tabelle 'embeddings'
+CREATE TABLE IF NOT EXISTS embeddings (
+                                          id                                  BIGSERIAL PRIMARY KEY,
+                                          uuid                                UUID NOT NULL UNIQUE,
+                                          resource                            TEXT NOT NULL UNIQUE,
+                                          mastodon_status_id                  TEXT,
+                                          url                                 TEXT,
+                                          status_original_url                 TEXT,
+                                          negative_weight                     DOUBLE PRECISION,
+                                          text_id                             BIGINT REFERENCES text_contents(id) UNIQUE,
+                                          embedding_vector_string_id          BIGINT REFERENCES text_contents(id) UNIQUE,
+                                          local_embedding_vector_string_id    BIGINT REFERENCES text_contents(id) UNIQUE,
+                                          local_embedding_model               TEXT,
+                                          embedding_created_at                TIMESTAMPTZ,
+                                          local_embedding_created_at          TIMESTAMPTZ,
+                                          created_at                          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
+-- Die Tabelle 'telegram_message_logs'
+CREATE TABLE IF NOT EXISTS telegram_message_logs (
+                                                     id                  BIGSERIAL PRIMARY KEY,
+                                                     subscriber_id       BIGINT NOT NULL REFERENCES telegram_subscribers(id),
+                                                     message_content     VARCHAR(4096),
+                                                     sent_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                                                     successfully_sent   BOOLEAN,
+                                                     delivery_timestamp  TIMESTAMPTZ
+);
 
--- auto-generated definition
-create table if not exists themenentity
-(
-    id       bigint not null
-        primary key,
-    lastpost date,
-    thema    varchar(255)
-        constraint idx_themenentity_thema
-            unique,
-    uuid     varchar(255)
-        constraint idx_themenentity_uuid
-            unique,
-    last     date
+-- Die Tabelle 'execution_jobs' (vorher 'ExecutionJob')
+CREATE TABLE IF NOT EXISTS execution_jobs (
+                                              id             BIGSERIAL PRIMARY KEY,
+                                              scheduler_name TEXT,
+                                              execution_time TIMESTAMPTZ,
+                                              is_completed   BOOLEAN DEFAULT FALSE
+);
+
+-- Die Tabelle 'event_plans' (vorher 'event_plans' / 'eventplanentity')
+CREATE TABLE IF NOT EXISTS event_plans (
+                                           id               BIGSERIAL PRIMARY KEY,
+                                           uuid             UUID NOT NULL UNIQUE,
+                                           event_type       event_type,
+                                           details          VARCHAR(255),
+                                           scheduled_time   TIMESTAMPTZ,
+                                           is_executed      BOOLEAN NOT NULL DEFAULT FALSE,
+                                           executed_at      TIMESTAMPTZ,
+                                           result           VARCHAR(255),
+                                           created_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Die Tabelle 'gemini_requests'
+CREATE TABLE IF NOT EXISTS gemini_requests (
+                                               id                BIGSERIAL PRIMARY KEY,
+                                               uuid              UUID NOT NULL UNIQUE,
+                                               model             VARCHAR(255),
+                                               request_text      TEXT,
+                                               response_text     TEXT,
+                                               total_token_count INTEGER,
+                                               created_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Die Tabelle 'mastodon_paging_configs'
+CREATE TABLE IF NOT EXISTS mastodon_paging_configs (
+                                                       id       BIGSERIAL PRIMARY KEY,
+                                                       resource TEXT NOT NULL UNIQUE,
+                                                       max_id   TEXT,
+                                                       min_id   TEXT,
+                                                       since_id TEXT
+);
+
+-- Die Tabelle 'posted_entries' (vorher 'postedentry')
+CREATE TABLE IF NOT EXISTS posted_entries (
+                                              id                 BIGSERIAL PRIMARY KEY,
+                                              feed_id            BIGINT NOT NULL REFERENCES monitored_feeds(id),
+                                              entry_guid         TEXT NOT NULL,
+                                              mastodon_status_id TEXT NOT NULL,
+                                              ai_toot            BOOLEAN,
+                                              posted_at          TIMESTAMPTZ,
+                                              UNIQUE (feed_id, entry_guid)
 );
 
 
-CREATE SEQUENCE if not exists themenentity_seq START 1 INCREMENT 50;
+-- ========= Index-Definitionen =========
+-- Indizes werden für Fremdschlüssel und häufig gefilterte Spalten erstellt,
+-- um die Abfragegeschwindigkeit zu maximieren.
+
+-- Indizes für mastodon_posts
+CREATE INDEX IF NOT EXISTS idx_mastodon_posts_cosinus_distance ON mastodon_posts(cosinus_distance);
+CREATE INDEX IF NOT EXISTS idx_mastodon_posts_posted_at ON mastodon_posts(posted_at);
+
+-- Indizes für embeddings
+CREATE INDEX IF NOT EXISTS idx_embeddings_mastodon_status_id ON embeddings(mastodon_status_id);
+CREATE INDEX IF NOT EXISTS idx_embeddings_embedding_created_at ON embeddings(embedding_created_at);
+
+-- Index für telegram_message_logs (wichtiger FK-Index)
+CREATE INDEX IF NOT EXISTS idx_telegram_message_logs_subscriber_id ON telegram_message_logs(subscriber_id);
+
+-- Indizes für event_plans
+CREATE INDEX IF NOT EXISTS idx_event_plans_event_type ON event_plans(event_type);
+CREATE INDEX IF NOT EXISTS idx_event_plans_scheduled_time ON event_plans(scheduled_time);
+CREATE INDEX IF NOT EXISTS idx_event_plans_is_executed ON event_plans(is_executed);
+
+-- Indizes für gemini_requests
+CREATE INDEX IF NOT EXISTS idx_gemini_requests_model ON gemini_requests(model);
+CREATE INDEX IF NOT EXISTS idx_gemini_requests_created_at ON gemini_requests(created_at);
+
+-- Indizes für monitored_feeds
+CREATE INDEX IF NOT EXISTS idx_monitored_feeds_is_active ON monitored_feeds(is_active);
+
+-- Indizes für posted_entries (FK-Index)
+CREATE INDEX IF NOT EXISTS idx_posted_entries_feed_id ON posted_entries(feed_id);
+
+-- Indizes für prompts
+CREATE INDEX IF NOT EXISTS idx_prompts_created_at ON prompts(created_at);
+

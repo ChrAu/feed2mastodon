@@ -1,14 +1,21 @@
 package com.hexix.mastodon;
 
 import com.hexix.util.VektorUtil;
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import io.quarkus.panache.common.Sort;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
-import org.hibernate.internal.util.ZonedDateTimeComparator;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -22,97 +29,101 @@ import java.util.UUID;
  * und Metadaten wie Zeitstempel und zugehörige Mastodon-Status-IDs.
  */
 @Entity
-@Table(indexes = {
-        @Index(name = "idx_Embedding_resource", columnList = "resource", unique = true),
-        @Index(name = "idx_Embedding_uuid", columnList = "uuid", unique = true),
-        @Index(name = "idx_Embedding_mastodon_status_id", columnList = "mastodon_status_id"),
-        @Index(name = "idx_Embedding_embedding_created_at", columnList = "embedding_created_at"),
-        @Index(name = "idx_Embedding_local_embedding_created_at", columnList = "local_embedding_created_at")
-})
-public class Embedding extends PanacheEntity {
+@Table(name = "embeddings")
+public class Embedding extends PanacheEntityBase {
 
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_generator")
+    @SequenceGenerator(name = "id_generator", sequenceName = "embeddings_id_seq", // WICHTIG: Passe dies an den Namen deiner DB-Sequenz an
+            allocationSize = 1)
+    @Column(name = "id")
+    private Long id;
     /**
      * Ein eindeutiger Identifikator für dieses Embedding-Objekt.
      */
-    @Column(name = "uuid", nullable = false, columnDefinition = "TEXT", unique = true)
-    String uuid = UUID.randomUUID().toString();
+    @Column(name = "uuid")
+    private UUID uuid = UUID.randomUUID();
 
     /**
      * Der Zeitstempel, an dem dieser Entitätseintrag in der Datenbank erstellt wurde.
      */
     @Column(name = "created_at", nullable = false)
-    LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     /**
      * Ein eindeutiger Bezeichner für die Quelle des Textes (z.B. eine URL oder eine ID aus einem RSS-Feed).
      */
     @Column(name = "resource", columnDefinition = "TEXT", nullable = false)
-    String resource;
+    private String resource;
 
     /**
      * Der eigentliche Textinhalt, der für das Embedding verwendet wird.
      */
-    @Column(name = "text", columnDefinition = "TEXT")
-    String text;
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "text_id", referencedColumnName = "id")
+    private TextEntity text;
 
     /**
      * Die String-Repräsentation des Embedding-Vektors, der von einem externen Dienst generiert wurde.
      * Wird in der Datenbank persistiert.
      */
-    @Column(name = "embedding_vector_string", columnDefinition = "TEXT")
-    String embeddingVectorString;
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "embedding_vector_string_id", referencedColumnName = "id")
+    private TextEntity embeddingVectorString;
 
     /**
      * Das transiente double-Array des externen Embedding-Vektors.
      * Wird bei Bedarf aus {@link #embeddingVectorString} lazy-geladen.
      */
     @Transient
-    double[] embedding;
+    private double[] embedding;
 
     /**
      * Die ID des zugehörigen Status, der auf Mastodon veröffentlicht wurde.
      */
     @Column(name = "mastodon_status_id", columnDefinition = "TEXT")
-    String mastodonStatusId;
+    private String mastodonStatusId;
 
     /**
      * Der Zeitstempel, an dem das externe Embedding generiert wurde.
      */
     @Column(name = "embedding_created_at")
-    LocalDateTime embeddingCreatedAt;
+    private LocalDateTime embeddingCreatedAt;
 
 
     /**
      * Die String-Repräsentation des lokal generierten Embedding-Vektors.
      * Wird in der Datenbank persistiert.
      */
-    @Column(name= "local_embedding_vector_string", columnDefinition = "TEXT")
-    String localEmbeddingVectorString;
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "local_embedding_vector_string_id", referencedColumnName = "id")
+    private TextEntity localEmbeddingVectorString;
 
     /**
      * Das transiente double-Array des lokalen Embedding-Vektors.
      * Wird bei Bedarf aus {@link #localEmbeddingVectorString} lazy-geladen.
      */
     @Transient
-    double[] localEmbedding;
+    private double[] localEmbedding;
 
     /**
      * Der Zeitstempel, an dem das lokale Embedding generiert wurde.
      */
     @Column(name = "local_embedding_created_at")
-    LocalDateTime localEmbeddingCreatedAt;
+    private LocalDateTime localEmbeddingCreatedAt;
 
     /**
      * Die URL, die mit der Ressource verknüpft ist.
      */
     @Column(name = "url", columnDefinition = "TEXT")
-    String url;
+    private String url;
 
     /**
      * Ein optionales negatives Gewicht, das für Scoring- oder Filterzwecke verwendet werden kann.
      */
     @Column(name = "negative_weight")
-    Double negativeWeight = null;
+    private Double negativeWeight = null;
 
     @Column(name = "status_original_url", columnDefinition = "TEXT")
     private String statusOriginalUrl;
@@ -120,16 +131,48 @@ public class Embedding extends PanacheEntity {
     @Column(name = "local_embedding_model", columnDefinition = "TEXT")
     private String localEmbeddingModel;
 
-    public static Embedding findByUUID(final String uuid) {
+    public static Embedding findByUUID(final UUID uuid) {
         return find("uuid = ?1", uuid).firstResult();
     }
 
+    /**
+     * Findet eine Liste von Embeddings, die als nächstes von einem externen Dienst verarbeitet werden sollen.
+     * Sucht nach Einträgen, bei denen der Text vorhanden ist, aber noch kein externes Embedding erstellt wurde.
+     *
+     * @return Eine Liste von bis zu 3 {@link Embedding}-Objekten, die auf die Erstellung eines externen Embeddings warten.
+     */
+    public static List<Embedding> findNextEmbeddings() {
+        return find("embeddingCreatedAt is null and text is not null and text.text is not null").range(0, 3).list();
+    }
 
-    public String getUuid() {
+    /**
+     * Findet eine Liste von Embeddings, die als nächstes lokal verarbeitet werden sollen.
+     * Sucht nach Einträgen, bei denen der Text vorhanden ist, aber noch kein lokales Embedding erstellt wurde.
+     *
+     * @return Eine Liste von bis zu 3 {@link Embedding}-Objekten, die auf die Erstellung eines lokalen Embeddings warten.
+     */
+    public static List<Embedding> findNextLocalEmbeddings() {
+        return find("localEmbeddingCreatedAt is null and text is not null and text.text is not null", Sort.by("createdAt").descending()).page(0, 10).list();
+    }
+
+    /**
+     * Findet alle Embeddings, für die bereits ein lokales Embedding generiert wurde.
+     *
+     * @return Eine Liste aller {@link Embedding}-Objekte mit einem existierenden lokalen Embedding-Vektor.
+     */
+    public static List<Embedding> findAllLocalEmbeddings() {
+        return find("localEmbeddingVectorString is not null").list();
+    }
+
+    public static List<Embedding> findAllCalcedEmbeddings() {
+        return find("embeddingVectorString is not null and localEmbeddingVectorString is not null and text is not null and  text.text is not null and createdAt < ?1", LocalDateTime.now().minusDays(30)).list();
+    }
+
+    public UUID getUuid() {
         return uuid;
     }
 
-    public void setUuid(final String uuid) {
+    public void setUuid(final UUID uuid) {
         this.uuid = uuid;
     }
 
@@ -149,14 +192,13 @@ public class Embedding extends PanacheEntity {
         this.resource = resource;
     }
 
-    public String getText() {
+    public TextEntity getText() {
         return text;
     }
 
-    public void setText(final String text) {
+    public void setText(final TextEntity text) {
         this.text = text;
     }
-
 
     public String getMastodonStatusId() {
         return mastodonStatusId;
@@ -170,8 +212,6 @@ public class Embedding extends PanacheEntity {
         return embeddingCreatedAt;
     }
 
-
-
     void setEmbeddingCreatedAt(final LocalDateTime embeddingCreatedAt) {
         this.embeddingCreatedAt = embeddingCreatedAt;
     }
@@ -184,11 +224,11 @@ public class Embedding extends PanacheEntity {
         this.localEmbeddingCreatedAt = localEmbeddingCreatedAt;
     }
 
-    String getEmbeddingVectorString() {
+    TextEntity getEmbeddingVectorString() {
         return embeddingVectorString;
     }
 
-    String getLocalEmbeddingVectorString() {
+    TextEntity getLocalEmbeddingVectorString() {
         return localEmbeddingVectorString;
     }
 
@@ -199,23 +239,10 @@ public class Embedding extends PanacheEntity {
      * @return Das double-Array des externen Embeddings oder null, wenn keine Daten vorhanden sind.
      */
     public double[] getEmbedding() {
-        if(embedding == null && embeddingVectorString != null){
-            this.embedding = VektorUtil.DoubleArrayConverter.stringToArray(embeddingVectorString);
+        if (embedding == null && embeddingVectorString != null) {
+            this.embedding = VektorUtil.DoubleArrayConverter.stringToArray(embeddingVectorString.getText());
         }
         return embedding;
-    }
-
-    /**
-     * Gibt den lokalen Embedding-Vektor als double-Array zurück.
-     * Wenn der Vektor noch nicht geladen ist, wird er aus der String-Repräsentation {@link #localEmbeddingVectorString} konvertiert.
-     *
-     * @return Das double-Array des lokalen Embeddings oder null, wenn keine Daten vorhanden sind.
-     */
-    public double[] getLocalEmbedding() {
-        if (localEmbedding == null && localEmbeddingVectorString != null) {
-            this.localEmbedding = VektorUtil.DoubleArrayConverter.stringToArray(localEmbeddingVectorString);
-        }
-        return localEmbedding;
     }
 
     /**
@@ -227,11 +254,26 @@ public class Embedding extends PanacheEntity {
      */
     public void setEmbedding(final double[] embedding) {
         this.embedding = embedding;
-        this.embeddingVectorString = VektorUtil.DoubleArrayConverter.arrayToString(embedding);
+        final String text = VektorUtil.DoubleArrayConverter.arrayToString(embedding);
 
-        if(this.embeddingVectorString != null){
+
+        if (text != null) {
             this.embeddingCreatedAt = LocalDateTime.now();
+            this.embeddingVectorString = new TextEntity(text);
         }
+    }
+
+    /**
+     * Gibt den lokalen Embedding-Vektor als double-Array zurück.
+     * Wenn der Vektor noch nicht geladen ist, wird er aus der String-Repräsentation {@link #localEmbeddingVectorString} konvertiert.
+     *
+     * @return Das double-Array des lokalen Embeddings oder null, wenn keine Daten vorhanden sind.
+     */
+    public double[] getLocalEmbedding() {
+        if (localEmbedding == null && localEmbeddingVectorString != null) {
+            this.localEmbedding = VektorUtil.DoubleArrayConverter.stringToArray(localEmbeddingVectorString.getText());
+        }
+        return localEmbedding;
     }
 
     /**
@@ -243,10 +285,12 @@ public class Embedding extends PanacheEntity {
      */
     public void setLocalEmbedding(final double[] localEmbedding) {
         this.localEmbedding = localEmbedding;
-        this.localEmbeddingVectorString = VektorUtil.DoubleArrayConverter.arrayToString(localEmbedding);
+        final String text = VektorUtil.DoubleArrayConverter.arrayToString(localEmbedding);
 
-        if(this.localEmbeddingVectorString != null){
+
+        if (text != null) {
             this.localEmbeddingCreatedAt = LocalDateTime.now();
+            this.localEmbeddingVectorString = new TextEntity(text);
         }
     }
 
@@ -266,40 +310,6 @@ public class Embedding extends PanacheEntity {
         this.negativeWeight = negativeWeight;
     }
 
-    /**
-     * Findet eine Liste von Embeddings, die als nächstes von einem externen Dienst verarbeitet werden sollen.
-     * Sucht nach Einträgen, bei denen der Text vorhanden ist, aber noch kein externes Embedding erstellt wurde.
-     *
-     * @return Eine Liste von bis zu 3 {@link Embedding}-Objekten, die auf die Erstellung eines externen Embeddings warten.
-     */
-    public static List<Embedding> findNextEmbeddings() {
-        return find("embeddingCreatedAt is null and text is not null").range(0, 3).list();
-    }
-
-    /**
-     * Findet eine Liste von Embeddings, die als nächstes lokal verarbeitet werden sollen.
-     * Sucht nach Einträgen, bei denen der Text vorhanden ist, aber noch kein lokales Embedding erstellt wurde.
-     *
-     * @return Eine Liste von bis zu 3 {@link Embedding}-Objekten, die auf die Erstellung eines lokalen Embeddings warten.
-     */
-    public static List<Embedding> findNextLocalEmbeddings() {
-        return find("localEmbeddingCreatedAt is null and text is not null", Sort.by("createdAt").descending()).page(0, 10).list();
-    }
-
-    /**
-     * Findet alle Embeddings, für die bereits ein lokales Embedding generiert wurde.
-     *
-     * @return Eine Liste aller {@link Embedding}-Objekte mit einem existierenden lokalen Embedding-Vektor.
-     */
-    public static List<Embedding> findAllLocalEmbeddings() {
-        return find("localEmbeddingVectorString is not null").list();
-    }
-
-
-    public static List<Embedding> findAllCalcedEmbeddings(){
-        return find("embeddingVectorString is not null and localEmbeddingVectorString is not null and text is not null and createdAt < ?1", LocalDateTime.now().minusDays(30)).list();
-    }
-
     public String getStatusOriginalUrl() {
         return statusOriginalUrl;
     }
@@ -309,32 +319,24 @@ public class Embedding extends PanacheEntity {
     }
 
 
-    @Override
-    public String toString() {
-        return "Embedding{" +
-                "id='" + id + '\'' +'\'' +
-                ", uuid=" + uuid +
-                ", createdAt=" + createdAt +
-                ", resource='" + resource + '\'' +
-                ", text='" + text + '\'' +
-                ", embeddingVectorString='" + embeddingVectorString + '\'' +
-                ", embedding=" + Arrays.toString(embedding) +
-                ", mastodonStatusId='" + mastodonStatusId + '\'' +
-                ", embeddingCreatedAt=" + embeddingCreatedAt +
-                ", localEmbeddingVectorString='" + localEmbeddingVectorString + '\'' +
-                ", localEmbedding=" + Arrays.toString(localEmbedding) +
-                ", localEmbeddingCreatedAt=" + localEmbeddingCreatedAt +
-                ", url='" + url + '\'' +
-                ", negativeWeight=" + negativeWeight +
-                ", statusOriginalUrl='" + statusOriginalUrl +
-                '}';
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(final Long id) {
+        this.id = id;
+    }
+
+    public String getLocalEmbeddingModel() {
+        return localEmbeddingModel;
     }
 
     public void setLocalEmbeddingModel(final String localEmbeddingModel) {
         this.localEmbeddingModel = localEmbeddingModel;
     }
 
-    public String getLocalEmbeddingModel() {
-        return localEmbeddingModel;
+    @Override
+    public String toString() {
+        return "Embedding{" + "id=" + id + ", uuid='" + uuid + '\'' + ", createdAt=" + createdAt + ", resource='" + resource + '\'' + ", text=" + text + ", embeddingVectorString=" + embeddingVectorString + ", embedding=" + Arrays.toString(embedding) + ", mastodonStatusId='" + mastodonStatusId + '\'' + ", embeddingCreatedAt=" + embeddingCreatedAt + ", localEmbeddingVectorString=" + localEmbeddingVectorString + ", localEmbedding=" + Arrays.toString(localEmbedding) + ", localEmbeddingCreatedAt=" + localEmbeddingCreatedAt + ", url='" + url + '\'' + ", negativeWeight=" + negativeWeight + ", statusOriginalUrl='" + statusOriginalUrl + '\'' + ", localEmbeddingModel='" + localEmbeddingModel + '\'' + '}';
     }
 }
