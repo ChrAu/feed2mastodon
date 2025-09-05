@@ -1,9 +1,13 @@
 package com.hexix.ai;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
@@ -11,32 +15,43 @@ import java.util.UUID;
 
 
 @Entity
-@Table(indexes = {
-        @Index(name = "idx_RequestEntity_uuid", columnList = "uuid", unique = true),
-        @Index(name = "idx_RequestEntity_model", columnList = "model"),
-        @Index(name = "idx_RequestEntity_timestamp", columnList = "timestamp")
-})
-public class GeminiRequestEntity extends PanacheEntity {
+@Table(name = "gemini_requests")
+public class GeminiRequestEntity extends PanacheEntityBase {
 
-    String uuid = UUID.randomUUID().toString();
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_generator")
+    @SequenceGenerator(name = "id_generator", sequenceName = "gemini_requests_id_seq", // WICHTIG: Passe dies an den Namen deiner DB-Sequenz an
+            allocationSize = 1)
+    @Column(name = "id")
+    private Long id;
 
-    String model;
+    @Column(name = "uuid")
+    private UUID uuid = UUID.randomUUID();
 
-    LocalDateTime timestamp = LocalDateTime.now();
+    @Column(name = "model")
+    private String model;
 
-    @Column(columnDefinition = "TEXT")
-    String text;
+    @Column(name = "created_at")
+    private LocalDateTime timestamp = LocalDateTime.now();
 
+    @Column(name = "request_text", columnDefinition = "TEXT")
+    private String text;
 
-    Integer totalTokenCount = 0;
-    @Column(columnDefinition = "TEXT")
-    String response;
+    @Column(name = "total_token_count")
+    private Integer totalTokenCount = 0;
 
-    public String getUuid() {
+    @Column(name = "response_text", columnDefinition = "TEXT")
+    private String response;
+
+    public static long countLast10Minutes(String model) {
+        return find("model = ?1 and timestamp > ?2", model, LocalDateTime.now().minusMinutes(10)).count();
+    }
+
+    public UUID getUuid() {
         return uuid;
     }
 
-    public void setUuid(final String uuid) {
+    private void setUuid(final UUID uuid) {
         this.uuid = uuid;
     }
 
@@ -64,19 +79,44 @@ public class GeminiRequestEntity extends PanacheEntity {
         this.text = text;
     }
 
-    public static long countLast10Minutes(String model){
-        return find("model = ?1 and timestamp > ?2", model, LocalDateTime.now().minusMinutes(10)).count();
-    }
-
-    public void setTotalTokenCount(final int totalTokenCount) {
-        this.totalTokenCount = totalTokenCount;
+    public String getResponse() {
+        return response;
     }
 
     public void setResponse(final String response) {
         this.response = response;
     }
 
-    public String getResponse() {
-        return response;
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(final Long id) {
+        this.id = id;
+    }
+
+    public Integer getTotalTokenCount() {
+        return totalTokenCount;
+    }
+
+    public void setTotalTokenCount(final int totalTokenCount) {
+        this.totalTokenCount = totalTokenCount;
+    }
+
+    public void setTotalTokenCount(final Integer totalTokenCount) {
+        this.totalTokenCount = totalTokenCount;
+    }
+
+    @Override
+    public String toString() {
+        return "GeminiRequestEntity{" +
+                "id=" + id +
+                ", uuid=" + uuid +
+                ", model='" + model + '\'' +
+                ", timestamp=" + timestamp +
+                ", text='" + text + '\'' +
+                ", totalTokenCount=" + totalTokenCount +
+                ", response='" + response + '\'' +
+                '}';
     }
 }

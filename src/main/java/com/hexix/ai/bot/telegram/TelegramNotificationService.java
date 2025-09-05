@@ -45,10 +45,10 @@ public class TelegramNotificationService {
             try {
                 // Step 2: Try to send the message.
                 producerTemplate.sendBodyAndHeader("direct:sendDirectMessage", message, "chatId", subscriber.getChatId());
-                LOG.infof("Message sent to subscriber with ID: %d (ChatID: %s)", subscriber.id, subscriber.getChatId());
+                LOG.infof("Message sent to subscriber with ID: %d (ChatID: %s)", subscriber.getId(), subscriber.getChatId());
 
                 // Step 3: If successful, update the log entry.
-                self.get().markAsSent(logEntry.id);
+                self.get().markAsSent(logEntry.getId());
 
                 // Add a delay to avoid hitting API rate limits
                 Thread.sleep(100); // 100ms delay
@@ -59,7 +59,7 @@ public class TelegramNotificationService {
                 break; // Exit the loop if the thread is interrupted
             } catch (Exception e) {
                 LOG.errorf(e, "Failed to send message to subscriber with ID: %d (ChatID: %s). The log entry ID is %d.",
-                        subscriber.id, subscriber.getChatId(), logEntry.id);
+                        subscriber.getId(), subscriber.getChatId(), logEntry.getId());
                 // The log entry remains marked as not successfully sent.
             }
         }

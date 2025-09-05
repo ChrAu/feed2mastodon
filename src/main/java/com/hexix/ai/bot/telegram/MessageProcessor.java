@@ -4,6 +4,7 @@ import com.hexix.JsoupParser;
 import com.hexix.ai.bot.VikiAiService;
 import com.hexix.ai.bot.VikiResponse;
 import com.hexix.mastodon.PublicMastodonPostEntity;
+import com.hexix.mastodon.PublicMastodonPostRepository;
 import com.hexix.mastodon.api.MastodonDtos;
 import com.hexix.mastodon.resource.MastodonClient;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -45,6 +46,9 @@ public class MessageProcessor implements Processor {
     @Inject
     SubscriptionService subscriptionService;
 
+    @Inject
+    PublicMastodonPostRepository publicMastodonPostRepository;
+
     @ConfigProperty(name = "mastodon.access.token")
     String accessToken;
 
@@ -71,7 +75,7 @@ public class MessageProcessor implements Processor {
         Object body = exchange.getIn().getBody();
 
         if (body instanceof IncomingCallbackQuery callbackQuery) {
-            String chatId = callbackQuery.getMessage().getChat().getId().toString();
+            String chatId = callbackQuery.getMessage().getChat().getId();
             subscriptionService.addSubscriber(chatId);
             LOG.info("Verarbeite IncomingCallbackQuery...");
             String callbackQueryId = callbackQuery.getId();
@@ -79,7 +83,7 @@ public class MessageProcessor implements Processor {
             handleCallbackQuery(exchange, chatId, callbackQueryId, data);
 
         } else if (body instanceof IncomingMessage incomingMessage) {
-            String chatId = incomingMessage.getChat().getId().toString();
+            String chatId = incomingMessage.getChat().getId();
             subscriptionService.addSubscriber(chatId);
             LOG.info("Verarbeite IncomingMessage...");
             handleTextMessage(exchange, chatId, incomingMessage);
@@ -430,7 +434,7 @@ public class MessageProcessor implements Processor {
 
     @Transactional
     void unBoost(final String replyId, final Double negativeWeight, boolean noUrl) {
-        PublicMastodonPostEntity post = PublicMastodonPostEntity.findByMastodonId(replyId);
+        PublicMastodonPostEntity post = publicMastodonPostRepository.findByMastodonId(replyId).orElse(null);
 
         if(post == null){
             MastodonDtos.MastodonStatus status = mastodonClient.getStatus(replyId, "Bearer " + accessToken);
@@ -457,7 +461,7 @@ public class MessageProcessor implements Processor {
 
     }
 
-    private static PublicMastodonPostEntity getPublicMastodonPostEntity(final MastodonDtos.MastodonStatus status, boolean noUrl) {
+    private PublicMastodonPostEntity getPublicMastodonPostEntity(final MastodonDtos.MastodonStatus status, boolean noUrl) {
         final PublicMastodonPostEntity post = new PublicMastodonPostEntity();
         post.setMastodonId(status.id());
         post.setStatusOriginalUrl(status.url());
@@ -469,7 +473,7 @@ public class MessageProcessor implements Processor {
         LOG.infof("Empfangener Status (ID: %s, Account: %s, Inhalt: \"%s\", URL: %s)\n",
                 status.id(), status.account().username(), text.substring(0, Math.min(20, text.length())) + "...", post.getStatusOriginalUrl());
 
-        post.persist();
+        publicMastodonPostRepository.persist(post);
         return post;
     }
 

@@ -1,9 +1,14 @@
 package com.hexix.ai;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -11,21 +16,29 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(indexes = {
-        @Index(name = "idx_PromptEntity_uuid", columnList = "uuid", unique = true),
-        @Index(name = "idx_PromptEntity_createdAt", columnList = "createdAt")
-})public class PromptEntity extends PanacheEntity {
+@Table(name = "prompts")
+public class PromptEntity extends PanacheEntityBase {
 
-    @Column(unique = true, nullable = false)
-    public String uuid = UUID.randomUUID().toString(); // Der Typ kann direkt UUID sein
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_generator")
+    @SequenceGenerator(
+            name = "id_generator",
+            sequenceName = "prompts_id_seq", // WICHTIG: Passe dies an den Namen deiner DB-Sequenz an
+            allocationSize = 1
+    )
+    @Column(name = "id")
+    private Long id;
 
-    @Column(columnDefinition = "TEXT")
-    public String prompt;
+    @Column(name = "uuid")
+    private UUID uuid = UUID.randomUUID(); // Der Typ kann direkt UUID sein
+
+    @Column(name = "prompt", columnDefinition = "TEXT")
+    private String prompt;
 
     // @CreationTimestamp sorgt dafür, dass die DB oder Hibernate den Zeitstempel beim Erstellen setzt
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
-    public LocalDateTime createdAt;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     // Der Konstruktor benötigt keine UUID-Zuweisung mehr
     public PromptEntity(final String prompt) {
@@ -34,6 +47,38 @@ import java.util.UUID;
 
     // Der leere Konstruktor bleibt für JPA erforderlich
     public PromptEntity() {
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(final Long id) {
+        this.id = id;
+    }
+
+    public UUID getUuid() {
+        return uuid;
+    }
+
+    private void setUuid(final UUID uuid) {
+        this.uuid = uuid;
+    }
+
+    public String getPrompt() {
+        return prompt;
+    }
+
+    public void setPrompt(final String prompt) {
+        this.prompt = prompt;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(final LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
     public static PromptEntity findLatest() {

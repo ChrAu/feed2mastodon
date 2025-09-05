@@ -4,6 +4,7 @@ import com.hexix.ai.ExecutionJob;
 import com.hexix.ai.ThemenEntity;
 import com.hexix.ai.bot.telegram.TelegramNotificationService;
 import com.hexix.mastodon.PublicMastodonPostEntity;
+import com.hexix.mastodon.PublicMastodonPostRepository;
 import io.quarkus.panache.common.Sort;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -14,6 +15,7 @@ import org.jboss.logging.Logger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -27,6 +29,9 @@ public class BotScheduler {
 
     @Inject
     TelegramNotificationService telegramNotificationService;
+
+    @Inject
+    PublicMastodonPostRepository publicMastodonPostRepository;
 
     @Scheduled(every = "2h", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     public void scheduleWissenBot() {
@@ -128,15 +133,13 @@ public class BotScheduler {
     private void executeTriggerBotLogic() {
         LOG.info("🤖 Executing triggerBot logic...");
 
-        PublicMastodonPostEntity postToComment = PublicMastodonPostEntity.find(
-                "vikiCommented = false and cosDistance is not null",
-                Sort.by("cosDistance").descending()
-        ).firstResult();
+        final Optional<PublicMastodonPostEntity> postToCommentOption = publicMastodonPostRepository.findNextVikiComment();
 
-        if (postToComment == null) {
+        if (postToCommentOption.isEmpty()) {
             LOG.info("No new posts found for Viki to comment on. Will try again later.");
             return;
         }
+        PublicMastodonPostEntity postToComment = postToCommentOption.get();
 
         LOG.infof("Found a post to comment on with ID: %s and cosDistance: %f",
                 postToComment.getMastodonId(), postToComment.getCosDistance());
@@ -148,7 +151,7 @@ public class BotScheduler {
         if (topic.isBlank()) {
             LOG.warnf("Post with ID %s has no text content. Marking as commented to avoid re-processing.", postToComment.getMastodonId());
             postToComment.setVikiCommented(true);
-            postToComment.persist();
+            publicMastodonPostRepository.persist(postToComment);
             return;
         }
 
@@ -164,7 +167,8 @@ public class BotScheduler {
         LOG.infof("   Hashtags: %s", vikiResponse.hashTags());
 
         postToComment.setVikiCommented(true);
-        postToComment.persist();
+        publicMastodonPostRepository.persist(postToComment);
+
         LOG.infof("Post with ID %s has been marked as 'commented'.", postToComment.getMastodonId());
 
         String hashtags = String.join(" ", vikiResponse.hashTags());
