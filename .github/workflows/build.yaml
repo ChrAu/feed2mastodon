@@ -60,29 +60,29 @@ jobs:
         with:
           java-version: '21'
           distribution: 'zulu'
-      
+
       # Schritt 3: Node.js einrichten
       # Richtet Node.js ein, damit Quinoa die Frontend-Abhängigkeiten installieren kann
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.10.0'
+          node-version: '22.19.0'
           cache: 'npm'
           cache-dependency-path: 'src/main/webui/package-lock.json'
 
       # Schritt 4: Mit Maven Wrapper bauen
       # Stellt sicher, dass die mvnw-Datei ausführbar ist und führt dann den Build aus.
       - name: Build with Maven Wrapper
-        # NEU: Umgebungsvariablen, um Quarkus mit der Test-DB zu verbinden.
-        # Diese überschreiben die Werte aus deiner application.properties nur für diesen Schritt.
-        env:
-          QUARKUS_DATASOURCE_USERNAME: quarkus_test
-          QUARKUS_DATASOURCE_PASSWORD: quarkus_test
-          QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://localhost:5439/quarkus_test
-          GEMINIE_ACCESS_TOKEN: ${{ secrets.GEMINIE_ACCESS_TOKEN}}
-          MASTODON_PRIVATE_ACCESS_TOKEN: ${{ secrets.MASTODON_PRIVATE_ACCESS_TOKEN}}
-          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      # NEU: Umgebungsvariablen, um Quarkus mit der Test-DB zu verbinden.
+      # Diese überschreiben die Werte aus deiner application.properties nur für diesen Schritt.
+      env:
+        QUARKUS_DATASOURCE_USERNAME: quarkus_test
+        QUARKUS_DATASOURCE_PASSWORD: quarkus_test
+        QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://localhost:5439/quarkus_test
+        GEMINIE_ACCESS_TOKEN: ${{ secrets.GEMINIE_ACCESS_TOKEN}}
+        MASTODON_PRIVATE_ACCESS_TOKEN: ${{ secrets.MASTODON_PRIVATE_ACCESS_TOKEN}}
+        GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
           chmod +x mvnw
           ./mvnw -B package -Dquarkus.profile=prod --file pom.xml
