@@ -14,6 +14,7 @@ import com.hexix.mastodon.TextEntity;
 import com.hexix.mastodon.TextEntityRepository;
 import com.hexix.mastodon.api.MastodonDtos;
 import com.hexix.mastodon.resource.MastodonClient;
+import com.hexix.urlshortener.UrlShortenerService;
 import com.hexix.util.VektorUtil;
 import com.rometools.rome.feed.synd.SyndEntry;
 import io.quarkus.scheduler.Scheduled;
@@ -24,7 +25,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
 import org.jsoup.Jsoup;
-
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -79,6 +79,9 @@ public class FeedToTootScheduler {
     @Inject
     GenerateEmbeddingTextInput generateEmbeddingTextInput;
 
+  @Inject
+  UrlShortenerService urlShortenerService;
+
     @Inject
     PublicMastodonPostRepository publicMastodonPostRepository;
 
@@ -86,10 +89,11 @@ public class FeedToTootScheduler {
     TextEntityRepository textEntityRepository;
 
 
+
     // Einfache In-Memory-Lösung zur Vermeidung von Duplikaten.
     // Für eine robuste Lösung eine Datei oder DB verwenden!
 
-    private static String getTootText(final MonitoredFeed feed, final SyndEntry entry, boolean fullContent) {
+    private String getTootText(final MonitoredFeed feed, final SyndEntry entry, boolean fullContent) {
         StringBuilder prefixText = new StringBuilder();
         if (feed.getTitle() != null && !feed.getTitle().isEmpty()) {
             prefixText.append(feed.getTitle());
@@ -107,7 +111,12 @@ public class FeedToTootScheduler {
             prefixText.append(entry.getContents().getFirst().getValue());
         }
 
-        String link = "\n\n" + entry.getLink();
+        String originalLink = entry.getLink();
+        if(originalLink.length() > 27){
+            originalLink = urlShortenerService.shortenUrl(originalLink);
+        }
+        String link = "\n\n" + originalLink;
+
 
         if (prefixText.length() + link.length() > (fullContent ? 25500 : 500)) {
             prefixText = new StringBuilder(prefixText.substring(0, (fullContent ? 25500 : 497 - link.length())) + "...");
