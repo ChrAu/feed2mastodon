@@ -273,7 +273,7 @@ public class MastodonStreamProcessor {
         final PublicMastodonPostEntity post = new PublicMastodonPostEntity();
         post.setMastodonId(status.id());
         post.setStatusOriginalUrl(status.url());
-        post.setInternMastodonUrl("https://mastodon.hexix.de/" + status.account().acct() + "/" + status.id());
+        post.setInternMastodonUrl("https://mastodon.hexix.de/@" + status.account().acct() + "/" + status.id());
 
         final String text = Jsoup.parse(status.content()).text();
 
