@@ -174,6 +174,10 @@ public class BotScheduler {
         String hashtags = String.join(" ", vikiResponse.hashTags());
         String broadcastMessage = String.format("%s\n\n%s", vikiResponse.content(), hashtags);
 
+        if(postToComment.getInternMastodonUrl() != null){
+            broadcastMessage = String.format("%s\n\n%s", broadcastMessage, postToComment.getInternMastodonUrl());
+        }
+
         LOG.infof("Ein neuer Beitrag wurde von Viki erstellt: %s", broadcastMessage);
         telegramNotificationService.broadcastMessage(broadcastMessage);
     }
