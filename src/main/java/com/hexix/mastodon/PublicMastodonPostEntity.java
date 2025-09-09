@@ -18,6 +18,8 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 
+import java.util.Arrays;
+
 @Entity
 @Table(name = "mastodon_posts")
 @NamedQueries({
@@ -122,6 +124,9 @@ public class PublicMastodonPostEntity extends BaseEntity {
     // Dieses Feld speichert, ob Viki bereits einen Kommentar zu diesem Post generiert hat.
     @Column(name = "viki_commented")
     private Boolean vikiCommented = false;
+
+    @Column(name = "intern_mastodon_url", columnDefinition = "TEXT")
+    private String internMastodonUrl;
 
 
     public Long getId() {
@@ -236,6 +241,33 @@ public class PublicMastodonPostEntity extends BaseEntity {
 
     public String getEmbeddingModel() {
         return localModel;
+    }
+
+    public String getInternMastodonUrl() {
+        return internMastodonUrl;
+    }
+
+    public void setInternMastodonUrl(final String internMastodonUrl) {
+        this.internMastodonUrl = internMastodonUrl;
+    }
+
+    @Override
+    public String toString() {
+        return "PublicMastodonPostEntity{" +
+                "id=" + id +
+                ", mastodonId='" + mastodonId + '\'' +
+                ", postText=" + postText +
+                ", urlText=" + urlText +
+                ", cosDistance=" + cosDistance +
+                ", embeddingVectorString=" + embeddingVectorString +
+                ", embeddingVector=" + Arrays.toString(embeddingVector) +
+                ", statusOriginalUrl='" + statusOriginalUrl + '\'' +
+                ", negativeWeight=" + negativeWeight +
+                ", noURL=" + noURL +
+                ", vikiCommented=" + vikiCommented +
+                ", internMastodonUrl='" + internMastodonUrl + '\'' +
+                ", localModel='" + localModel + '\'' +
+                '}';
     }
 }
 
