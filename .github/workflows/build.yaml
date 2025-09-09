@@ -64,7 +64,7 @@ jobs:
       # Schritt 3: Node.js einrichten
       # Richtet Node.js ein, damit Quinoa die Frontend-Abhängigkeiten installieren kann
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22.19.0'
           cache: 'npm'
