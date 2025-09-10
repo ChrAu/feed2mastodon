@@ -3,10 +3,12 @@ package com.hexix.urlshortener;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "url_mapping")
 public class UrlMapping extends PanacheEntity {
 
     @Column(unique = true, nullable = false)
