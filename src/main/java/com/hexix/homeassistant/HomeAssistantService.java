@@ -61,7 +61,7 @@ public class HomeAssistantService {
         if(lastUpdated == null || !haEntity.getLastUpdated().isEqual(lastUpdated)){
             final HaStateHistory haStateHistory = new HaStateHistory();
             haStateHistory.setEntityId(haEntity.getEntityId());
-            haStateHistory.setLastChanged(haEntity.getLastChanged());
+            haStateHistory.setLastChanged(haEntity.getLastUpdated());
             haStateHistory.setState(haEntity.getState());
             haStateHistory.setAttributes(haEntity.getAttributes());
 
