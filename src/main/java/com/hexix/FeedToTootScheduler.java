@@ -88,6 +88,9 @@ public class FeedToTootScheduler {
     @Inject
     TextEntityRepository textEntityRepository;
 
+    @Inject
+    @ConfigProperty(name = "feed2Mastodon.shortUrlPost", defaultValue = "false")
+    boolean shortUrlEnabled;
 
 
     // Einfache In-Memory-Lösung zur Vermeidung von Duplikaten.
@@ -112,7 +115,7 @@ public class FeedToTootScheduler {
         }
 
         String originalLink = entry.getLink();
-        if(originalLink.length() > 27){
+        if(originalLink.length() > 27 && shortUrlEnabled){
             originalLink = urlShortenerService.shortenUrl(originalLink);
         }
         String link = "\n\n" + originalLink;
