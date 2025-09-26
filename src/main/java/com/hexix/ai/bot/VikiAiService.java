@@ -21,7 +21,7 @@ public class VikiAiService {
     @ConfigProperty(name = "gemini.access.token")
     String accessToken;
 
-    @ConfigProperty(name = "gemini.model.name", defaultValue = "gemini-1.5-flash")
+    @ConfigProperty(name = "gemini.model", defaultValue = "gemini-1.5-flash")
     String modelName;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
