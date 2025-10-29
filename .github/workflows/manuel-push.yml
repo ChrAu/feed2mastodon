@@ -134,7 +134,7 @@ jobs:
       # Schritt 2: Build-Artefakt herunterladen
       # Holt die im 'build'-Job erstellten Dateien.
       - name: Download build artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: java-app-build
           path: target/
@@ -183,7 +183,7 @@ jobs:
   #         ref: ${{ github.event.inputs.branch }}
   #
   #     - name: Download build artifact
-  #       uses: actions/download-artifact@v5
+  #       uses: actions/download-artifact@v6
   #       with:
   #         name: java-app-build
   #         path: target/
