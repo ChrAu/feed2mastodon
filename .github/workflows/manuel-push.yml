@@ -100,7 +100,7 @@ jobs:
       # Schritt 5: Build-Artefakte hochladen
       # Das 'target'-Verzeichnis enthält die gebaute JAR-Datei, die für den Docker-Build benötigt wird.
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: java-app-build
           path: |
