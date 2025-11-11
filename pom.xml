@@ -119,7 +119,7 @@
         <dependency>
             <groupId>com.google.genai</groupId>
             <artifactId>google-genai</artifactId>
-            <version>1.24.0</version>
+            <version>1.26.0</version>
         </dependency>
 
         <dependency>
