@@ -143,7 +143,7 @@ public class GoogleAiTest {
                     SafetySetting.builder().category(HarmCategory.Known.HARM_CATEGORY_HATE_SPEECH).threshold(HarmBlockThreshold.Known.BLOCK_MEDIUM_AND_ABOVE).build(),
                     SafetySetting.builder().category(HarmCategory.Known.HARM_CATEGORY_DANGEROUS_CONTENT).threshold(HarmBlockThreshold.Known.BLOCK_MEDIUM_AND_ABOVE).build());
 
-            GenerateContentResponse response = client.models.generateContent("gemini-2.0-flash", prompt, GenerateContentConfig.builder().responseMimeType("application/json").maxOutputTokens(256).tools(Tool.builder().googleSearch(GoogleSearch.builder().build()).build()).safetySettings(safetySettings).build());
+            GenerateContentResponse response = client.models.generateContent("gemini-2.0-flash", prompt, GenerateContentConfig.builder().responseMimeType("application/json").maxOutputTokens(256).safetySettings(safetySettings).build());
             LOG.info("Input message:" + prompt);
             LOG.info("Generated message: " + response.text());
             Assertions.assertNotNull(response.text());
@@ -293,7 +293,7 @@ public class GoogleAiTest {
     }
 
     private static double[]  getContentEmbeddings(final Client client, String text) {
-        final EmbedContentResponse embedContentResponse = client.models.embedContent("models/text-embedding-004",text, EmbedContentConfig.builder().outputDimensionality(EMBEDDING_DIMENSION).build());
+        final EmbedContentResponse embedContentResponse = client.models.embedContent("gemini-embedding-001",text, EmbedContentConfig.builder().outputDimensionality(EMBEDDING_DIMENSION).build());
 //                "Patchday: Adobe schützt After Effects & Co. vor möglichen Attacken\n" +
 //                "\n" +
 //                "Mehrere Adobe-Anwendungen sind unter anderem für DoS- und Schadcode-Attacken anfällig. Sicherheitsupdates schaffen Abhilfe. \n" +
