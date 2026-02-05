@@ -25,7 +25,7 @@ public class JsoupParser {
     private static final String T_ONLINE_CSS_QUERY = "article div[data-testid=\"StreamLayout.Stream\"] p, article div[data-testid=\"StreamLayout.Stream\"] h3, article div[data-testid=\"StreamLayout.Stream\"] ul:not([data-testid=\"RelatedArticles.List\"]) li";
     private static final String DOMREPTOTAL_CSS_QUERY = "article .post-title, article .entry-inner p";
     private static final String NTV_CSS_QUERY = "article.article .article__text p, article.article .article__text h2, article[class^='article-index_article__'] p," +
-            "article[class^='article-index_article__'] h2";
+            " article[class^='article-index_article__'] h2";
 
     private JsoupParser(){
 
