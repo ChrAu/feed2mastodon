@@ -1,4 +1,4 @@
-name: "CodeQL Analysis"
+name: "CodeQL Advanced Mix"
 
 on:
   push:
@@ -6,22 +6,34 @@ on:
   pull_request:
     branches: [ "main" ]
   schedule:
-    - cron: '20 18 * * 4'
+    - cron: '37 20 * * 3'
 
 jobs:
   analyze:
-    name: Analyze
-    runs-on: ubuntu-latest # Oder self-hosted, falls benötigt
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
     permissions:
+      security-events: write
+      packages: read
       actions: read
       contents: read
-      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: java-kotlin
+            build-mode: manual  # Wichtig: Wir bauen Java selbst für bessere Ergebnisse
+          - language: javascript-typescript
+            build-mode: none    # JS/TS braucht keinen Build-Schritt
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    # Java Setup: Nur ausführen, wenn der aktuelle Matrix-Job Java ist
     - name: Set up JDK 21
+      if: matrix.language == 'java-kotlin'
       uses: actions/setup-java@v4
       with:
         java-version: '21'
@@ -31,16 +43,19 @@ jobs:
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
-        languages: 'java-kotlin, javascript-typescript'
-        # VERBESSERUNG: Nutze die erweiterten Abfragen für Java
+        languages: ${{ matrix.language }}
+        # AKTIVIERT DIE TIEFE ANALYSE:
         queries: security-extended,security-and-quality
 
-    # Da es ein Maven-Projekt ist, nutzt CodeQL standardmäßig "autobuild".
-    # Bei Quarkus-Projekten ist es oft besser, den Build-Befehl explizit anzugeben:
-    - name: Build with Maven
+    # Manueller Build-Schritt für Java (Quarkus/Maven)
+    - name: Build Java Code
+      if: matrix.build-mode == 'manual'
+      shell: bash
       run: |
         chmod +x mvnw
         ./mvnw -B clean package -DskipTests
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
