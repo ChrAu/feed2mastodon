@@ -16,7 +16,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 @ApplicationScoped
@@ -105,7 +104,7 @@ public class BotScheduler {
             LOG.info("No new posts found for Viki to comment on. Will try again later.");
             return;
         }
-        final int nextIndex = new Random().nextInt(list.size());
+        final int nextIndex = ThreadLocalRandom.current().nextInt(list.size());
         final ThemenEntity themenEntity = list.get(nextIndex);
 
         LOG.infof("Found a post to comment on with ID: %s", themenEntity.getThema());
