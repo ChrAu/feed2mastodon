@@ -178,7 +178,7 @@ public class MessageProcessor implements Processor {
 
         chatStates.remove(chatId);
 
-        if(weight > 0){
+        if(weight > 0 && currentState != null){
             try{
                 final MastodonDtos.MastodonSearchResult search = mastodonClient.search("Bearer " + accessToken, String.valueOf(currentState.data), true);
                 final Optional<MastodonDtos.MastodonStatus> status = search.statuses().stream().findFirst();
