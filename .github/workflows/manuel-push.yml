@@ -141,7 +141,7 @@ jobs:
 
       # Schritt 3: An der GitHub Container Registry (ghcr.io) anmelden
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -150,7 +150,7 @@ jobs:
       # Schritt 4: Metadaten für das Docker-Image extrahieren
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051
         with:
           images: ghcr.io/${{ env.IMAGE_NAME }}
           tags: |
