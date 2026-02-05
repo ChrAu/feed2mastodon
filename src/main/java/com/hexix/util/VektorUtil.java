@@ -183,61 +183,12 @@ public class VektorUtil {
      * Erstellt einen Profil-Vektor, indem der Durchschnitt mehrerer Vektoren gebildet wird.
      * @param vectors Eine Liste von Vektoren.
      * @return Der durchschnittliche, normalisierte Vektor.
-     * @deprecated use the createProfileVector Methode with positiv and negative Vectors
      */
-    @Deprecated
     public static double[] createProfileVector(List<double[]> vectors) {
-
-
         return createProfileVector(vectors.stream().map(doubles -> new VektorWeight(doubles, 1.0)).toList(), Collections.emptyList());
     }
 
 
-//    /**
-//     * Erstellt einen Profil-Vektor, indem der Durchschnitt mehrerer Vektoren gebildet wird.
-//     * @param vectors Eine Liste von Vektoren.
-//     * @return Der durchschnittliche, normalisierte Vektor.
-//     */
-//    public static double[] createProfileVector(List<double[]> vectors) {
-//        if (vectors == null || vectors.isEmpty() || vectors.stream().map(doubles -> doubles.length).distinct().count() > 1) {
-//
-//            return new double[768];
-//        }
-//        final int dimension = vectors.getFirst().length;
-//
-//        double[] profileVector = new double[dimension];
-//        for (double[] vector : vectors) {
-//            for (int i = 0; i < dimension; i++) {
-//                profileVector[i] += vector[i];
-//            }
-//        }
-//
-//        for (int i = 0; i < dimension; i++) {
-//            profileVector[i] /= vectors.size();
-//        }
-//        return normalize(profileVector);
-//    }
-
-//    /**
-//     * Normalisiert einen Vektor, sodass seine Länge 1 beträgt.
-//     * @param vector Der zu normalisierende Vektor.
-//     * @return Der normalisierte Vektor.
-//     */
-//    private static double[] normalize(double[] vector) {
-//        double magnitude = 0.0;
-//        for (double v : vector) {
-//            magnitude += v * v;
-//        }
-//        magnitude = Math.sqrt(magnitude);
-//
-//        if (magnitude == 0) return vector;
-//
-//        double[] normalizedVector = new double[vector.length];
-//        for (int i = 0; i < vector.length; i++) {
-//            normalizedVector[i] = vector[i] / magnitude;
-//        }
-//        return normalizedVector;
-//    }
 
         public record VektorWeight(double[] vektor, double weight){}
 
