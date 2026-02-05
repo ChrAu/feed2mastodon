@@ -103,8 +103,6 @@ public class VektorUtil {
      *
      * @param positiveVectors Eine Liste von Vektoren, die positive Interessen repräsentieren.
      * @param negativeVectors Eine Liste von Vektoren, die negative Interessen repräsentieren.
-     * @param positiveWeight Der Gewichtungsfaktor für positive Vektoren.
-     * @param negativeWeight Der Gewichtungsfaktor für negative Vektoren.
      * @return Der resultierende, normalisierte Profil-Vektor. Gibt einen Nullvektor zurück, wenn keine gültigen Vektoren vorhanden sind.
      */
     public static double[] createProfileVector(List<VektorWeight> positiveVectors,
