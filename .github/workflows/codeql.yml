@@ -26,6 +26,8 @@ jobs:
             build-mode: manual  # Wichtig: Wir bauen Java selbst für bessere Ergebnisse
           - language: javascript-typescript
             build-mode: none    # JS/TS braucht keinen Build-Schritt
+          - language: actions
+            build-mode: none    # Analyse von GitHub Actions Workflows
 
     steps:
     - name: Checkout repository
@@ -44,6 +46,7 @@ jobs:
       uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
         # AKTIVIERT DIE TIEFE ANALYSE:
         queries: security-extended,security-and-quality
 
