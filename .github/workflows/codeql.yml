@@ -31,7 +31,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     # Java Setup: Nur ausführen, wenn der aktuelle Matrix-Job Java ist
     - name: Set up JDK 21
