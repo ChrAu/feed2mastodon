@@ -57,7 +57,7 @@ jobs:
     steps:
       # Schritt 1: Code aus dem ausgewählten Repository-Branch auschecken
       - name: Checkout repository
-        uses: actions/checkout@263435318d21b8e681c14492fe198d362a7d2c83
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
         with:
           # Verwendet den Branch, der beim manuellen Starten ausgewählt wurde
           ref: ${{ github.event.inputs.branch }}
