@@ -106,7 +106,7 @@ jobs:
       # Schritt 7: Docker-Image bauen und in die GHCR hochladen
       # Dieser Schritt verwendet dein angepasstes Dockerfile.
       - name: Build and push Docker image
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
         with:
           # Der Kontext ist das Root-Verzeichnis deines Projekts
           context: .
