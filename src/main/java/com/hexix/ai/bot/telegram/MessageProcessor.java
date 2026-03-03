@@ -24,6 +24,8 @@ import org.jsoup.Jsoup;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -292,7 +294,7 @@ public class MessageProcessor implements Processor {
 
     private void handleUrlInput(Exchange exchange, String chatId, String text) {
         try {
-            new URL(text);
+            new URI(text);
 
             ChatState currentState = chatStates.get(chatId);
             currentState.data = text;
@@ -301,7 +303,7 @@ public class MessageProcessor implements Processor {
 
             createNegativeKeyboard(exchange, chatId);
 
-        } catch (MalformedURLException e) {
+        } catch (URISyntaxException e) {
             LOG.warnf("Ungültige URL '{}' von Chat {} erhalten.", text, chatId);
             String errorMessage = "Das scheint keine gültige URL zu sein. Bitte versuche es erneut (z.B. https://www.beispiel.de).";
             exchange.getMessage().setBody(errorMessage);
