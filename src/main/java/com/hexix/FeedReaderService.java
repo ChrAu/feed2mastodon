@@ -15,7 +15,7 @@ import java.util.List;
 public class FeedReaderService {
 
     public List<SyndEntry> readFeedEntries(String feedUrl) {
-        try (XmlReader reader = new XmlReader(new URL(feedUrl))) {
+        try (XmlReader reader = new XmlReader(new java.net.URI(feedUrl).toURL())) {
             SyndFeed feed = new SyndFeedInput().build(reader);
             return feed.getEntries();
         } catch (Exception e) {
