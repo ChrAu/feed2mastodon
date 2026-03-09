@@ -89,7 +89,7 @@ jobs:
       # Schritt 5: An der GitHub Container Registry (ghcr.io) anmelden
       # Verwendet ein automatisch generiertes GITHUB_TOKEN zur Authentifizierung
       - name: Log in to the Container registry
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
