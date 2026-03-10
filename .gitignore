@@ -44,6 +44,9 @@ nb-configuration.xml
 # TLS Certificates
 .certs/
 
+# Quinoa
+.quinoa/
+
 # Node.js
 **/node_modules/
 npm-debug.log
