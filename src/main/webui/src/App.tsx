@@ -101,33 +101,22 @@ const StatusIndicator = () => {
   const [status, setStatus] = useState('loading');
 
   useEffect(() => {
-    // Wir nutzen den Proxy-Endpunkt, um CORS-Probleme zu vermeiden.
+    // Wir nutzen den Proxy-Endpunkt, um das SVG-Badge abzurufen und CORS-Probleme zu vermeiden.
     fetch('/api/status')
       .then(response => {
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
-        return response.json();
+        return response.text();
       })
-      .then(data => {
-        if (!data.heartbeatList) {
-          setStatus('offline');
-          return;
-        }
-
-        // Wir prüfen nur den Monitor mit der ID 7
-        const monitorId = '7';
-        const monitorHeartbeats = data.heartbeatList[monitorId];
-        if (Array.isArray(monitorHeartbeats) && monitorHeartbeats.length > 0) {
-          const latestHeartbeat = monitorHeartbeats[monitorHeartbeats.length - 1];
-          debugger;
-          if (latestHeartbeat.status.integral === true) {
-            setStatus('online');
-          } else {
-            setStatus('offline');
-          }
+      .then(svgText => {
+        // Wir prüfen den Textinhalt des SVGs, um den Status zu bestimmen.
+        // Uptime Kuma verwendet "UP" in Großbuchstaben im Badge.
+        if (svgText.includes('>Up</text>')) {
+          setStatus('online');
+        } else if (svgText.includes('>Pending</text>')) {
+          setStatus('pending');
         } else {
-          // Wenn keine Heartbeats für Monitor 7 gefunden wurden, gehen wir von offline aus (oder unbekannt)
           setStatus('offline');
         }
       })
@@ -145,11 +134,20 @@ const StatusIndicator = () => {
     );
   }
 
+  if (status === 'pending') {
+    return (
+      <a href="https://kuma.codeheap.dev/status/codeheap" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full">
+        <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+        <span className="text-xs font-medium text-amber-400 uppercase tracking-wider">Status: Pending</span>
+      </a>
+    );
+  }
+
   if (status === 'offline') {
     return (
       <a href="https://kuma.codeheap.dev/status/codeheap" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-full">
         <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-        <span className="text-xs font-medium text-red-400 uppercase tracking-wider">Störung</span>
+        <span className="text-xs font-medium text-red-400 uppercase tracking-wider">Wartung</span>
       </a>
     );
   }
