@@ -43,3 +43,9 @@ nb-configuration.xml
 /.quarkus/cli/plugins/
 # TLS Certificates
 .certs/
+
+# Node.js
+**/node_modules/
+npm-debug.log
+yarn-error.log
+src/main/webui/build/
