@@ -269,7 +269,7 @@ const App = () => {
             <div className="w-[1px] h-4 bg-white/10"></div>
             <span className="flex items-center text-blue-500">
               <div className="w-2 h-2 bg-blue-500 rounded-full mr-2 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
-              Node: DE-FRA-01
+              Node: Hetzner
             </span>
           </div>
         </div>
