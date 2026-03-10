@@ -264,8 +264,8 @@ const App = () => {
             <span>&copy; {new Date().getFullYear()} codeheap.dev - Deine Daten, deine Kontrolle.</span>
           </div>
           <div className="flex items-center space-x-6">
-            <a href="#" className="hover:text-white transition-colors">Impressum</a>
-            <a href="#" className="hover:text-white transition-colors">Datenschutz</a>
+            <a href="/impressum" className="hover:text-white transition-colors">Impressum</a>
+            <a href="/datenschutz" className="hover:text-white transition-colors">Datenschutz</a>
             <div className="w-[1px] h-4 bg-white/10"></div>
             <span className="flex items-center text-blue-500">
               <div className="w-2 h-2 bg-blue-500 rounded-full mr-2 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
