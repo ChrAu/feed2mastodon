@@ -4,7 +4,8 @@ import {
   Mail, 
   BookOpen, 
   FileText,
-  Lock
+  Lock,
+  RefreshCw
 } from 'lucide-react';
 
 export interface Service {
@@ -108,5 +109,17 @@ export const SERVICES: Service[] = [
     text: 'text-orange-400',
     url: 'https://paperless.codeheap.dev',
     monitorId: 34
+  },
+  {
+    id: 'convertx',
+    name: 'ConvertX',
+    description: 'Dateikonvertierung',
+    icon: RefreshCw,
+    color: 'border-pink-500',
+    glow: 'group-hover:shadow-pink-500/50',
+    bg: 'bg-pink-500/10',
+    text: 'text-pink-400',
+    url: 'https://converter.codeheap.dev/',
+    monitorId: 11
   }
 ];
