@@ -28,6 +28,8 @@ const StatusIndicator: React.FC<StatusIndicatorProps> = ({ monitorId, className 
           setStatus('online');
         } else if (svgText.includes('>Pending</text>')) {
           setStatus('pending');
+        } else if (svgText.includes('>Maintenance</text>')) {
+          setStatus('maintenance');
         } else {
           setStatus('offline');
         }
@@ -46,11 +48,20 @@ const StatusIndicator: React.FC<StatusIndicatorProps> = ({ monitorId, className 
     );
   }
 
+  if (status === 'maintenance') {
+    return (
+      <a href="https://kuma.codeheap.dev/status/codeheap" target="_blank" rel="noopener noreferrer" className={`flex items-center space-x-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full ${className}`}>
+        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+        <span className="text-xs font-medium text-blue-400 uppercase tracking-wider">Wartung</span>
+      </a>
+    );
+  }
+
   if (status === 'pending') {
     return (
       <a href="https://kuma.codeheap.dev/status/codeheap" target="_blank" rel="noopener noreferrer" className={`flex items-center space-x-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full ${className}`}>
         <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
-        <span className="text-xs font-medium text-amber-400 uppercase tracking-wider">Status: Wartung</span>
+        <span className="text-xs font-medium text-amber-400 uppercase tracking-wider">Prüfung</span>
       </a>
     );
   }
