@@ -5,6 +5,7 @@ import {
   Activity
 } from 'lucide-react';
 import { SERVICES } from '../data/services';
+import StatusIndicator from '../components/StatusIndicator';
 
 const Home = () => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -35,16 +36,25 @@ const Home = () => {
       <main className="relative z-10 max-w-7xl mx-auto px-6 pb-24">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {SERVICES.map((service, index) => (
-            <a
+            <div
               key={service.id}
-              href={service.url}
               className={`group relative p-8 rounded-3xl bg-slate-900/40 border border-white/5 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:bg-slate-800/60 shadow-xl ${service.glow} ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}
               style={{ transitionDelay: `${index * 100}ms` }}
             >
+              {/* Link Wrapper */}
+              <a href={service.url} className="absolute inset-0 z-0" aria-label={`Öffne ${service.name}`}></a>
+
               {/* Dekorative Leiterbahnen-Stil-Elemente */}
               <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-white/5 to-transparent rounded-tr-3xl pointer-events-none`}></div>
               
-              <div className="relative z-10">
+              {/* Status Indicator (wenn monitorId vorhanden) */}
+              {service.monitorId && (
+                <div className="absolute top-4 right-4 z-20">
+                  <StatusIndicator monitorId={service.monitorId} className="!bg-slate-900/80 backdrop-blur-md !px-2 !py-0.5 text-[10px]" />
+                </div>
+              )}
+
+              <div className="relative z-10 pointer-events-none">
                 <div className={`w-14 h-14 ${service.bg} border ${service.color} rounded-2xl flex items-center justify-center mb-6 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-lg shadow-black/50`}>
                   <service.icon className={`w-7 h-7 ${service.text}`} />
                 </div>
@@ -63,8 +73,8 @@ const Home = () => {
               </div>
 
               {/* Unterer Glow-Streifen */}
-              <div className={`absolute bottom-0 left-8 right-8 h-[2px] bg-gradient-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-100 transition-opacity ${service.text}`}></div>
-            </a>
+              <div className={`absolute bottom-0 left-8 right-8 h-[2px] bg-gradient-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-100 transition-opacity ${service.text} pointer-events-none`}></div>
+            </div>
           ))}
           
           {/* Status Card */}

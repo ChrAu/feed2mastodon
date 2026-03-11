@@ -8,11 +8,24 @@ import {
   Lock
 } from 'lucide-react';
 
+export interface Service {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ElementType;
+  color: string;
+  glow: string;
+  bg: string;
+  text: string;
+  url: string;
+  monitorId?: number | string;
+}
+
 /**
  * Konfiguration der Dienste basierend auf dem Bild und der Anfrage.
  * Jede Farbe entspricht dem visuellen Stil des Dienstes im Bild.
  */
-export const SERVICES = [
+export const SERVICES: Service[] = [
   {
     id: 'keycloak',
     name: 'Keycloak',
@@ -22,7 +35,8 @@ export const SERVICES = [
     glow: 'group-hover:shadow-purple-500/50',
     bg: 'bg-purple-500/10',
     text: 'text-purple-400',
-    url: 'https://sso.codeheap.dev'
+    url: 'https://sso.codeheap.dev',
+    monitorId: 21 // Beispiel ID
   },
   {
     id: 'nextcloud',
@@ -33,7 +47,8 @@ export const SERVICES = [
     glow: 'group-hover:shadow-blue-500/50',
     bg: 'bg-blue-500/10',
     text: 'text-blue-400',
-    url: 'https://nextcloud.codeheap.dev'
+    url: 'https://nextcloud.codeheap.dev',
+    monitorId: 30
   },
   {
     id: 'mailcow',
@@ -44,7 +59,8 @@ export const SERVICES = [
     glow: 'group-hover:shadow-cyan-500/50',
     bg: 'bg-cyan-500/10',
     text: 'text-cyan-400',
-    url: 'https://mail.codeheap.dev'
+    url: 'https://mail.codeheap.dev',
+    monitorId: 26
   },
   {
     id: 'vaultwarden',
@@ -55,7 +71,8 @@ export const SERVICES = [
     glow: 'group-hover:shadow-emerald-500/50',
     bg: 'bg-emerald-500/10',
     text: 'text-emerald-400',
-    url: 'https://vaultwarden.codeheap.dev'
+    url: 'https://vaultwarden.codeheap.dev',
+    monitorId: 23
   },
   {
     id: 'audiobookshelf',
@@ -66,7 +83,8 @@ export const SERVICES = [
     glow: 'group-hover:shadow-red-500/50',
     bg: 'bg-red-500/10',
     text: 'text-red-400',
-    url: 'https://audiobookshelf.codeheap.dev'
+    url: 'https://audiobookshelf.codeheap.dev',
+    monitorId: 32
   },
   {
     id: 'blinko',
@@ -77,7 +95,8 @@ export const SERVICES = [
     glow: 'group-hover:shadow-amber-500/50',
     bg: 'bg-amber-500/10',
     text: 'text-amber-400',
-    url: 'https://blinko.codeheap.dev'
+    url: 'https://blinko.codeheap.dev',
+    monitorId: 33
   },
   {
     id: 'paperless',
@@ -88,6 +107,7 @@ export const SERVICES = [
     glow: 'group-hover:shadow-orange-500/50',
     bg: 'bg-orange-500/10',
     text: 'text-orange-400',
-    url: 'https://paperless.codeheap.dev'
+    url: 'https://paperless.codeheap.dev',
+    monitorId: 34
   }
 ];
