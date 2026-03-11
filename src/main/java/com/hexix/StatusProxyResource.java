@@ -4,6 +4,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
@@ -16,8 +17,15 @@ public class StatusProxyResource {
 
     @GET
     @Produces("image/svg+xml")
-    public Response getStatus() {
-        String badgeSvg = kumaClient.getStatusBadge();
-        return Response.ok(badgeSvg).build();
+    public Response getStatus(@QueryParam("id") String id) {
+        // Fallback to ID 7 if no ID is provided, consistent with previous behavior
+        String monitorId = (id != null && !id.isEmpty()) ? id : "7";
+        
+        try {
+            String badgeSvg = kumaClient.getStatusBadge(monitorId);
+            return Response.ok(badgeSvg).build();
+        } catch (Exception e) {
+            return Response.serverError().entity("Error fetching status").build();
+        }
     }
 }

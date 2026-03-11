@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
 
-const StatusIndicator = () => {
+interface StatusIndicatorProps {
+  monitorId?: string | number;
+  className?: string;
+}
+
+const StatusIndicator: React.FC<StatusIndicatorProps> = ({ monitorId, className = '' }) => {
   const [status, setStatus] = useState('loading');
 
   useEffect(() => {
+    // Wenn eine monitorId übergeben wurde, hängen wir sie an die URL an.
+    const url = monitorId ? `/api/status?id=${monitorId}` : '/api/status';
+    
     // Wir nutzen den Proxy-Endpunkt, um das SVG-Badge abzurufen und CORS-Probleme zu vermeiden.
-    fetch('/api/status')
+    fetch(url)
       .then(response => {
         if (!response.ok) {
           throw new Error('Network response was not ok');
@@ -26,11 +34,11 @@ const StatusIndicator = () => {
       .catch(() => {
         setStatus('offline');
       });
-  }, []);
+  }, [monitorId]);
 
   if (status === 'loading') {
     return (
-      <div className="flex items-center space-x-2 px-3 py-1 bg-gray-500/10 border border-gray-500/20 rounded-full">
+      <div className={`flex items-center space-x-2 px-3 py-1 bg-gray-500/10 border border-gray-500/20 rounded-full ${className}`}>
         <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
         <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Lade Status...</span>
       </div>
@@ -39,7 +47,7 @@ const StatusIndicator = () => {
 
   if (status === 'pending') {
     return (
-      <a href="https://kuma.codeheap.dev/status/codeheap" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full">
+      <a href="https://kuma.codeheap.dev/status/codeheap" target="_blank" rel="noopener noreferrer" className={`flex items-center space-x-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full ${className}`}>
         <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
         <span className="text-xs font-medium text-amber-400 uppercase tracking-wider">Status: Pending</span>
       </a>
@@ -48,7 +56,7 @@ const StatusIndicator = () => {
 
   if (status === 'offline') {
     return (
-      <a href="https://kuma.codeheap.dev/status/codeheap" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-full">
+      <a href="https://kuma.codeheap.dev/status/codeheap" target="_blank" rel="noopener noreferrer" className={`flex items-center space-x-2 px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-full ${className}`}>
         <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
         <span className="text-xs font-medium text-red-400 uppercase tracking-wider">Wartung</span>
       </a>
@@ -56,7 +64,7 @@ const StatusIndicator = () => {
   }
 
   return (
-    <a href="https://kuma.codeheap.dev/status/codeheap" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+    <a href="https://kuma.codeheap.dev/status/codeheap" target="_blank" rel="noopener noreferrer" className={`flex items-center space-x-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full ${className}`}>
       <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
       <span className="text-xs font-medium text-emerald-400 uppercase tracking-wider">Systeme Online</span>
     </a>
