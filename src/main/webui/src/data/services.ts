@@ -86,18 +86,18 @@ export const SERVICES: Service[] = [
     url: 'https://audiobookshelf.codeheap.dev',
     monitorId: 32
   },
-  {
-    id: 'blinko',
-    name: 'Blinko',
-    description: 'Schnelle Notizen',
-    icon: Edit3,
-    color: 'border-amber-500',
-    glow: 'group-hover:shadow-amber-500/50',
-    bg: 'bg-amber-500/10',
-    text: 'text-amber-400',
-    url: 'https://blinko.codeheap.dev',
-    monitorId: 33
-  },
+  // {
+  //   id: 'blinko',
+  //   name: 'Blinko',
+  //   description: 'Schnelle Notizen',
+  //   icon: Edit3,
+  //   color: 'border-amber-500',
+  //   glow: 'group-hover:shadow-amber-500/50',
+  //   bg: 'bg-amber-500/10',
+  //   text: 'text-amber-400',
+  //   url: 'https://blinko.codeheap.dev',
+  //   monitorId: 33
+  // },
   {
     id: 'paperless',
     name: 'Paperless-ngx',
