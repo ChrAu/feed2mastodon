@@ -23,7 +23,6 @@ const StatusIndicator: React.FC<StatusIndicatorProps> = ({ monitorId, className 
       .then(svgText => {
         // Wir prüfen den Textinhalt des SVGs, um den Status zu bestimmen.
         // Uptime Kuma verwendet "UP" in Großbuchstaben im Badge.
-          debugger;
         if (svgText.includes('>Up</text>')) {
           setStatus('online');
         } else if (svgText.includes('>Pending</text>')) {
