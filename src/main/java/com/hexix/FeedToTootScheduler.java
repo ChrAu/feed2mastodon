@@ -289,7 +289,7 @@ public class FeedToTootScheduler {
         return allRequests;
     }
 
-    @Scheduled(every = "10s", delay = 30, delayUnit = TimeUnit.SECONDS,  concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "1m", delay = 30, delayUnit = TimeUnit.SECONDS,  concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcPublicVectors() {
         if(!Embedding.findNextLocalEmbeddings().isEmpty()){
             return;
@@ -342,7 +342,7 @@ public class FeedToTootScheduler {
 
 
 
-    @Scheduled(every = "10s", delay = 30, delayUnit = TimeUnit.SECONDS,  concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "2m", delay = 30, delayUnit = TimeUnit.SECONDS,  concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void fetchPublicText() {
         final List<PublicMastodonPostEntity> posts = publicMastodonPostRepository.findAllNoEmbeddingAndText();
 
@@ -421,7 +421,7 @@ public class FeedToTootScheduler {
     }
 
     @Transactional
-    @Scheduled(every = "10s",delay = 30, delayUnit = TimeUnit.SECONDS,  concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(every = "1m",delay = 30, delayUnit = TimeUnit.SECONDS,  concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcRecommendations() {
 
         final boolean embeddingsAllCalced = Embedding.findNextLocalEmbeddings().isEmpty();
