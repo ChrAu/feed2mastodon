@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Server,
@@ -10,7 +10,21 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
+interface VersionInfo {
+  version: string;
+  buildTimestamp: string;
+}
+
 const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
+
+  useEffect(() => {
+    fetch('/api/version')
+      .then(response => response.json())
+      .then(data => setVersionInfo(data))
+      .catch(error => console.error('Error fetching version info:', error));
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#06090f] text-slate-200 font-sans selection:bg-blue-500/30 overflow-x-hidden">
       {/* Hintergrund-Effekte */}
@@ -49,6 +63,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="flex items-center space-x-2">
             <Shield className="w-4 h-4" />
             <span>&copy; {new Date().getFullYear()} codeheap.dev - Deine Daten, deine Kontrolle.</span>
+            {versionInfo && (
+              <span className="hidden sm:inline-block ml-2 opacity-50 text-xs border-l border-slate-700 pl-2">
+                v{versionInfo.version} ({versionInfo.buildTimestamp})
+              </span>
+            )}
           </div>
           <div className="flex items-center space-x-6">
             <Link to="/impressum" className="hover:text-white transition-colors">Impressum</Link>
