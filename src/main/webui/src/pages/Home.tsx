@@ -42,7 +42,7 @@ const Home = () => {
               style={{ transitionDelay: `${index * 100}ms` }}
             >
               {/* Link Wrapper */}
-              <a href={service.url} target="_blank" rel="noopener" className="absolute inset-0 z-0" aria-label={`Öffne ${service.name}`}></a>
+              <a href={service.url} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-0" aria-label={`Öffne ${service.name}`}></a>
 
               {/* Dekorative Leiterbahnen-Stil-Elemente */}
               <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-white/5 to-transparent rounded-tr-3xl pointer-events-none`}></div>
