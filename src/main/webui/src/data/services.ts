@@ -3,8 +3,7 @@ import {
   Cloud, 
   Mail, 
   BookOpen, 
-  Edit3, 
-  FileText, 
+  FileText,
   Lock
 } from 'lucide-react';
 
