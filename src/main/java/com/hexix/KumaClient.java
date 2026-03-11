@@ -4,6 +4,7 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 @RegisterRestClient(baseUri = "https://kuma.codeheap.dev")
@@ -13,4 +14,9 @@ public interface KumaClient {
     @Path("/api/badge/{id}/status")
     @Produces("image/svg+xml")
     String getStatusBadge(@PathParam("id") String id);
+
+    @GET
+    @Path("/api/status-page/codeheap")
+    @Produces(MediaType.APPLICATION_JSON)
+    String getStatusPage();
 }

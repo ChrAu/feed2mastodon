@@ -5,6 +5,7 @@ import {
   Shield
 } from 'lucide-react';
 import StatusIndicator from './StatusIndicator';
+import MaintenancePopup from './MaintenancePopup'; // Import the new component
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -80,6 +81,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </div>
       </footer>
+
+      {/* Maintenance Popup */}
+      <MaintenancePopup />
     </div>
   );
 };
