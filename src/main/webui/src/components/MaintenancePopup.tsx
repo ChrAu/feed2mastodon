@@ -16,26 +16,39 @@ interface StatusPageResponse {
 }
 
 const MaintenancePopup: React.FC = () => {
-  const [maintenance, setMaintenance] = useState<MaintenanceInfo | null>(null);
-  const [isDismissed, setIsDismissed] = useState(false);
+  const [maintenances, setMaintenances] = useState<MaintenanceInfo[]>([]);
+  const [dismissedIds, setDismissedIds] = useState<number[]>([]);
   const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
     fetch('/api/status/page')
       .then(response => response.json())
       .then((data: StatusPageResponse) => {
-        const activeMaintenance = data.maintenanceList.find(m => 
+        const activeMaintenances = data.maintenanceList.filter(m => 
           m.active && (m.status === 'under-maintenance' || m.status === 'upcoming' || m.status === 'schedule')
         );
         
-        if (activeMaintenance) {
-          setMaintenance(activeMaintenance);
-          // Wir nutzen sessionStorage statt localStorage, damit das Popup bei jedem neuen Tab/Session wieder erscheint
-          // Das entspricht dem Wunsch "Beim initialen Laden der Seite darf das Fenster gerne offen sein"
-          const dismissedId = sessionStorage.getItem('dismissedMaintenanceId');
-          if (dismissedId === String(activeMaintenance.id)) {
-            setIsDismissed(true);
+        if (activeMaintenances.length > 0) {
+          setMaintenances(activeMaintenances);
+          
+          // Load dismissed IDs
+          const storedDismissed = sessionStorage.getItem('dismissedMaintenanceIds');
+          const legacyDismissed = sessionStorage.getItem('dismissedMaintenanceId');
+          
+          let initialDismissed: number[] = [];
+          if (storedDismissed) {
+             try {
+               initialDismissed = JSON.parse(storedDismissed);
+             } catch(e) {
+               console.error('Error parsing dismissedMaintenanceIds', e);
+             }
+          } else if (legacyDismissed) {
+             const parsed = parseInt(legacyDismissed);
+             if (!isNaN(parsed)) {
+                initialDismissed = [parsed];
+             }
           }
+          setDismissedIds(initialDismissed);
         }
         setHasLoaded(true);
       })
@@ -45,21 +58,94 @@ const MaintenancePopup: React.FC = () => {
       });
   }, []);
 
-  const handleDismiss = () => {
-    if (maintenance) {
-      sessionStorage.setItem('dismissedMaintenanceId', String(maintenance.id));
-      setIsDismissed(true);
-    }
+  const handleDismiss = (id: number) => {
+    const newDismissed = [...dismissedIds, id];
+    setDismissedIds(newDismissed);
+    sessionStorage.setItem('dismissedMaintenanceIds', JSON.stringify(newDismissed));
   };
 
-  const handleShow = () => {
-    setIsDismissed(false);
+  const handleDismissAll = (ids: number[]) => {
+    const newDismissed = [...dismissedIds, ...ids];
+    setDismissedIds(newDismissed);
+    sessionStorage.setItem('dismissedMaintenanceIds', JSON.stringify(newDismissed));
   };
 
-  if (!hasLoaded || !maintenance) {
+  const handleShowAll = () => {
+    setDismissedIds([]);
+    sessionStorage.removeItem('dismissedMaintenanceIds');
+    sessionStorage.removeItem('dismissedMaintenanceId');
+  };
+
+  if (!hasLoaded || maintenances.length === 0) {
     return null;
   }
 
+  const visibleMaintenances = maintenances.filter(m => !dismissedIds.includes(m.id));
+  const isAllDismissed = visibleMaintenances.length === 0;
+
+  // Determine global status for minimized button
+  const hasCritical = maintenances.some(m => m.status === 'under-maintenance');
+  const borderColor = hasCritical ? 'border-amber-500' : 'border-blue-500';
+  const iconColor = hasCritical ? 'text-amber-400' : 'text-blue-400';
+  const headerText = hasCritical ? 'text-amber-400' : 'text-blue-400';
+
+  // Minimized State (Floating Button)
+  if (isAllDismissed) {
+    return (
+      <button 
+        onClick={handleShowAll}
+        className={`fixed bottom-4 right-4 z-50 flex items-center space-x-2 px-4 py-3 bg-[#0f172a] border ${borderColor} rounded-full shadow-lg hover:bg-[#1e293b] transition-all duration-300 group animate-in fade-in slide-in-from-bottom-4`}
+      >
+        <Wrench className={`w-5 h-5 ${iconColor} ${hasCritical ? 'animate-pulse' : ''}`} />
+        <span className={`font-medium ${headerText} text-sm hidden group-hover:inline-block transition-opacity duration-300`}>
+          Wartungsinfos ({maintenances.length})
+        </span>
+      </button>
+    );
+  }
+
+  const MAX_VISIBLE = 2;
+  const displayedMaintenances = visibleMaintenances.slice(0, MAX_VISIBLE);
+  const remainingCount = Math.max(0, visibleMaintenances.length - MAX_VISIBLE);
+
+  // Maximized State (List of Popups)
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:items-end md:justify-end md:p-6 md:bg-transparent md:backdrop-blur-none pointer-events-none">
+      <div className="flex flex-col space-y-4 w-full max-w-md max-h-[90vh] overflow-y-auto pointer-events-auto scrollbar-hide">
+        {displayedMaintenances.map(maintenance => (
+           <MaintenanceCard key={maintenance.id} maintenance={maintenance} onDismiss={() => handleDismiss(maintenance.id)} />
+        ))}
+        {remainingCount > 0 && (
+            <div className="w-full bg-[#0f172a] border border-slate-700 rounded-xl shadow-lg overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
+                <div className="bg-slate-800/50 px-5 py-4 flex items-center justify-between">
+                    <div className="flex items-center space-x-3 text-slate-300">
+                        <AlertTriangle className="w-6 h-6" />
+                        <span className="font-bold text-base">
+                            +{remainingCount} weitere Wartung{remainingCount > 1 ? 'en' : ''}
+                        </span>
+                    </div>
+                    <button 
+                        onClick={() => {
+                           const remainingIds = visibleMaintenances.slice(MAX_VISIBLE).map(m => m.id);
+                           handleDismissAll(remainingIds);
+                        }}
+                        className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/10"
+                        aria-label="Alle weiteren ausblenden"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+                <div className="px-5 pb-4 text-sm text-slate-400">
+                   Es liegen noch weitere Wartungsarbeiten vor. Bitte prüfen Sie die Statusseite für eine vollständige Übersicht.
+                </div>
+            </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const MaintenanceCard: React.FC<{ maintenance: MaintenanceInfo; onDismiss: () => void }> = ({ maintenance, onDismiss }) => {
   const isCritical = maintenance.status === 'under-maintenance';
   const borderColor = isCritical ? 'border-amber-500' : 'border-blue-500';
   const headerBg = isCritical ? 'bg-amber-500/20' : 'bg-blue-500/20';
@@ -83,25 +169,8 @@ const MaintenancePopup: React.FC = () => {
 
   const { date, startTime, endTime } = formatDateRange(maintenance.dateRange[0], maintenance.dateRange[1]);
 
-  // Minimized State (Floating Button)
-  if (isDismissed) {
-    return (
-      <button 
-        onClick={handleShow}
-        className={`fixed bottom-4 right-4 z-50 flex items-center space-x-2 px-4 py-3 bg-[#0f172a] border ${borderColor} rounded-full shadow-lg hover:bg-[#1e293b] transition-all duration-300 group animate-in fade-in slide-in-from-bottom-4`}
-      >
-        <Wrench className={`w-5 h-5 ${iconColor} ${isCritical ? 'animate-pulse' : ''}`} />
-        <span className={`font-medium ${headerText} text-sm hidden group-hover:inline-block transition-opacity duration-300`}>
-          Wartungsinfos
-        </span>
-      </button>
-    );
-  }
-
-  // Maximized State (Popup)
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:items-end md:justify-end md:p-6 md:bg-transparent md:backdrop-blur-none pointer-events-none">
-      <div className={`pointer-events-auto w-full max-w-md bg-[#0f172a] border ${borderColor} rounded-xl ${glow} overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300`}>
+      <div className={`w-full bg-[#0f172a] border ${borderColor} rounded-xl ${glow} overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300`}>
         {/* Header */}
         <div className={`${headerBg} px-5 py-4 border-b ${isCritical ? 'border-amber-500/30' : 'border-blue-500/30'} flex items-center justify-between`}>
           <div className={`flex items-center space-x-3 ${headerText}`}>
@@ -111,7 +180,7 @@ const MaintenancePopup: React.FC = () => {
             </span>
           </div>
           <button 
-            onClick={handleDismiss}
+            onClick={onDismiss}
             className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/10"
             aria-label="Schließen"
           >
@@ -141,7 +210,6 @@ const MaintenancePopup: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
   );
 };
 
