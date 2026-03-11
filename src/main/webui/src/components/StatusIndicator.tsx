@@ -23,6 +23,7 @@ const StatusIndicator: React.FC<StatusIndicatorProps> = ({ monitorId, className 
       .then(svgText => {
         // Wir prüfen den Textinhalt des SVGs, um den Status zu bestimmen.
         // Uptime Kuma verwendet "UP" in Großbuchstaben im Badge.
+          debugger;
         if (svgText.includes('>Up</text>')) {
           setStatus('online');
         } else if (svgText.includes('>Pending</text>')) {
@@ -49,7 +50,7 @@ const StatusIndicator: React.FC<StatusIndicatorProps> = ({ monitorId, className 
     return (
       <a href="https://kuma.codeheap.dev/status/codeheap" target="_blank" rel="noopener noreferrer" className={`flex items-center space-x-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full ${className}`}>
         <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
-        <span className="text-xs font-medium text-amber-400 uppercase tracking-wider">Status: Pending</span>
+        <span className="text-xs font-medium text-amber-400 uppercase tracking-wider">Status: Wartung</span>
       </a>
     );
   }
@@ -58,7 +59,7 @@ const StatusIndicator: React.FC<StatusIndicatorProps> = ({ monitorId, className 
     return (
       <a href="https://kuma.codeheap.dev/status/codeheap" target="_blank" rel="noopener noreferrer" className={`flex items-center space-x-2 px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-full ${className}`}>
         <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-        <span className="text-xs font-medium text-red-400 uppercase tracking-wider">Wartung</span>
+        <span className="text-xs font-medium text-red-400 uppercase tracking-wider">Störung</span>
       </a>
     );
   }
