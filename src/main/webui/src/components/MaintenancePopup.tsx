@@ -208,14 +208,14 @@ const MaintenanceCard: React.FC<{ maintenance: MaintenanceInfo; onDismiss: () =>
              <ReactMarkdown 
                className="markdown-content space-y-2"
                components={{
-                 p: ({node, ...props}) => <p className="mb-2" {...props} />,
-                 a: ({node, ...props}) => <a className="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />,
-                 ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2" {...props} />,
-                 ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2" {...props} />,
-                 h1: ({node, ...props}) => <h1 className="text-lg font-bold mb-2" {...props} />,
-                 h2: ({node, ...props}) => <h2 className="text-base font-bold mb-2" {...props} />,
-                 h3: ({node, ...props}) => <h3 className="text-sm font-bold mb-2" {...props} />,
-                 code: ({node, ...props}) => <code className="bg-slate-800 px-1 py-0.5 rounded text-xs font-mono" {...props} />,
+                 p: ({node, children, ...props}) => <p className="mb-2" {...props}>{children}</p>,
+                 a: ({node, children, ...props}) => <a className="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer" {...props}>{children}</a>,
+                 ul: ({node, children, ...props}) => <ul className="list-disc list-inside mb-2" {...props}>{children}</ul>,
+                 ol: ({node, children, ...props}) => <ol className="list-decimal list-inside mb-2" {...props}>{children}</ol>,
+                 h1: ({node, children, ...props}) => <h1 className="text-lg font-bold mb-2" {...props}>{children}</h1>,
+                 h2: ({node, children, ...props}) => <h2 className="text-base font-bold mb-2" {...props}>{children}</h2>,
+                 h3: ({node, children, ...props}) => <h3 className="text-sm font-bold mb-2" {...props}>{children}</h3>,
+                 code: ({node, children, ...props}) => <code className="bg-slate-800 px-1 py-0.5 rounded text-xs font-mono" {...props}>{children}</code>,
                }}
              >
                {maintenance.description}
