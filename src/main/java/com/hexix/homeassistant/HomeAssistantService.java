@@ -1,13 +1,20 @@
 package com.hexix.homeassistant;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.hexix.homeassistant.dto.AttributesDto;
 import com.hexix.homeassistant.dto.EntityDto;
 import com.hexix.homeassistant.dto.TemperatureBucketDTO;
 import com.hexix.homeassistant.entity.HaEntity;
 import com.hexix.homeassistant.entity.HaStateHistory;
 import com.hexix.homeassistant.entity.HaTemperatureHistory;
+import io.quarkus.runtime.StartupEvent;
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
+import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
@@ -19,9 +26,10 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
 import java.util.StringJoiner;
 
-@RequestScoped
+@ApplicationScoped
 public class HomeAssistantService {
 
     @ConfigProperty(name = "home-assistant.api.token")
@@ -37,6 +45,20 @@ public class HomeAssistantService {
     @Inject
     EntityManager em;
 
+    // Liste der relevanten IDs basierend auf deinem Input
+    private static final List<String> PI_HOLE_IDS = List.of(
+            "sensor.pi_hole_blockierte_anzeigen",
+            "sensor.pi_hole_anteil_blockierter_anzeigen",
+            "sensor.pi_hole_gesehene_clients",
+            "sensor.pi_hole_dns_abfragen",
+            "sensor.pi_hole_blockierte_domains",
+            "sensor.pi_hole_dns_abfragen_zwischengespeichert",
+            "sensor.pi_hole_dns_abfragen_weitergeleitet",
+            "sensor.pi_hole_eindeutige_dns_clients",
+            "sensor.pi_hole_eindeutige_dns_domains",
+            "switch.pi_hole",
+            "binary_sensor.pi_hole_status"
+    );
 
     public List<EntityDto> currentState() {
         return homeAssistantClient.getAllStates("Bearer " + apiToken);
@@ -137,5 +159,44 @@ public class HomeAssistantService {
         final TypedQuery<HaStateHistory> query = em.createNamedQuery(HaStateHistory.FIND_ALL_WEATHER_DATA, HaStateHistory.class);
 
         return query.setParameter("startDate", ZonedDateTime.now().minusSeconds(duration.toSeconds())).getResultList();
+    }
+
+    private final BroadcastProcessor<List<EntityDto>> piHoleProcessor = BroadcastProcessor.create();
+
+    void onStart(@Observes StartupEvent ev) {
+        Multi.createFrom().ticks().every(Duration.ofSeconds(30))
+                .onItem().transformToUniAndConcatenate(tick ->
+                        Uni.createFrom().item(this::fetchSpecificPiHoleMetrics)
+                                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
+                )
+                .subscribe().with(
+                        piHoleProcessor::onNext,
+                        err -> System.err.println("Fehler beim Pi-Hole Live-Update: " + err.getMessage())
+                );
+    }
+
+    /**
+     * Holt gezielt nur die definierten Pi-Hole Entitäten einzeln ab.
+     * Dies ist wesentlich schneller als alle States vom Home Assistant zu laden.
+     */
+    private List<EntityDto> fetchSpecificPiHoleMetrics() {
+        return PI_HOLE_IDS.stream()
+                .map(id -> {
+                    try {
+                        // Gezielter Abruf pro ID
+                        return homeAssistantClient.getState("Bearer " + apiToken, id);
+                    } catch (Exception e) {
+                        // Logge den Fehler, aber lass den Stream weiterlaufen
+                        System.err.println("Fehler beim Abruf von " + id);
+                        e.printStackTrace();
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    public Multi<List<EntityDto>> getPiHoleStream() {
+        return piHoleProcessor;
     }
 }

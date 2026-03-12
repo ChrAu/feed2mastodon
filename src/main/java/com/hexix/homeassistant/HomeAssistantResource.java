@@ -1,12 +1,14 @@
 package com.hexix.homeassistant;
 
 import com.hexix.homeassistant.dto.AttributesDto;
+import com.hexix.homeassistant.dto.EntityDto;
 import com.hexix.homeassistant.dto.TemperatureBucketDTO;
 import com.hexix.homeassistant.dto.TemperatureDeviceDto;
 import com.hexix.homeassistant.dto.TemperatureDto;
 import com.hexix.homeassistant.dto.WeatherDto;
 import com.hexix.homeassistant.entity.HaStateHistory;
 import com.hexix.util.DurationLogger;
+import io.smallrye.mutiny.Multi;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -14,6 +16,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import org.jboss.logging.Logger;
+import org.jboss.resteasy.reactive.RestStreamElementType;
 
 import java.time.Duration;
 import java.util.AbstractMap;
@@ -140,5 +143,13 @@ public class HomeAssistantResource {
                 .entrySet().stream()
                 .map(entry -> new TemperatureDeviceDto(entry.getKey().getKey(), entry.getKey().getValue(), entry.getValue()))
                 .toList();
+    }
+
+    @GET
+    @Path("/pihole/stream")
+    @Produces(MediaType.SERVER_SENT_EVENTS)
+    @RestStreamElementType(MediaType.APPLICATION_JSON)
+    public Multi<List<EntityDto>> streamPiHoleData() {
+        return homeAssistantService.getPiHoleStream();
     }
 }
