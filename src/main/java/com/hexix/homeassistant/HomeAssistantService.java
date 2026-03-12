@@ -161,6 +161,7 @@ public class HomeAssistantService {
         return query.setParameter("startDate", ZonedDateTime.now().minusSeconds(duration.toSeconds())).getResultList();
     }
 
+    private List<EntityDto> lastPiHoleData = null;
     private final BroadcastProcessor<List<EntityDto>> piHoleProcessor = BroadcastProcessor.create();
 
     void onStart(@Observes StartupEvent ev) {
@@ -170,7 +171,11 @@ public class HomeAssistantService {
                                 .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
                 )
                 .subscribe().with(
-                        piHoleProcessor::onNext,
+                        data -> {
+                            // 2. Cache bei jedem erfolgreichen Update aktualisieren
+                            this.lastPiHoleData = data;
+                            piHoleProcessor.onNext(data);
+                        },
                         err -> System.err.println("Fehler beim Pi-Hole Live-Update: " + err.getMessage())
                 );
     }
@@ -197,6 +202,14 @@ public class HomeAssistantService {
     }
 
     public Multi<List<EntityDto>> getPiHoleStream() {
+        // 3. Wenn Cache vorhanden, diesen sofort als erstes Element senden
+        if (lastPiHoleData != null) {
+            return Multi.createBy().concatenating()
+                    .streams(
+                            Multi.createFrom().item(lastPiHoleData),
+                            piHoleProcessor
+                    );
+        }
         return piHoleProcessor;
     }
 }
