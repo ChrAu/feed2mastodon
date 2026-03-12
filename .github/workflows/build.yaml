@@ -2,12 +2,11 @@
 
 name: Build
 
-# Dieser Workflow wird bei jedem Push auf den 'main'-Branch ausgeführt.
-# Du kannst dies anpassen, z.B. auf Pull Requests oder andere Branches.
+# Dieser Workflow wird bei jedem Push ausgeführt, außer auf dem 'main'-Branch.
 on:
   push:
-#    branches:
-#      - main
+    branches-ignore:
+      - main
   # Ermöglicht das manuelle Ausführen dieses Workflows von der Actions-Registerkarte aus
   workflow_dispatch:
 
