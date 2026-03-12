@@ -11,6 +11,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
 import java.time.Duration;
+import java.util.Objects;
 
 @ApplicationScoped
 public class TrafficService {
