@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, AlertTriangle, Calendar, Clock, Wrench } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 interface MaintenanceInfo {
   id: number;
@@ -204,9 +205,21 @@ const MaintenanceCard: React.FC<{ maintenance: MaintenanceInfo; onDismiss: () =>
           </div>
           
           <div className="text-sm text-slate-300 leading-relaxed max-h-60 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-             {maintenance.description.split('\n').map((line, i) => (
-               <p key={i} className={`min-h-[1em] ${line.trim() === '' ? 'h-3' : 'mb-2'}`}>{line}</p>
-             ))}
+             <ReactMarkdown 
+               className="markdown-content space-y-2"
+               components={{
+                 p: ({node, ...props}) => <p className="mb-2" {...props} />,
+                 a: ({node, ...props}) => <a className="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />,
+                 ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2" {...props} />,
+                 ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2" {...props} />,
+                 h1: ({node, ...props}) => <h1 className="text-lg font-bold mb-2" {...props} />,
+                 h2: ({node, ...props}) => <h2 className="text-base font-bold mb-2" {...props} />,
+                 h3: ({node, ...props}) => <h3 className="text-sm font-bold mb-2" {...props} />,
+                 code: ({node, ...props}) => <code className="bg-slate-800 px-1 py-0.5 rounded text-xs font-mono" {...props} />,
+               }}
+             >
+               {maintenance.description}
+             </ReactMarkdown>
           </div>
         </div>
       </div>
