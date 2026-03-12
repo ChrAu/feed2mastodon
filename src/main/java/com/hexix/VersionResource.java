@@ -20,7 +20,7 @@ public class VersionResource {
     @PostConstruct
     void init() {
         Properties props = new Properties();
-        try (InputStream is = getClass().getResourceAsStream("/version.properties")) {
+        try (InputStream is = VersionResource.class.getResourceAsStream("/version.properties")) {
             if (is != null) {
                 props.load(is);
             }
