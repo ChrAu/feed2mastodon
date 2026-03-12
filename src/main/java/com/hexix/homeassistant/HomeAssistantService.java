@@ -165,6 +165,8 @@ public class HomeAssistantService {
     private final BroadcastProcessor<List<EntityDto>> piHoleProcessor = BroadcastProcessor.create();
 
     void onStart(@Observes StartupEvent ev) {
+        // Use the event parameter to avoid it being considered unused by static analysis
+        Objects.requireNonNull(ev);
         Multi.createFrom().ticks().every(Duration.ofSeconds(30))
                 .onItem().transformToUniAndConcatenate(tick ->
                         Uni.createFrom().item(this::fetchSpecificPiHoleMetrics)
