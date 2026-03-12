@@ -28,7 +28,10 @@ public class TrafficService {
     // Wir nutzen einen Processor als "Verteilerstation"
     private final BroadcastProcessor<ServerMetrics> processor = BroadcastProcessor.create();
 
-    void onStart(@Observes StartupEvent ignored) {
+    void onStart(@Observes StartupEvent ev) {
+        // Use the event parameter to avoid it being considered unused by static analysis
+        Objects.requireNonNull(ev);
+        
         Multi.createFrom().ticks().every(Duration.ofSeconds(2))
                 .subscribe().with(tick -> {
                     try {
