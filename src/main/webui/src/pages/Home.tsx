@@ -5,7 +5,7 @@ import {
   Server,
   Shield
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion'; // Import Variants
 import { SERVICES } from '../data/services';
 import StatusIndicator from '../components/StatusIndicator';
 import ProxmoxDashboard from "../components/ProxmoxDashboard";
@@ -50,7 +50,7 @@ const Home = () => {
   }, [heroContent.length]);
 
   // New animation variants for hero section text
-  const containerVariants = {
+  const containerVariants: Variants = { // Explicitly type as Variants
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -66,7 +66,7 @@ const Home = () => {
     },
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = { // Explicitly type as Variants
     hidden: { y: 30, opacity: 0, rotateX: -45, scale: 0.9 }, // Reduced y, rotateX, and scale
     visible: {
       y: 0,
@@ -80,10 +80,19 @@ const Home = () => {
         mass: 1, // Slightly increased mass
       },
     },
-    exit: { y: -30, opacity: 0, rotateX: 45, scale: 0.9, transition: { duration: 0.25 } }, // Reduced y, rotateX, and scale for exit
+    exit: {
+      y: -30,
+      opacity: 0,
+      rotateX: 45,
+      scale: 0.9,
+      transition: {
+        duration: 0.25,
+        ease: [0.0, 0.0, 0.2, 1], // Added explicit ease
+      },
+    },
   };
 
-  const descriptionVariants = {
+  const descriptionVariants: Variants = { // Explicitly type as Variants
     hidden: { y: 20, opacity: 0, scale: 0.98 }, // Reduced y and scale
     visible: {
       y: 0,
@@ -96,18 +105,26 @@ const Home = () => {
         stiffness: 100, // Reduced stiffness for a softer feel
       },
     },
-    exit: { y: -20, opacity: 0, scale: 0.98, transition: { duration: 0.25 } }, // Reduced y and scale for exit
+    exit: {
+      y: -20,
+      opacity: 0,
+      scale: 0.98,
+      transition: {
+        duration: 0.25,
+        ease: [0.0, 0.0, 0.2, 1], // Added explicit ease
+      },
+    },
   };
 
   // Variants for cards
-  const cardVariants = {
+  const cardVariants: Variants = { // Explicitly type as Variants
     hidden: { opacity: 0, y: 50 },
     visible: {
       opacity: 1,
       y: 0,
       transition: {
         duration: 0.6,
-        ease: "easeOut",
+        ease: [0.0, 0.0, 0.2, 1],
       },
     },
   };
