@@ -2,6 +2,7 @@ package com.hexix.homeassistant;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.hexix.homeassistant.dto.AttributesDto;
+import com.hexix.homeassistant.dto.CpuDto;
 import com.hexix.homeassistant.dto.EntityDto;
 import com.hexix.homeassistant.dto.TemperatureBucketDTO;
 import com.hexix.homeassistant.entity.HaEntity;
@@ -176,6 +177,9 @@ public class HomeAssistantService {
     private List<EntityDto> lastPiHoleData = null;
     private final BroadcastProcessor<List<EntityDto>> piHoleProcessor = BroadcastProcessor.create();
 
+    private List<CpuDto> lastCpuData = null;
+    private final BroadcastProcessor<List<CpuDto>> cpuProcessor = BroadcastProcessor.create();
+
     void onStart(@Observes StartupEvent ev) {
         // Use the event parameter to avoid it being considered unused by static analysis
         Objects.requireNonNull(ev);
@@ -192,6 +196,30 @@ public class HomeAssistantService {
                         },
                         err -> System.err.println("Fehler beim Pi-Hole Live-Update: " + err.getMessage())
                 );
+
+        Multi.createFrom().ticks().every(Duration.ofSeconds(60))
+                .onItem().transformToUniAndConcatenate(tick ->
+                        Uni.createFrom().item(this::fetchCpuData)
+                                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
+                )
+                .subscribe().with(
+                        data -> {
+                            this.lastCpuData = data;
+                            cpuProcessor.onNext(data);
+                        },
+                        err -> System.err.println("Fehler beim CPU Live-Update: " + err.getMessage())
+                );
+    }
+
+    private List<CpuDto> fetchCpuData() {
+        final List<HaStateHistory> allCpuData = getCpuData(Duration.ofDays(1));
+
+        return allCpuData.stream()
+                .map(haStateHistory -> {
+                    final AttributesDto attributesDto = attributeMapperHelper.stringToAttributes(haStateHistory.getAttributes());
+                    final String friendlyName = attributesDto.getFriendlyName();
+                    return new CpuDto(haStateHistory.getEntityId(), friendlyName, haStateHistory.getState(), haStateHistory.getLastChanged());
+                }).toList();
     }
 
     /**
@@ -225,5 +253,16 @@ public class HomeAssistantService {
                     );
         }
         return piHoleProcessor;
+    }
+
+    public Multi<List<CpuDto>> getCpuStream() {
+        if (lastCpuData != null) {
+            return Multi.createBy().concatenating()
+                    .streams(
+                            Multi.createFrom().item(lastCpuData),
+                            cpuProcessor
+                    );
+        }
+        return cpuProcessor;
     }
 }
