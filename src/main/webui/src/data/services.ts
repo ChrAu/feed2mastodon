@@ -19,6 +19,7 @@ export interface Service {
   text: string;
   url: string;
   monitorId?: number | string;
+  glowColor: string; // Added glowColor property
 }
 
 /**
@@ -36,7 +37,8 @@ export const SERVICES: Service[] = [
     bg: 'bg-purple-500/10',
     text: 'text-purple-400',
     url: 'https://sso.codeheap.dev',
-    monitorId: 21 // Beispiel ID
+    monitorId: 21, // Beispiel ID
+    glowColor: 'bg-purple-400/20' // Added glowColor
   },
   {
     id: 'nextcloud',
@@ -48,7 +50,8 @@ export const SERVICES: Service[] = [
     bg: 'bg-blue-500/10',
     text: 'text-blue-400',
     url: 'https://nextcloud.codeheap.dev',
-    monitorId: 30
+    monitorId: 30,
+    glowColor: 'bg-blue-400/20' // Added glowColor
   },
   {
     id: 'mailcow',
@@ -60,7 +63,8 @@ export const SERVICES: Service[] = [
     bg: 'bg-cyan-500/10',
     text: 'text-cyan-400',
     url: 'https://mail.codeheap.dev',
-    monitorId: 26
+    monitorId: 26,
+    glowColor: 'bg-cyan-400/20' // Added glowColor
   },
   {
     id: 'vaultwarden',
@@ -72,7 +76,8 @@ export const SERVICES: Service[] = [
     bg: 'bg-emerald-500/10',
     text: 'text-emerald-400',
     url: 'https://vaultwarden.codeheap.dev',
-    monitorId: 23
+    monitorId: 23,
+    glowColor: 'bg-emerald-400/20' // Added glowColor
   },
   {
     id: 'audiobookshelf',
@@ -84,7 +89,8 @@ export const SERVICES: Service[] = [
     bg: 'bg-red-500/10',
     text: 'text-red-400',
     url: 'https://audiobookshelf.codeheap.dev',
-    monitorId: 32
+    monitorId: 32,
+    glowColor: 'bg-red-400/20' // Added glowColor
   },
   // {
   //   id: 'blinko',
@@ -96,7 +102,8 @@ export const SERVICES: Service[] = [
   //   bg: 'bg-amber-500/10',
   //   text: 'text-amber-400',
   //   url: 'https://blinko.codeheap.dev',
-  //   monitorId: 33
+  //   monitorId: 33,
+  //   glowColor: 'bg-amber-400/20' // Added glowColor
   // },
   {
     id: 'paperless',
@@ -108,7 +115,8 @@ export const SERVICES: Service[] = [
     bg: 'bg-orange-500/10',
     text: 'text-orange-400',
     url: 'https://paperless.codeheap.dev',
-    monitorId: 34
+    monitorId: 34,
+    glowColor: 'bg-orange-400/20' // Added glowColor
   },
   {
     id: 'convertx',
@@ -120,6 +128,7 @@ export const SERVICES: Service[] = [
     bg: 'bg-pink-500/10',
     text: 'text-pink-400',
     url: 'https://converter.codeheap.dev/',
-    monitorId: 11
+    monitorId: 11,
+    glowColor: 'bg-pink-400/20' // Added glowColor
   }
 ];
