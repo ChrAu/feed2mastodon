@@ -23,6 +23,8 @@ import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -218,7 +220,12 @@ public class HomeAssistantService {
                 .map(haStateHistory -> {
                     final AttributesDto attributesDto = attributeMapperHelper.stringToAttributes(haStateHistory.getAttributes());
                     final String friendlyName = attributesDto.getFriendlyName();
-                    return new CpuDto(haStateHistory.getEntityId(), friendlyName, haStateHistory.getState(), haStateHistory.getLastChanged());
+                    final String stateText = haStateHistory.getState();
+
+                    double state = Double.parseDouble(stateText);
+                    BigDecimal bd = BigDecimal.valueOf(state).setScale(1, RoundingMode.HALF_UP);
+
+                    return new CpuDto(haStateHistory.getEntityId(), friendlyName, bd.toString(), haStateHistory.getLastChanged());
                 }).toList();
     }
 
