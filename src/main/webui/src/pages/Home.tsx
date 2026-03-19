@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   ChevronRight,
   ExternalLink,
   Activity
 } from 'lucide-react';
 import { SERVICES } from '../data/services';
 import StatusIndicator from '../components/StatusIndicator';
+import ProxmoxDashboard from "../components/ProxmoxDashboard";
+import PiHoleDashboard from "../components/PiHoleDashboard";
 
 const Home = () => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -85,6 +87,14 @@ const Home = () => {
           </div>
         </div>
       </main>
+        <div className="container mx-auto">
+            <h1 className="text-xl font-bold p-4">Server Status</h1>
+            <ProxmoxDashboard />
+        </div>
+        <div className="container mx-auto">
+            <h1 className="text-xl font-bold p-4">Pi Hole Status</h1>
+            <PiHoleDashboard />
+        </div>
     </>
   );
 };
