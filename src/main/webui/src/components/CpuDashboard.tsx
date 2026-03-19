@@ -5,35 +5,56 @@ import { Cpu } from '../data/cpu';
 const CpuDashboard: React.FC = () => {
     const [data, setData] = useState<Cpu[]>([]);
     const [error, setError] = useState<string | null>(null);
+    const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
 
     useEffect(() => {
-        const fetchData = () => {
-            fetch('/api/homeassistant/cpu')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    const sortedData = data.sort((a: Cpu, b: Cpu) => new Date(a.lastChanged).getTime() - new Date(b.lastChanged).getTime());
+        let eventSource: EventSource | null = null;
+        let reconnectTimeout: NodeJS.Timeout;
+
+        const connect = () => {
+            setConnectionStatus('connecting');
+            eventSource = new EventSource('/api/homeassistant/cpu/stream');
+
+            eventSource.onopen = () => {
+                setConnectionStatus('connected');
+                setError(null);
+            };
+
+            eventSource.onmessage = (event) => {
+                try {
+                    const parsedData: Cpu[] = JSON.parse(event.data);
+                    const sortedData = parsedData.sort((a, b) => new Date(a.lastChanged).getTime() - new Date(b.lastChanged).getTime());
                     setData(sortedData);
-                    setError(null);
-                })
-                .catch(error => {
-                    setError("Verbindung verloren...");
-                    console.error('Error fetching CPU data:', error);
-                });
+                } catch (e) {
+                    console.error('Fehler beim Parsen der CPU Daten:', e);
+                }
+            };
+
+            eventSource.onerror = (err) => {
+                console.error("EventSource Fehler (CPU):", err);
+                setConnectionStatus('error');
+                setError("Verbindung verloren. Versuche neu zu verbinden...");
+                eventSource?.close();
+
+                // Automatischer Reconnect nach 5 Sekunden
+                reconnectTimeout = setTimeout(connect, 5000);
+            };
         };
 
-        fetchData();
-        const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds
+        connect();
 
-        return () => clearInterval(interval);
+        return () => {
+            if (eventSource) {
+                eventSource.close();
+            }
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+            }
+        };
     }, []);
 
-    if (error) return <div className="text-red-400 p-4">{error}</div>;
-    if (!data.length) return <div className="text-gray-400 p-4 animate-pulse">Lade CPU Daten...</div>;
+    if (error && data.length === 0) return <div className="text-red-400 p-4">{error}</div>;
+    if (!data.length && connectionStatus === 'connecting') return <div className="text-gray-400 p-4 animate-pulse">Lade CPU Daten...</div>;
 
     const chartData = data.map(d => ({
         time: new Date(d.lastChanged).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
@@ -42,7 +63,14 @@ const CpuDashboard: React.FC = () => {
 
     return (
         <div className="bg-slate-800/50 backdrop-blur-md shadow-xl rounded-xl p-4 border border-slate-700 mt-4">
-            <div className="text-xs text-orange-400 uppercase font-black tracking-wider">CPU-Auslastung (%)</div>
+            <div className="flex justify-between items-center mb-2">
+                <div className="text-xs text-orange-400 uppercase font-black tracking-wider">CPU-Auslastung (%)</div>
+                <div className="flex items-center space-x-2 text-xs">
+                    {connectionStatus === 'connected' && <span className="text-green-400 flex items-center"><span className="w-2 h-2 rounded-full bg-green-400 mr-1 animate-pulse"></span>Live</span>}
+                    {connectionStatus === 'connecting' && <span className="text-yellow-400 animate-pulse">Verbinde...</span>}
+                    {connectionStatus === 'error' && <span className="text-red-400">Getrennt</span>}
+                </div>
+            </div>
             <div style={{ width: '100%', height: 300 }}>
                 <ResponsiveContainer>
                     <LineChart

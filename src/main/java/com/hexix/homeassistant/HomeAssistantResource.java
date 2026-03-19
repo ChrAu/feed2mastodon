@@ -147,17 +147,11 @@ public class HomeAssistantResource {
     }
 
     @GET
-    @Path("/cpu")
-    @Produces(MediaType.APPLICATION_JSON)
-    public List<CpuDto> getCpuData() {
-        final List<HaStateHistory> allCpuData = homeAssistantService.getCpuData(Duration.ofDays(2));
-
-        return allCpuData.stream()
-                .map(haStateHistory -> {
-                    final AttributesDto attributesDto = attributeMapperHelper.stringToAttributes(haStateHistory.getAttributes());
-                    final String friendlyName = attributesDto.getFriendlyName();
-                    return new CpuDto(haStateHistory.getEntityId(), friendlyName, haStateHistory.getState(), haStateHistory.getLastChanged());
-                }).toList();
+    @Path("/cpu/stream")
+    @Produces(MediaType.SERVER_SENT_EVENTS)
+    @RestStreamElementType(MediaType.APPLICATION_JSON)
+    public Multi<List<CpuDto>> streamCpuData() {
+        return homeAssistantService.getCpuStream();
     }
 
     @GET
