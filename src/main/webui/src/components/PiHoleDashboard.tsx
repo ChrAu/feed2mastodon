@@ -23,13 +23,13 @@ const PiHoleDashboard: React.FC = () => {
     };
 
     // Komponente für ein einzelnes Statistik-Feld mit Skeleton-Support
-    const StatBox = ({ title, value }: { title: string, value: string }) => (
+    const StatBox = ({ title, value, valueClassName = "text-white" }: { title: string, value: string, valueClassName?: string }) => (
         <div className="bg-slate-800/50 backdrop-blur-md shadow-xl rounded-xl p-4 border border-slate-700">
             <div className="text-xs text-orange-400 uppercase font-black tracking-wider">{title}</div>
             {loading ? (
                 <div className="h-8 w-24 bg-slate-700 animate-pulse rounded mt-1"></div>
             ) : (
-                <div className="text-3xl font-mono font-bold text-white mt-1">{value}</div>
+                <div className={`text-3xl font-mono font-bold mt-1 ${valueClassName}`}>{value}</div>
             )}
         </div>
     );
@@ -52,18 +52,22 @@ const PiHoleDashboard: React.FC = () => {
                 <StatBox
                     title="Blockiert (Heute)"
                     value={formatValue('sensor.pi_hole_blockierte_anzeigen', 0)}
+                    valueClassName="text-red-400"
                 />
                 <StatBox
                     title="Anteil"
                     value={`${formatValue('sensor.pi_hole_anteil_blockierter_anzeigen', 1)} %`}
+                    valueClassName="text-blue-400"
                 />
                 <StatBox
                     title="DNS-Anfragen"
                     value={formatValue('sensor.pi_hole_dns_abfragen', 0)}
+                    valueClassName="text-green-400"
                 />
                 <StatBox
                     title="Clients"
                     value={formatValue('sensor.pi_hole_eindeutige_dns_clients', 0)}
+                    valueClassName="text-yellow-400"
                 />
             </div>
         </div>
