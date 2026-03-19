@@ -128,6 +128,18 @@ public class HomeAssistantService {
     }
 
     @Transactional
+    public List<HaStateHistory> getCpuData(final Duration duration) {
+        final TypedQuery<HaStateHistory> query = em.createNamedQuery(HaStateHistory.FIND_ALL_CPU_DATA, HaStateHistory.class);
+        final long seconds = duration.toSeconds();
+        final ZonedDateTime zonedDateTime = ZonedDateTime.now().minusSeconds(seconds);
+
+        query.setParameter("entityId", "sensor.codeheap_cpu_auslastung_2");
+        query.setParameter("startDate", zonedDateTime);
+
+        return query.getResultList();
+    }
+
+    @Transactional
     public boolean saveAllTemperaturStateHistoryWithNoTemperatureHistory() {
         List<HaStateHistory> temperatureEntities = em.createNamedQuery(HaStateHistory.FIND_All_TEMPERATUR_NO_DATA_TABLE, HaStateHistory.class).getResultList();
             temperatureEntities.forEach(haStateHistory -> {

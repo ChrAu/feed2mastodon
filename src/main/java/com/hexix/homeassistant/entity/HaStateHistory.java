@@ -44,6 +44,10 @@ import java.time.ZonedDateTime;
                 query = "SELECT h FROM HaStateHistory h where h.entityId ilike :entityId and h.lastChanged > :startDate ORDER BY h.lastChanged ASC"
         ),
         @NamedQuery(
+                name = HaStateHistory.FIND_ALL_CPU_DATA,
+                query = "SELECT h FROM HaStateHistory h where h.entityId = :entityId and h.lastChanged > :startDate ORDER BY h.lastChanged ASC"
+        ),
+        @NamedQuery(
                 name = HaStateHistory.FIND_All_TEMPERATUR_NO_DATA_TABLE,
                 query = "SELECT h FROM HaStateHistory h where entityId ilike 'climate.%' and h.haTemperatureHistory is null ORDER BY h.lastChanged ASC limit 1000"
         ),
@@ -106,6 +110,7 @@ public class HaStateHistory {
     public static final String FIND_AFTER_TIMESTAMP = "HaStateHistory.findAfterTimestamp";
 
     public static final String FIND_All_TEMPERATUR = "HaStateHistory.findAllTemperatur";
+    public static final String FIND_ALL_CPU_DATA = "HaStateHistory.findAllCpuData";
 
     public static final String FIND_All_TEMPERATUR_NO_DATA_TABLE = "HaStateHistory.findAllTemperaturNoDataTable";
     public static final String FIND_ALL_WEATHER_DATA = "HaStateHistory.findAllWeatherData";
