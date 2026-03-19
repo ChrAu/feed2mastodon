@@ -6,6 +6,7 @@ export default defineConfig({
     build: {
         outDir: 'build', // Damit es mit dem Standard-Output von Quinoa/CRA kompatibel bleibt
         target: 'es2020', // Entspricht etwa "not dead" und modernen Browsern
+        chunkSizeWarningLimit: 1000 // Erhöht das Limit auf 1000 kB (1 MB), um Warnungen bei etwas größeren Chunks zu vermeiden
     },
     server: {
         host: '0.0.0.0', // Erlaubt Quinoa den Zugriff
