@@ -24,20 +24,20 @@ const PiHoleDashboard: React.FC = () => {
 
     // Komponente für ein einzelnes Statistik-Feld mit Skeleton-Support
     const StatBox = ({ title, value, colorClass }: { title: string, value: string, colorClass: string }) => (
-        <div className="bg-gray-800 p-3 rounded shadow-inner">
-            <p className="text-sm text-gray-400 mb-1">{title}</p>
+        <div className="bg-slate-800/50 backdrop-blur-md shadow-xl rounded-xl p-4 border border-slate-700">
+            <div className="text-xs text-orange-400 uppercase font-black tracking-wider">{title}</div>
             {loading ? (
-                <div className="h-8 w-24 bg-gray-700 animate-pulse rounded"></div>
+                <div className="h-8 w-24 bg-slate-700 animate-pulse rounded mt-1"></div>
             ) : (
-                <p className={`text-2xl font-mono ${colorClass}`}>{value}</p>
+                <div className="text-3xl font-mono font-bold text-white mt-1">{value}</div>
             )}
         </div>
     );
 
     return (
-        <div className="p-4 bg-gray-900 text-white rounded-lg shadow-xl border border-gray-800">
+        <div className="p-4 bg-transparent">
             <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold flex items-center">
+                <h2 className="text-xl font-bold flex items-center text-white">
                     <span className={`w-3 h-3 mr-2 rounded-full ${
                         !loading && getEntity('binary_sensor.pi_hole_status')?.state === 'on'
                             ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]'
