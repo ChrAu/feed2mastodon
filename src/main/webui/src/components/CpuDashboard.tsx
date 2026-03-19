@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Cpu } from '../data/cpu';
 
-const CpuDashboard: React.FC = () => {
+const CpuDashboard = () => {
     const [data, setData] = useState<Cpu[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
 
     useEffect(() => {
         let eventSource: EventSource | null = null;
-        let reconnectTimeout: NodeJS.Timeout;
+        let reconnectTimeout: ReturnType<typeof setTimeout>;
 
         const connect = () => {
             setConnectionStatus('connecting');
