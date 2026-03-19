@@ -55,19 +55,19 @@ const Home = () => {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.07, // Slightly increased stagger for more flow
+        staggerChildren: 0.05, // Slightly reduced stagger for a bit more cohesion
       },
     },
     exit: {
       opacity: 0,
       transition: {
-        duration: 0.4, // Slightly longer exit duration
+        duration: 0.3, // Slightly shorter exit duration for quicker disappearance
       },
     },
   };
 
   const itemVariants = {
-    hidden: { y: 80, opacity: 0, rotateX: -90, scale: 0.7 },
+    hidden: { y: 30, opacity: 0, rotateX: -45, scale: 0.9 }, // Reduced y, rotateX, and scale
     visible: {
       y: 0,
       opacity: 1,
@@ -75,28 +75,28 @@ const Home = () => {
       scale: 1,
       transition: {
         type: "spring",
-        damping: 8, // Lower damping for more bounce
-        stiffness: 150, // Higher stiffness for more snap
-        mass: 0.8,
+        damping: 15, // Increased damping for less bounce
+        stiffness: 100, // Reduced stiffness for a softer feel
+        mass: 1, // Slightly increased mass
       },
     },
-    exit: { y: -80, opacity: 0, rotateX: 90, scale: 0.7, transition: { duration: 0.3 } },
+    exit: { y: -30, opacity: 0, rotateX: 45, scale: 0.9, transition: { duration: 0.25 } }, // Reduced y, rotateX, and scale for exit
   };
 
   const descriptionVariants = {
-    hidden: { y: 60, opacity: 0, scale: 0.9 },
+    hidden: { y: 20, opacity: 0, scale: 0.98 }, // Reduced y and scale
     visible: {
       y: 0,
       opacity: 1,
       scale: 1,
       transition: {
-        delay: 0.4, // Delay description animation slightly
+        delay: 0.2, // Slightly reduced delay
         type: "spring",
-        damping: 8, // Lower damping for more bounce
-        stiffness: 120, // Higher stiffness for more snap
+        damping: 15, // Increased damping for less bounce
+        stiffness: 100, // Reduced stiffness for a softer feel
       },
     },
-    exit: { y: -60, opacity: 0, scale: 0.9, transition: { duration: 0.3 } },
+    exit: { y: -20, opacity: 0, scale: 0.98, transition: { duration: 0.25 } }, // Reduced y and scale for exit
   };
 
   // Variants for cards
