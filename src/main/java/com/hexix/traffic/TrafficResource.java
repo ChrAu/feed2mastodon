@@ -17,8 +17,6 @@ public class TrafficResource {
     @Produces(MediaType.SERVER_SENT_EVENTS)
     @RestStreamElementType(MediaType.APPLICATION_JSON)
     public Multi<ServerMetrics> streamTraffic() {
-        // Alle Clients rufen dieselbe Methode auf,
-        // aber der Service fragt Proxmox nur einmal ab.
         return trafficService.getSharedStream();
     }
 }

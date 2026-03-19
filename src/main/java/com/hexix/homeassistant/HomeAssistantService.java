@@ -221,11 +221,14 @@ public class HomeAssistantService {
                     final AttributesDto attributesDto = attributeMapperHelper.stringToAttributes(haStateHistory.getAttributes());
                     final String friendlyName = attributesDto.getFriendlyName();
                     final String stateText = haStateHistory.getState();
+                    if(!Objects.equals(haStateHistory.getState(), "unavailable")){
+                        double state = Double.parseDouble(stateText);
+                        BigDecimal bd = BigDecimal.valueOf(state).setScale(1, RoundingMode.HALF_UP);
 
-                    double state = Double.parseDouble(stateText);
-                    BigDecimal bd = BigDecimal.valueOf(state).setScale(1, RoundingMode.HALF_UP);
+                        return new CpuDto(haStateHistory.getEntityId(), friendlyName, bd.toString(), haStateHistory.getLastChanged());
+                    }
 
-                    return new CpuDto(haStateHistory.getEntityId(), friendlyName, bd.toString(), haStateHistory.getLastChanged());
+                    return new CpuDto(haStateHistory.getEntityId(), friendlyName, "0.0", haStateHistory.getLastChanged());
                 }).toList();
     }
 
