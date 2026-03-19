@@ -24,43 +24,46 @@ const PiHoleDashboard: React.FC = () => {
 
     // Komponente für ein einzelnes Statistik-Feld mit Skeleton-Support
     const StatBox = ({ title, value, colorClass }: { title: string, value: string, colorClass: string }) => (
-        <div className="bg-gray-800 p-3 rounded shadow-inner">
-            <p className="text-sm text-gray-400 mb-1">{title}</p>
+        <div className="bg-slate-800/50 p-4 rounded-xl shadow-inner flex flex-col justify-between border border-slate-700 min-h-[140px]">
+            <p className="text-xs text-slate-400 mb-2 font-semibold uppercase tracking-wider">{title}</p>
             {loading ? (
-                <div className="h-8 w-24 bg-gray-700 animate-pulse rounded"></div>
+                <div className="h-8 w-full bg-slate-700 animate-pulse rounded mt-auto"></div>
             ) : (
-                <p className={`text-2xl font-mono ${colorClass}`}>{value}</p>
+                <div className="mt-auto">
+                    <p className={`text-2xl lg:text-3xl font-mono font-bold mt-auto ${colorClass}`}>{value}</p>
+                    <div className="h-1.5 mt-4 invisible"></div> {/* Platzhalter um auf selbe höhe wie proxmax ladebalken zu kommen */}
+                </div>
             )}
         </div>
     );
 
     return (
-        <div className="p-4 bg-gray-900 text-white rounded-lg shadow-xl border border-gray-800">
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold flex items-center">
-                    <span className={`w-3 h-3 mr-2 rounded-full ${
+        <div className="p-4 bg-transparent text-white rounded-lg h-full flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-6">
+                <h2 className="text-sm font-bold flex items-center text-slate-300 uppercase tracking-widest">
+                    <span className={`w-2.5 h-2.5 mr-3 rounded-full ${
                         !loading && getEntity('binary_sensor.pi_hole_status')?.state === 'on'
                             ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]'
                             : 'bg-red-500 animate-pulse'
                     }`}></span>
-                    Pi-Hole Live-Status
+                    Live-Status
                 </h2>
-                {loading && <span className="text-xs text-gray-500 animate-pulse">Warte auf Stream...</span>}
+                {loading && <span className="text-xs text-slate-500 animate-pulse bg-slate-800/50 px-2 py-1 rounded-md border border-slate-700">Warte auf Stream...</span>}
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-grow">
                 <StatBox
-                    title="Blockiert (Heute)"
+                    title="Blockiert"
                     value={formatValue('sensor.pi_hole_blockierte_anzeigen', 0)}
                     colorClass="text-blue-400"
                 />
                 <StatBox
                     title="Anteil"
-                    value={`${formatValue('sensor.pi_hole_anteil_blockierter_anzeigen', 1)} %`}
+                    value={`${formatValue('sensor.pi_hole_anteil_blockierter_anzeigen', 1)}%`}
                     colorClass="text-purple-400"
                 />
                 <StatBox
-                    title="DNS-Anfragen"
+                    title="Anfragen"
                     value={formatValue('sensor.pi_hole_dns_abfragen', 0)}
                     colorClass="text-green-400"
                 />
