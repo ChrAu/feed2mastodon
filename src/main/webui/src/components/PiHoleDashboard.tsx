@@ -23,30 +23,30 @@ const PiHoleDashboard: React.FC = () => {
     };
 
     // Komponente für ein einzelnes Statistik-Feld mit Skeleton-Support
-    const StatBox = ({ title, value, valueClassName = "text-white" }: { title: string, value: string, valueClassName?: string }) => (
-        <div className="bg-slate-800/50 backdrop-blur-md shadow-xl rounded-xl p-4 border border-slate-700">
+    const StatBox = ({ title, value, valueClassName = "text-white" }: { title: string, value: React.ReactNode, valueClassName?: string }) => (
+        <div className="bg-slate-800/50 backdrop-blur-md shadow-xl rounded-xl p-4 border border-slate-700 h-[166px]"> {/* Feste Höhe hinzugefügt */}
             <div className="text-xs text-orange-400 uppercase font-black tracking-wider">{title}</div>
+            <div className="h-4"></div> {/* Unsichtbarer Platzhalter für zweite Zeile, wie bei Proxmox */}
             {loading ? (
-                <div className="h-8 w-24 bg-slate-700 animate-pulse rounded mt-1"></div>
+                <>
+                    <div className="h-8 w-24 bg-slate-700 animate-pulse rounded mt-1"></div> {/* h-8 für bessere Übereinstimmung mit text-2xl */}
+                    {/* Unsichtbarer Platzhalter, um die Höhe der Proxmox-Karten anzupassen */}
+                    <div className="w-full bg-slate-900 rounded-full h-1.5 mt-4 opacity-0"></div>
+                </>
             ) : (
-                <div className={`text-3xl font-mono font-bold mt-1 ${valueClassName}`}>{value}</div>
+                <>
+                    <div className={`text-2xl font-mono font-bold mt-1 ${valueClassName}`}>{value}</div>
+                    {/* Unsichtbarer Platzhalter, um die Höhe der Proxmox-Karten anzupassen */}
+                    <div className="w-full bg-slate-900 rounded-full h-1.5 mt-4 opacity-0"></div>
+                </>
             )}
         </div>
     );
 
     return (
         <div className="p-4 bg-transparent">
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold flex items-center text-white">
-                    <span className={`w-3 h-3 mr-2 rounded-full ${
-                        !loading && getEntity('binary_sensor.pi_hole_status')?.state === 'on'
-                            ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]'
-                            : 'bg-red-500 animate-pulse'
-                    }`}></span>
-                    Pi-Hole Live-Status
-                </h2>
-                {loading && <span className="text-xs text-gray-500 animate-pulse">Warte auf Stream...</span>}
-            </div>
+            {/* Der vorherige h2-Block wurde entfernt */}
+            {loading && <span className="text-xs text-gray-500 animate-pulse">Warte auf Stream...</span>}
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatBox
@@ -56,7 +56,7 @@ const PiHoleDashboard: React.FC = () => {
                 />
                 <StatBox
                     title="Anteil"
-                    value={`${formatValue('sensor.pi_hole_anteil_blockierter_anzeigen', 1)} %`}
+                    value={<span className="whitespace-nowrap">{formatValue('sensor.pi_hole_anteil_blockierter_anzeigen', 1)} %</span>}
                     valueClassName="text-blue-400"
                 />
                 <StatBox
