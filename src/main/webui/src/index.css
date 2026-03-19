@@ -13,3 +13,34 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Animierter Hintergrund für den Hero-Bereich */
+.animated-gradient-bg {
+  background: linear-gradient(270deg, #1a202c, #2d3748, #1a202c);
+  background-size: 600% 600%;
+  animation: gradientAnimation 15s ease infinite;
+}
+
+@keyframes gradientAnimation {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Card Hover Glow Effect */
+.card-hover-glow {
+  pointer-events: none;
+  background: radial-gradient(
+    600px circle at var(--x) var(--y),
+    var(--glow-color, rgba(255, 255, 255, 0.06)), /* Fallback to white glow */
+    transparent 80%
+  );
+  transform: translate(-50%, -50%);
+  transition: opacity 0.3s ease;
+}
