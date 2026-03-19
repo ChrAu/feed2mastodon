@@ -6,6 +6,7 @@ import ProxmoxDashboard from "./components/ProxmoxDashboard";
 import Datenschutz from "./pages/Datenschutz";
 import Home from './pages/Home';
 import Impressum from './pages/Impressum';
+import CpuDashboard from "./components/CpuDashboard";
 
 const App = () => {
   return (
@@ -19,6 +20,7 @@ const App = () => {
           <div className="container mx-auto">
               <h1 className="text-xl font-bold p-4">Server Status</h1>
               <ProxmoxDashboard />
+              <CpuDashboard />
           </div>
           <div className="container mx-auto">
               <h1 className="text-xl font-bold p-4">Pi Hole Status</h1>

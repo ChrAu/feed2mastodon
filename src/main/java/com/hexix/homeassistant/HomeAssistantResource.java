@@ -1,6 +1,7 @@
 package com.hexix.homeassistant;
 
 import com.hexix.homeassistant.dto.AttributesDto;
+import com.hexix.homeassistant.dto.CpuDto;
 import com.hexix.homeassistant.dto.EntityDto;
 import com.hexix.homeassistant.dto.TemperatureBucketDTO;
 import com.hexix.homeassistant.dto.TemperatureDeviceDto;
@@ -143,6 +144,20 @@ public class HomeAssistantResource {
                 .entrySet().stream()
                 .map(entry -> new TemperatureDeviceDto(entry.getKey().getKey(), entry.getKey().getValue(), entry.getValue()))
                 .toList();
+    }
+
+    @GET
+    @Path("/cpu")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<CpuDto> getCpuData() {
+        final List<HaStateHistory> allCpuData = homeAssistantService.getCpuData(Duration.ofDays(2));
+
+        return allCpuData.stream()
+                .map(haStateHistory -> {
+                    final AttributesDto attributesDto = attributeMapperHelper.stringToAttributes(haStateHistory.getAttributes());
+                    final String friendlyName = attributesDto.getFriendlyName();
+                    return new CpuDto(haStateHistory.getEntityId(), friendlyName, haStateHistory.getState(), haStateHistory.getLastChanged());
+                }).toList();
     }
 
     @GET
