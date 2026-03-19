@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import {
   ChevronRight,
   ExternalLink,
-  Activity
+  Activity,
+  Server, // Import Server icon for Proxmox
+  Shield // Import Shield icon for Pi-hole
 } from 'lucide-react';
 import { SERVICES } from '../data/services';
 import StatusIndicator from '../components/StatusIndicator';
@@ -78,23 +80,64 @@ const Home = () => {
               <div className={`absolute bottom-0 left-8 right-8 h-[2px] bg-gradient-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-100 transition-opacity ${service.text} pointer-events-none`}></div>
             </div>
           ))}
-          
-          {/* Status Card */}
-          <div className={`p-8 rounded-3xl bg-blue-600/5 border border-blue-500/20 backdrop-blur-sm flex flex-col justify-center items-center text-center transition-all duration-1000 delay-700 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
-            <Activity className="w-10 h-10 text-blue-500/50 mb-4" />
-            <h4 className="text-white font-semibold mb-1">Server Status</h4>
-            <p className="text-slate-500 text-xs">Alle Instanzen laufen stabil im Rechenzentrum.</p>
+        </div>
+
+        {/* Neuer Bereich für System-Status */}
+        <div className={`mt-16 text-center transition-all duration-1000 delay-500 transform ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-8">
+            System-Status <br className="hidden md:block" />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-teal-400 to-cyan-400">
+              Übersicht
+            </span>
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+          {/* Proxmox Dashboard Card */}
+          <div
+            className={`group relative p-8 rounded-3xl bg-slate-900/40 border border-white/5 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:bg-slate-800/60 shadow-xl ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}
+            style={{ transitionDelay: `400ms` }}
+          >
+            <div className="relative z-10">
+              <div className="w-14 h-14 bg-blue-600/20 border border-blue-500 rounded-2xl flex items-center justify-center mb-6 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-lg shadow-black/50">
+                <Server className="w-7 h-7 text-blue-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2 flex items-center">
+                Proxmox Server Status
+                <ChevronRight className="w-4 h-4 ml-1 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-blue-400" />
+              </h3>
+              <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                Detaillierte Informationen zu deinen Proxmox-Instanzen.
+              </p>
+              <ProxmoxDashboard />
+            </div>
+            {/* Unterer Glow-Streifen */}
+            <div className={`absolute bottom-0 left-8 right-8 h-[2px] bg-gradient-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-100 transition-opacity text-blue-400 pointer-events-none`}></div>
+          </div>
+
+          {/* Pi-Hole Dashboard Card */}
+          <div
+            className={`group relative p-8 rounded-3xl bg-slate-900/40 border border-white/5 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:bg-slate-800/60 shadow-xl ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}
+            style={{ transitionDelay: `500ms` }}
+          >
+            <div className="relative z-10">
+              <div className="w-14 h-14 bg-green-600/20 border border-green-500 rounded-2xl flex items-center justify-center mb-6 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-lg shadow-black/50">
+                <Shield className="w-7 h-7 text-green-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2 flex items-center">
+                Pi-Hole Status
+                <ChevronRight className="w-4 h-4 ml-1 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-green-400" />
+              </h3>
+              <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                Überblick über deine Netzwerk-Werbeblockierung.
+              </p>
+              <PiHoleDashboard />
+            </div>
+            {/* Unterer Glow-Streifen */}
+            <div className={`absolute bottom-0 left-8 right-8 h-[2px] bg-gradient-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-100 transition-opacity text-green-400 pointer-events-none`}></div>
           </div>
         </div>
       </main>
-        <div className="container mx-auto">
-            <h1 className="text-xl font-bold p-4">Server Status</h1>
-            <ProxmoxDashboard />
-        </div>
-        <div className="container mx-auto">
-            <h1 className="text-xl font-bold p-4">Pi Hole Status</h1>
-            <PiHoleDashboard />
-        </div>
     </>
   );
 };
