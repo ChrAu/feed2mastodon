@@ -29,15 +29,19 @@ public class TrafficService {
     // Wir nutzen einen Processor als "Verteilerstation"
     private final BroadcastProcessor<ServerMetrics> processor = BroadcastProcessor.create();
 
+    // Cache für die letzten Metriken
+    private volatile ServerMetrics lastMetrics;
+
     void onStart(@Observes StartupEvent ev) {
         // Use the event parameter to avoid it being considered unused by static analysis
         Objects.requireNonNull(ev);
-        
+
         Multi.createFrom().ticks().every(Duration.ofSeconds(2))
                 .subscribe().with(tick -> {
                     try {
                         ServerMetrics metrics = fetchAllMetrics();
                         processor.onNext(metrics);
+                        lastMetrics = metrics; // Update the cache
                     } catch (Exception e) {
                         // Falls der Client noch nicht bereit ist oder Proxmox zickt
                         System.err.println("Fehler beim Abruf: " + e.getMessage());
@@ -45,8 +49,16 @@ public class TrafficService {
                 });
     }
     public Multi<ServerMetrics> getSharedStream() {
+        if (lastMetrics != null) {
+            return Multi.createBy().concatenating()
+                    .streams(
+                            Multi.createFrom().item(lastMetrics),
+                            processor
+                    );
+        }
         return processor;
     }
+
 
     private synchronized ServerMetrics fetchAllMetrics() {
         try {
