@@ -3,7 +3,8 @@ import {
   ChevronRight,
   ExternalLink,
   Server,
-  Shield
+  Shield,
+  Utensils // Added Utensils icon
 } from 'lucide-react';
 import { motion, AnimatePresence, Variants } from 'framer-motion'; // Import Variants
 import { SERVICES } from '../data/services';
