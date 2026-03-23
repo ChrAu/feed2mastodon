@@ -1,11 +1,12 @@
-import { 
-  Shield, 
-  Cloud, 
-  Mail, 
-  BookOpen, 
+import {
+  Shield,
+  Cloud,
+  Mail,
+  BookOpen,
   FileText,
   Lock,
-  RefreshCw
+  RefreshCw,
+  Utensils // Added Utensils icon
 } from 'lucide-react';
 
 export interface Service {
@@ -91,6 +92,19 @@ export const SERVICES: Service[] = [
     url: 'https://audiobookshelf.codeheap.dev',
     monitorId: 32,
     glowColor: 'bg-red-400/20' // Added glowColor
+  },
+  {
+    id: 'mealie',
+    name: 'Mealie',
+    description: 'Rezeptverwaltung',
+    icon: Utensils,
+    color: 'border-yellow-500',
+    glow: 'group-hover:shadow-yellow-500/50',
+    bg: 'bg-yellow-500/10',
+    text: 'text-yellow-400',
+    url: 'https://mealie.codeheap.dev',
+    monitorId: 66,
+    glowColor: 'bg-yellow-400/20' // Added glowColor
   },
   // {
   //   id: 'blinko',
