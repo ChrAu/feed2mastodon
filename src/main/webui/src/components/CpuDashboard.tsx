@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Cpu } from '../data/cpu';
 
@@ -6,49 +6,73 @@ const CpuDashboard = () => {
     const [data, setData] = useState<Cpu[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
+    const eventSourceRef = useRef<EventSource | null>(null);
+    const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    useEffect(() => {
-        let eventSource: EventSource | null = null;
-        let reconnectTimeout: ReturnType<typeof setTimeout>;
+    const reconnectInterval = 5000; // 5 seconds
 
-        const connect = () => {
-            setConnectionStatus('connecting');
-            eventSource = new EventSource('/api/homeassistant/cpu/stream');
+    const connect = () => {
+        if (eventSourceRef.current) {
+            eventSourceRef.current.close();
+        }
+        if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
+        }
 
-            eventSource.onopen = () => {
-                setConnectionStatus('connected');
-                setError(null);
-            };
+        setConnectionStatus('connecting');
+        const eventSource = new EventSource('/api/homeassistant/cpu/stream');
+        eventSourceRef.current = eventSource;
 
-            eventSource.onmessage = (event) => {
-                try {
-                    const parsedData: Cpu[] = JSON.parse(event.data);
-                    const sortedData = parsedData.sort((a, b) => new Date(a.lastChanged).getTime() - new Date(b.lastChanged).getTime());
-                    setData(sortedData);
-                } catch (e) {
-                    console.error('Fehler beim Parsen der CPU Daten:', e);
-                }
-            };
-
-            eventSource.onerror = (err) => {
-                console.error("EventSource Fehler (CPU):", err);
-                setConnectionStatus('error');
-                setError("Verbindung verloren. Versuche neu zu verbinden...");
-                eventSource?.close();
-
-                // Automatischer Reconnect nach 5 Sekunden
-                reconnectTimeout = setTimeout(connect, 5000);
-            };
+        eventSource.onopen = () => {
+            setConnectionStatus('connected');
+            setError(null);
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+                reconnectTimeoutRef.current = null;
+            }
         };
 
+        eventSource.onmessage = (event) => {
+            try {
+                const parsedData: Cpu[] = JSON.parse(event.data);
+                const sortedData = parsedData.sort((a, b) => new Date(a.lastChanged).getTime() - new Date(b.lastChanged).getTime());
+                setData(sortedData);
+                setError(null); // Clear error on successful message
+                if (reconnectTimeoutRef.current) {
+                    clearTimeout(reconnectTimeoutRef.current);
+                    reconnectTimeoutRef.current = null;
+                }
+            } catch (e) {
+                console.error('Fehler beim Parsen der CPU Daten:', e);
+            }
+        };
+
+        eventSource.onerror = (err) => {
+            console.error("EventSource Fehler (CPU):", err);
+            setConnectionStatus('error');
+            setError("Verbindung verloren. Versuche neu zu verbinden...");
+            eventSource.close(); // Close current connection
+
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+            }
+            reconnectTimeoutRef.current = setTimeout(() => {
+                console.log("Attempting to reconnect to CPU stream...");
+                connect();
+            }, reconnectInterval);
+        };
+    };
+
+    useEffect(() => {
         connect();
 
         return () => {
-            if (eventSource) {
-                eventSource.close();
+            if (eventSourceRef.current) {
+                eventSourceRef.current.close();
             }
-            if (reconnectTimeout) {
-                clearTimeout(reconnectTimeout);
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
             }
         };
     }, []);
