@@ -1,21 +1,56 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { ServerMetrics } from '../data/proxmox';
 
 const ProxmoxDashboard: React.FC = () => {
     const [metrics, setMetrics] = useState<ServerMetrics | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const eventSourceRef = useRef<EventSource | null>(null);
+    const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    useEffect(() => {
+    const reconnectInterval = 5000; // 5 seconds
+
+    const connect = () => {
+        if (eventSourceRef.current) {
+            eventSourceRef.current.close();
+        }
+
         const eventSource = new EventSource('/api/traffic-stream');
+        eventSourceRef.current = eventSource;
+
         eventSource.onmessage = (event) => {
             setMetrics(JSON.parse(event.data));
-            setError(null);
+            setError(null); // Clear error on successful message
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+                reconnectTimeoutRef.current = null;
+            }
         };
-        eventSource.onerror = () => {
-            setError("Verbindung verloren...");
-            eventSource.close();
+
+        eventSource.onerror = (err) => {
+            console.error("EventSource failed:", err);
+            eventSource.close(); // Close current connection
+            setError("Verbindung verloren. Versuche erneut zu verbinden...");
+
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+            }
+            reconnectTimeoutRef.current = setTimeout(() => {
+                connect();
+            }, reconnectInterval);
         };
-        return () => eventSource.close();
+    };
+
+    useEffect(() => {
+        connect();
+
+        return () => {
+            if (eventSourceRef.current) {
+                eventSourceRef.current.close();
+            }
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+            }
+        };
     }, []);
 
     if (error) return <div className="text-red-400 p-4">{error}</div>;
