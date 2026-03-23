@@ -7,7 +7,7 @@ const CpuDashboard = () => {
     const [error, setError] = useState<string | null>(null);
     const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
     const eventSourceRef = useRef<EventSource | null>(null);
-    const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const reconnectTimeoutRef = useRef<number | null>(null);
 
     const reconnectInterval = 5000; // 5 seconds
 
