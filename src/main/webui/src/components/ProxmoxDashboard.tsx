@@ -5,7 +5,7 @@ const ProxmoxDashboard: React.FC = () => {
     const [metrics, setMetrics] = useState<ServerMetrics | null>(null);
     const [error, setError] = useState<string | null>(null);
     const eventSourceRef = useRef<EventSource | null>(null);
-    const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const reconnectTimeoutRef = useRef<number | null>(null); // Changed NodeJS.Timeout to number
 
     const reconnectInterval = 5000; // 5 seconds
 
