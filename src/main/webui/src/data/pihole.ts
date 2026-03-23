@@ -9,7 +9,7 @@ export interface PiHoleEntity {
 
 export const subscribeToPiHole = (onMessage: (data: PiHoleEntity[]) => void) => {
     let eventSource: EventSource | null = null;
-    let reconnectTimeout: NodeJS.Timeout | null = null;
+    let reconnectTimeout: number | null = null;
     const reconnectInterval = 5000; // 5 seconds
 
     const connect = () => {
