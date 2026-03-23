@@ -266,7 +266,10 @@ const Home = () => {
               {/* Neuer Glüheffekt-Div */}
               <div className="card-hover-glow absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-blue-400/20"></div>
 
-              <div className="relative z-10">
+              {/* Link Wrapper for Proxmox */}
+              <a href="/server-status" className="absolute inset-0 z-0" aria-label="Gehe zu Server Status"></a>
+
+              <div className="relative z-10 pointer-events-none">
                 <div className="w-14 h-14 bg-blue-600/20 border border-blue-500 rounded-2xl flex items-center justify-center mb-6 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-lg shadow-black/50">
                   <Server className="w-7 h-7 text-blue-400" />
                 </div>
@@ -296,7 +299,10 @@ const Home = () => {
               {/* Neuer Glüheffekt-Div */}
               <div className="card-hover-glow absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-green-400/20"></div>
 
-              <div className="relative z-10">
+              {/* Link Wrapper for Pi-Hole */}
+              <a href="/server-status" className="absolute inset-0 z-0" aria-label="Gehe zu Server Status"></a>
+
+              <div className="relative z-10 pointer-events-none">
                 <div className="w-14 h-14 bg-green-600/20 border border-green-500 rounded-2xl flex items-center justify-center mb-6 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-lg shadow-black/50">
                   <Shield className="w-7 h-7 text-green-400" />
                 </div>
