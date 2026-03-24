@@ -188,6 +188,7 @@ public class HomeAssistantService {
         Multi.createFrom().ticks().every(Duration.ofSeconds(30))
                 .onItem().transformToUniAndConcatenate(tick ->
                         Uni.createFrom().item(this::fetchSpecificPiHoleMetrics)
+                                .onFailure().retry().withBackOff(Duration.ofSeconds(1), Duration.ofSeconds(60)).indefinitely() // Add retry here
                                 .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
                 )
                 .subscribe().with(
@@ -202,6 +203,7 @@ public class HomeAssistantService {
         Multi.createFrom().ticks().every(Duration.ofSeconds(60))
                 .onItem().transformToUniAndConcatenate(tick ->
                         Uni.createFrom().item(this::fetchCpuData)
+                                .onFailure().retry().withBackOff(Duration.ofSeconds(1), Duration.ofSeconds(60)).indefinitely() // Add retry here
                                 .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
                 )
                 .subscribe().with(
