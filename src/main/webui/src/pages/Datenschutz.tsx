@@ -93,6 +93,25 @@ const Datenschutz = () => {
             </p>
         </section>
 
+        <hr className="border-white/10 my-8" />
+
+        {/* 5. Cloudflare */}
+        <section>
+            <h2 className="text-xl font-semibold text-white mb-4">5. Cloudflare</h2>
+            <p className="text-sm leading-relaxed text-slate-400 text-justify mb-4">
+                Wir nutzen Dienste von Cloudflare, Inc. (101 Townsend St., San Francisco, CA 94107, USA), um die Sicherheit und Performance unserer Website zu optimieren. Cloudflare fungiert als Content Delivery Network (CDN), DNS-Anbieter, Web Application Firewall (WAF) und schützt unsere Website vor DDoS-Angriffen.
+            </p>
+            <p className="text-sm leading-relaxed text-slate-400 text-justify mb-4">
+                Durch die Nutzung von Cloudflare werden alle Anfragen über die Server von Cloudflare geleitet. Dies ermöglicht es Cloudflare, den Datenverkehr zu analysieren und potenzielle Bedrohungen zu blockieren. Dabei können auch personenbezogene Daten wie Ihre IP-Adresse erfasst und verarbeitet werden. Die Nutzung von Cloudflare dient unserem berechtigten Interesse an einer sicheren und performanten Bereitstellung unserer Website gemäß Art. 6 Abs. 1 lit. f DSGVO.
+            </p>
+            <p className="text-sm leading-relaxed text-slate-400 text-justify mb-4">
+                Wir haben mit Cloudflare einen Auftragsverarbeitungsvertrag (AV-Vertrag) abgeschlossen, um die Einhaltung der Datenschutzbestimmungen zu gewährleisten. Wir empfehlen Ihnen zudem zu prüfen, ob Inhalte, die über das CDN von Cloudflare geladen werden, nicht auch lokal eingebunden werden können, um die Abhängigkeit von Drittanbietern zu reduzieren.
+            </p>
+            <p className="text-sm leading-relaxed text-slate-400 text-justify">
+                Weitere Informationen zum Datenschutz bei Cloudflare finden Sie in der Datenschutzerklärung von Cloudflare: <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">https://www.cloudflare.com/privacypolicy/</a>
+            </p>
+        </section>
+
       </div>
     </div>
   );
