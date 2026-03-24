@@ -28,12 +28,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#06090f] text-slate-200 font-sans selection:bg-blue-500/30 overflow-x-hidden">
+    <div className="min-h-screen text-slate-200 font-sans selection:bg-blue-500/30 overflow-x-hidden">
       {/* Hintergrund-Effekte */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 blur-[120px] rounded-full"></div>
-        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
+
+
+
       </div>
 
       {/* Navigation */}
