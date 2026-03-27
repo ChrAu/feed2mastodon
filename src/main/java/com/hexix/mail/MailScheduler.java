@@ -35,8 +35,8 @@ public class MailScheduler {
      * Jede Stunde 0, Minute 0, um 00:00, 06:00, 12:00 und 18:00 Uhr.
      * Dies entspricht 4 E-Mails pro Tag.
      */
-    @Scheduled(cron = "0 0 0,6,12,18 * * ?") // Zurück zum ursprünglichen Cron-Ausdruck
-    //@Scheduled(every = "10m")
+    //@Scheduled(cron = "0 0 0,6,12,18 * * ?") // Zurück zum ursprünglichen Cron-Ausdruck
+    @Scheduled(every = "10m")
     void sendScheduledTestEmails() {
         LOG.info("Starting scheduled email sending...");
         String uniqueMailId = String.format("%07d", ThreadLocalRandom.current().nextInt(10000000));

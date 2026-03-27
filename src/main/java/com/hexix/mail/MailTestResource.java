@@ -1,6 +1,7 @@
 package com.hexix.mail;
 
 import com.hexix.mail.model.MailLogEntry;
+import com.hexix.mail.model.dto.MailProviderStats;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -9,6 +10,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Path("/api/mail-test")
@@ -72,5 +74,12 @@ public class MailTestResource {
                            .entity("Fehler bei der manuellen Überprüfung der empfangenen E-Mails: " + e.getMessage())
                            .build();
         }
+    }
+
+    @GET
+    @Path("/stats")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<MailProviderStats> getMailStats() {
+        return mailLogService.getMailProviderStatistics();
     }
 }

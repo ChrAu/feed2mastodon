@@ -3,19 +3,23 @@ package com.hexix.mail.model;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+import static com.hexix.mail.model.MailLogEntry.QUERY_FIND_PENDING_OLDER_THAN;
+
 @Entity
 @Table(name = "mail_log_entry")
 @NamedQueries({
-    @NamedQuery(name = "MailLogEntry.findPendingForRecipient",
+    @NamedQuery(name = MailLogEntry.QUERY_FIND_PENDING_FOR_RECIPIENT,
                 query = "SELECT mle FROM MailLogEntry mle WHERE mle.recipientEmail = :recipientEmail AND mle.receivedStatus IS NULL AND mle.sentStatus = 'SUCCESS'"),
-    @NamedQuery(name = "MailLogEntry.findPendingOlderThan",
-                query = "SELECT mle FROM MailLogEntry mle WHERE mle.receivedStatus IS NULL AND mle.sentTimestamp < :threshold AND mle.sentStatus = 'SUCCESS'")
+    @NamedQuery(name = MailLogEntry.QUERY_FIND_PENDING_OLDER_THAN,
+                query = "SELECT mle FROM MailLogEntry mle WHERE mle.receivedStatus IS NULL AND mle.sentTimestamp < :threshold AND mle.sentStatus = 'SUCCESS'"),
+        @NamedQuery(name = MailLogEntry.QUERY_FIND_ORDER_BY_SENT_TIMESTAMP_DESC, query = "SELECT mle FROM MailLogEntry mle ORDER BY mle.sentTimestamp DESC")
 })
 public class MailLogEntry { // PanacheEntityBase entfernt
 
 
     public static final String QUERY_FIND_PENDING_FOR_RECIPIENT = "MailLogEntry.findPendingForRecipient";
     public static final String QUERY_FIND_PENDING_OLDER_THAN = "MailLogEntry.findPendingOlderThan";
+    public static final String QUERY_FIND_ORDER_BY_SENT_TIMESTAMP_DESC = "MailLogEntry.findOrderBySentTimestampDesc";
 
 
     @Id
