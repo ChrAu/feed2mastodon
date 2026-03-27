@@ -133,6 +133,19 @@
             <artifactId>hibernate-vector</artifactId>
             <version>7.3.0.Final</version>
         </dependency>
+
+        <!-- Quarkus Mailer extension -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-mailer</artifactId>
+        </dependency>
+
+        <!-- Jakarta Mail API for receiving emails (using Angus Mail for bundled API+impl) -->
+        <dependency>
+            <groupId>org.eclipse.angus</groupId>
+            <artifactId>jakarta.mail</artifactId>
+            <version>2.0.3</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -164,7 +177,6 @@
                             <goal>build</goal>
                             <goal>generate-code</goal>
                             <goal>generate-code-tests</goal>
-                            <goal>native-image-agent</goal>
                         </goals>
                     </execution>
                 </executions>
