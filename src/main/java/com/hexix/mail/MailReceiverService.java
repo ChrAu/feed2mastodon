@@ -74,6 +74,7 @@ public class MailReceiverService {
             props.put("mail." + protocolPrefix + ".host", account.getHost());
             props.put("mail." + protocolPrefix + ".port", String.valueOf(account.getPort()));
             props.put("mail." + protocolPrefix + ".auth", "true"); // Ensure authentication is enabled
+            props.put("mail." + protocolPrefix + ".ssl.checkserveridentity", "true"); // Enable server identity check
 
             Session session = Session.getInstance(props, new Authenticator() {
                 @Override
