@@ -6,6 +6,7 @@ const Home = lazy(() => import('./pages/Home'));
 const ServerStatus = lazy(() => import('./pages/ServerStatus'));
 const Impressum = lazy(() => import('./pages/Impressum'));
 const Datenschutz = lazy(() => import('./pages/Datenschutz'));
+const MailTest = lazy(() => import('./pages/MailTest')); // Add this line
 
 const App = () => {
   return (
@@ -17,6 +18,7 @@ const App = () => {
             <Route path="/server-status" element={<ServerStatus />} />
             <Route path="/impressum" element={<Impressum />} />
             <Route path="/datenschutz" element={<Datenschutz />} />
+            <Route path="/mail-test" element={<MailTest />} /> {/* Add this line */}
           </Routes>
         </Suspense>
       </Layout>
