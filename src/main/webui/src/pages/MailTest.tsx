@@ -36,7 +36,48 @@ const MailTest: React.FC = () => {
         return (
             <div className="container mx-auto p-4 text-gray-800 dark:text-gray-200">
                 <h1 className="text-xl font-bold mb-4">E-Mail Test und Statistiken</h1>
+                <p className="mb-6">
+                    Diese Seite dient der Auswertung der E-Mail-Zustellbarkeit. Regelmäßig werden Test-E-Mails vom Server an verschiedene Anbieter gesendet,
+                    um zu prüfen, ob diese erfolgreich zugestellt werden und wie gewünscht im Posteingang erscheinen.
+                    Dies ist wichtig, da manche Mail-Provider E-Mails von Mailservern plötzlich als Spam markieren können.
+                    Hier können Sie den Status der letzten gesendeten E-Mails, den Empfangsstatus und die Anzahl der Fehler in den letzten 7 Tagen einsehen.
+                </p>
+                <h2 className="text-lg font-semibold mb-2">E-Mail Anbieter Statistiken</h2>
                 <p>Lade E-Mail Statistiken...</p>
+                <div className="overflow-x-auto mt-4">
+                    <table className="min-w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-md animate-pulse">
+                        <thead>
+                            <tr className="bg-gray-100 dark:bg-gray-800">
+                                <th className="py-2 px-4 border-b border-gray-200 dark:border-gray-600 text-left text-gray-700 dark:text-gray-300">Anbieter</th>
+                                <th className="py-2 px-4 border-b border-gray-200 dark:border-gray-600 text-left text-gray-700 dark:text-gray-300">Zuletzt gesendet</th>
+                                <th className="py-2 px-4 border-b border-gray-200 dark:border-gray-600 text-left text-gray-700 dark:text-gray-300">Sendestatus</th>
+                                <th className="py-2 px-4 border-b border-gray-200 dark:border-gray-600 text-left text-gray-700 dark:text-gray-300">Empfangsstatus</th>
+                                <th className="py-2 px-4 border-b border-gray-200 dark:border-gray-600 text-left text-gray-700 dark:text-gray-300">Fehler (letzte 7 Tage)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {[...Array(3)].map((_, index) => ( // Placeholder for 3 rows
+                                <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-600">
+                                    <td className="py-2 px-4 border-b border-gray-200 dark:border-gray-600">
+                                        <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div>
+                                    </td>
+                                    <td className="py-2 px-4 border-b border-gray-200 dark:border-gray-600">
+                                        <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-full"></div>
+                                    </td>
+                                    <td className="py-2 px-4 border-b border-gray-200 dark:border-gray-600">
+                                        <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div>
+                                    </td>
+                                    <td className="py-2 px-4 border-b border-gray-200 dark:border-gray-600">
+                                        <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-2/3"></div>
+                                    </td>
+                                    <td className="py-2 px-4 border-b border-gray-200 dark:border-gray-600">
+                                        <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/4"></div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         );
     }
@@ -55,9 +96,10 @@ const MailTest: React.FC = () => {
             <h1 className="text-xl font-bold mb-4">E-Mail Test und Statistiken</h1>
 
             <p className="mb-6">
-                Diese Seite zeigt Statistiken über den Versand und Empfang von E-Mails für verschiedene E-Mail-Anbieter.
-                Hier können Sie den Status der letzten gesendeten E-Mails, den Empfangsstatus und die Anzahl der Fehler
-                in den letzten 7 Tagen einsehen.
+                Diese Seite dient der Auswertung der E-Mail-Zustellbarkeit. Regelmäßig werden Test-E-Mails vom Server an verschiedene Anbieter gesendet,
+                um zu prüfen, ob diese erfolgreich zugestellt werden und wie gewünscht im Posteingang erscheinen.
+                Dies ist wichtig, da manche Mail-Provider E-Mails von Mailservern plötzlich als Spam markieren können.
+                Hier können Sie den Status der letzten gesendeten E-Mails, den Empfangsstatus und die Anzahl der Fehler in den letzten 7 Tagen einsehen.
             </p>
 
             <h2 className="text-lg font-semibold mb-2">E-Mail Anbieter Statistiken</h2>
