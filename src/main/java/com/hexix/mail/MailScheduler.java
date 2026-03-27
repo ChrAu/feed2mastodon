@@ -8,7 +8,7 @@ import jakarta.inject.Inject;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List; // Nur noch List, kein Arrays.asList mehr
-import java.util.UUID;
+import java.util.Random; // Import für Random
 import java.util.logging.Logger;
 
 @ApplicationScoped
@@ -35,9 +35,10 @@ public class MailScheduler {
      * Dies entspricht 4 E-Mails pro Tag.
      */
     @Scheduled(cron = "0 0 0,6,12,18 * * ?") // Zurück zum ursprünglichen Cron-Ausdruck
+    //@Scheduled(every = "10m")
     void sendScheduledTestEmails() {
         LOG.info("Starting scheduled email sending...");
-        String uniqueMailId = UUID.randomUUID().toString();
+        String uniqueMailId = String.format("%07d", new Random().nextInt(10000000));
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         LocalDateTime sentTime = LocalDateTime.now();
 
@@ -50,15 +51,15 @@ public class MailScheduler {
 
         for (MailboxAccount account : recipientAccounts) { // Iteriere über die geladenen Accounts
             String recipient = account.getEmail(); // E-Mail-Adresse des Empfängers
-            String subject = String.format("Spam-Test: Mailserver-Check [%s] - %s", uniqueMailId, timestamp);
+            String subject = "Kurze Rückfrage zu unserem Termin am Montag";
             String body = String.format(
-                    "Dies ist eine geplante Test-E-Mail von Ihrem Mailserver (%s) zur Überprüfung der Spam-Erkennung.\n" +
-                    "Eindeutige Mail-ID: %s\n" +
-                    "Gesendet am: %s\n\n" +
-                    "Bitte nicht antworten.",
-                    mailService.getMailerFrom(),
-                    uniqueMailId,
-                    timestamp
+                    "Hallo Christopher,\n\n" +
+                    "ich wollte mich nur kurz erkundigen, ob die Unterlagen für unser Gespräch am Montag bereits eingetroffen sind.\n\n" +
+                    "Gib mir bitte kurz Bescheid, falls ich noch etwas vorbereiten soll.\n\n" +
+                    "Beste Grüße,\n" +
+                    "Dein Mail-Bot\n\n" +
+                    "Ticket-ID: #%s",
+                    uniqueMailId
             );
 
             String sentStatus = "SUCCESS";

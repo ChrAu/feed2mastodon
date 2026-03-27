@@ -21,11 +21,8 @@ public class MailService {
 
     // Angepasste Methode, um uniqueMailId zu akzeptieren
     public void sendEmail(String recipient, String subject, String body, String uniqueMailId) {
-        // Füge die uniqueMailId in den E-Mail-Text ein, damit sie später identifiziert werden kann
-        String fullBody = body + "\n\n--- Unique Mail ID: " + uniqueMailId + " ---";
-
         try {
-            mailer.send(Mail.withText(recipient, subject, fullBody).setFrom(mailerFrom));
+            mailer.send(Mail.withText(recipient, subject, body).setFrom(mailerFrom));
             LOG.info("Email sent successfully to " + recipient + " with subject: " + subject + " (ID: " + uniqueMailId + ")");
         } catch (Exception e) {
             LOG.severe("Failed to send email to " + recipient + ": " + e.getMessage() + " (ID: " + uniqueMailId + ")");
