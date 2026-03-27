@@ -23,12 +23,9 @@ import java.util.regex.Pattern;
 public class MailReceiverService {
 
     private static final Logger LOG = Logger.getLogger(MailReceiverService.class.getName());
-<<<<<<< mail-tester
-    // Angepasstes Pattern, um die Ticket-ID zu finden
+
     private static final Pattern UNIQUE_MAIL_ID_PATTERN = Pattern.compile("Ticket-ID: #(\\d{7})");
-=======
-    private static final Pattern UNIQUE_MAIL_ID_PATTERN = Pattern.compile("--- Unique Mail ID: ([a-fA-F0-9-]+) ---");
->>>>>>> main
+
 
     @Inject
     MailboxAccountService mailboxAccountService;
@@ -112,14 +109,10 @@ public class MailReceiverService {
 
             for (MailLogEntry pendingEmail : pendingSentEmails) {
                 // Create a search term that looks for the uniqueMailId in the body
-<<<<<<< mail-tester
+
                 // Now searching for the full "Ticket-ID: #<uniqueMailId>" string
                 SearchTerm searchTerm = new BodyTerm("Ticket-ID: #" + pendingEmail.getUniqueMailId());
-=======
-                // Note: SubjectTerm is less reliable as subjects can be altered or truncated.
-                // BodyTerm is better for the unique ID.
-                SearchTerm searchTerm = new BodyTerm(pendingEmail.getUniqueMailId());
->>>>>>> main
+
 
                 Message[] messages = folder.search(searchTerm);
 
