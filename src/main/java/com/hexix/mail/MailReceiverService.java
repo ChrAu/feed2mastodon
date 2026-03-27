@@ -83,7 +83,7 @@ public class MailReceiverService {
                     return new PasswordAuthentication(account.getUsername(), account.getPassword());
                 }
             });
-            session.setDebug(true); // Set to true for detailed mail logging
+            session.setDebug(false); // Set to true for detailed mail logging
 
             store = session.getStore(account.getProtocol());
             store.connect(account.getHost(), account.getPort(), account.getUsername(), account.getPassword());
