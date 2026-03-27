@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List; // Nur noch List, kein Arrays.asList mehr
 import java.util.Random; // Import für Random
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Logger;
 
 @ApplicationScoped
@@ -38,7 +39,7 @@ public class MailScheduler {
     //@Scheduled(every = "10m")
     void sendScheduledTestEmails() {
         LOG.info("Starting scheduled email sending...");
-        String uniqueMailId = String.format("%07d", new Random().nextInt(10000000));
+        String uniqueMailId = String.format("%07d", ThreadLocalRandom.current().nextInt(10000000));
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         LocalDateTime sentTime = LocalDateTime.now();
 
