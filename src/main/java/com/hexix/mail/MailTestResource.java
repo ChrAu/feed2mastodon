@@ -25,41 +25,14 @@ public class MailTestResource {
     @Inject
     MailReceiverService mailReceiverService; // Inject MailReceiverService
 
+    @Inject
+    MailScheduler mailScheduler; // Inject MailScheduler
+
     @GET
     @Produces(MediaType.TEXT_PLAIN)
     public Response sendTestEmail() {
-        String recipient = "auth@hexix.de";
-        String subject = "Test-E-Mail von Feed2Mastodon";
-        String body = "Dies ist eine Test-E-Mail, die von Ihrer Feed2Mastodon-Anwendung gesendet wurde, um den MailService zu überprüfen.";
-
-        String uniqueMailId = UUID.randomUUID().toString();
-        LocalDateTime sentTime = LocalDateTime.now();
-        String sentStatus = "SUCCESS";
-        String errorMessage = null;
-
-        try {
-            mailService.sendEmail(recipient, subject, body, uniqueMailId); // uniqueMailId hinzugefügt
-            return Response.ok("Test-E-Mail erfolgreich an " + recipient + " gesendet.").build();
-        } catch (Exception e) {
-            sentStatus = "FAILED";
-            errorMessage = e.getMessage();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                           .entity("Fehler beim Senden der Test-E-Mail: " + e.getMessage())
-                           .build();
-        } finally {
-            // Log the mail send attempt regardless of success or failure
-            MailLogEntry logEntry = new MailLogEntry(
-                    uniqueMailId,
-                    recipient,
-                    mailService.getMailerFrom(),
-                    subject,
-                    body.substring(0, Math.min(body.length(), 255)), // Log a snippet of the body
-                    sentTime,
-                    sentStatus,
-                    errorMessage
-            );
-            mailLogService.logMailSendAttempt(logEntry);
-        }
+        mailScheduler.sendScheduledTestEmails();
+        return Response.ok("Manuelle Überprüfung des E-Mails senden, gestartet.").build();
     }
 
     @GET
