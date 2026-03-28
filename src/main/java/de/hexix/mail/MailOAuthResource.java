@@ -60,18 +60,23 @@ public class MailOAuthResource {
     @Path("/callback")
     @Transactional
     public Response callback(@QueryParam("code") String code, @QueryParam("state") String email) {
+        LOG.info("Received OAuth callback. Code: " + code + ", State (email): " + email);
+
         if (code == null || email == null) {
+            LOG.warning("Authorization code or state is missing in callback. Code: " + code + ", State: " + email);
             return Response.status(Response.Status.BAD_REQUEST).entity("Authorization code or state is missing.").build();
         }
 
         MailboxAccount account = mailboxAccountService.getMailboxAccountByEmail(email);
         if (account == null) {
+            LOG.warning("Mailbox account not found for email: " + email + " during OAuth callback.");
             return Response.status(Response.Status.NOT_FOUND).entity("Mailbox account not found for email: " + email).build();
         }
 
         // Find the right provider based on the account configuration
         OAuthProvider provider = oauthTokenService.getProviderForAccount(account);
         if (provider == null) {
+            LOG.severe("No suitable OAuthProvider found for account: " + email + " during OAuth callback.");
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity("No suitable OAuthProvider found for account: " + email).build();
         }
@@ -79,6 +84,7 @@ public class MailOAuthResource {
         try {
             provider.processCallback(account, code);
             mailboxAccountService.updateMailboxAccount(account);
+            LOG.info("OAuth2 token successfully received and stored for " + email);
             return Response.ok("OAuth2 token successfully received and stored for " + email).build();
         } catch (Exception e) {
             LOG.severe("Error during OAuth callback for " + email + ": " + e.getMessage());
