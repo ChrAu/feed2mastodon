@@ -65,7 +65,7 @@ public class YahooOAuthProvider implements OAuthProvider {
     @Override
     public String getAuthorizationUrl(String email) {
         // Yahoo OAuth 2.0 authorization endpoint and scopes
-        // Scopes for IMAP access: "mail-r" and "offline_access"
+        // Scopes for IMAP access: "mail-r"
         String scope = "mail-r";
         return "https://api.login.yahoo.com/oauth2/request_auth" +
                 "?client_id=" + URLEncoder.encode(clientId, StandardCharsets.UTF_8) +
@@ -78,7 +78,7 @@ public class YahooOAuthProvider implements OAuthProvider {
     @Override
     public void processCallback(MailboxAccount account, String code) throws Exception {
         // Yahoo OAuth 2.0 token endpoint
-        String scope = "mail-r offline_access";
+        String scope = "mail-r"; // Request offline_access for refresh tokens
         YahooOAuthClient.TokenResponse tokenResponse = yahooOAuthClient.getToken(
                 clientId,
                 clientSecret,
@@ -97,7 +97,7 @@ public class YahooOAuthProvider implements OAuthProvider {
     public void refreshAccessToken(MailboxAccount account) throws Exception {
         LOG.info("Refreshing Yahoo OAuth token for " + account.getEmail() + "...");
         
-        String scope = "mail-r offline_access";
+        String scope = "mail-r"; // Ensure offline_access is requested for refresh tokens
         YahooOAuthClient.TokenResponse tokenResponse = yahooOAuthClient.refreshToken(
                 clientId,
                 clientSecret,
