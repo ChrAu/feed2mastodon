@@ -128,7 +128,7 @@ Die Anwendung besteht aus einem Quarkus-Backend, das eine REST-API bereitstellt,
 
 ### Hinzufügen eines neuen REST-Endpunkts
 
-1.  Erstelle eine neue Klasse im Paket `com.hexix` (oder einem Unterpaket).
+1.  Erstelle eine neue Klasse im Paket `de.hexix` (oder einem Unterpaket).
 2.  Annotiere die Klasse mit `@Path("/dein-pfad")`.
 3.  Füge Methoden mit Annotationen wie `@GET`, `@POST` usw. hinzu, um Anfragen zu bearbeiten.
 
