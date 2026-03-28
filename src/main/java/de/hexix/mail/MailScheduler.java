@@ -56,7 +56,7 @@ public class MailScheduler {
                     "ich wollte mich nur kurz erkundigen, ob die Unterlagen für unser Gespräch am Montag bereits eingetroffen sind.\n\n" +
                     "Gib mir bitte kurz Bescheid, falls ich noch etwas vorbereiten soll.\n\n" +
                     "Beste Grüße,\n" +
-                    "Dein Mail-Bot\n\n" +
+                    "Dein Codeheap-Team\n\n" +
                     "Ticket-ID: #%s",
                     uniqueMailId
             );
