@@ -119,7 +119,7 @@ public class MailReceiverService {
             }
 
             if (folder == null || !folder.exists()) {
-                LOG.severe("Neither 'INBOX' nor 'inbox' folder found for account: " + account.getEmail());
+                LOG.severe("Neither 'INBOX' nor 'inbox' folder found for account: " + account.getEmail() + "");
                 return;
             }
 
@@ -131,11 +131,18 @@ public class MailReceiverService {
             List<MailLogEntry> pendingSentEmails = mailLogService.getPendingSentEmailsForRecipient(account.getEmail());
 
             for (MailLogEntry pendingEmail : pendingSentEmails) {
-                // Create a search term that looks for the uniqueMailId in the body
-                // Now searching for the full "Ticket-ID: #<uniqueMailId>" string
+                Message[] messages = new Message[0];
+                // First search attempt: "Ticket-ID: #<uniqueMailId>"
                 SearchTerm searchTerm = new BodyTerm("Ticket-ID: #" + pendingEmail.getUniqueMailId());
+                messages = folder.search(searchTerm);
 
-                Message[] messages = folder.search(searchTerm);
+                if (messages.length == 0) {
+                    LOG.info("No message found for uniqueMailId with full pattern: " + pendingEmail.getUniqueMailId() + ". Trying fallback search.");
+                    // Fallback search: just "<uniqueMailId>"
+                    searchTerm = new BodyTerm(pendingEmail.getUniqueMailId());
+                    messages = folder.search(searchTerm);
+                }
+
 
                 if (messages.length > 0) {
                     LOG.info("Found " + messages.length + " messages for uniqueMailId: " + pendingEmail.getUniqueMailId() + " in " + account.getEmail());
