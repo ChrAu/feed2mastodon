@@ -74,9 +74,6 @@ public class MailScheduler {
                 MailLogEntry logEntry = new MailLogEntry(
                         uniqueMailId,
                         recipient,
-                        mailService.getMailerFrom(),
-                        subject,
-                        body.substring(0, Math.min(body.length(), 255)),
                         sentTime,
                         sentStatus,
                         errorMessage

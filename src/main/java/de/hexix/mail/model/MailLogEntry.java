@@ -31,15 +31,6 @@ public class MailLogEntry { // PanacheEntityBase entfernt
     public String recipientEmail;
 
     @Column(nullable = false)
-    public String senderEmail;
-
-    @Column(nullable = false)
-    public String subject;
-
-    @Column(columnDefinition = "TEXT") // Use TEXT for potentially longer body snippets
-    public String bodySnippet;
-
-    @Column(nullable = false)
     public LocalDateTime sentTimestamp;
 
     @Column(nullable = false)
@@ -59,12 +50,9 @@ public class MailLogEntry { // PanacheEntityBase entfernt
     public MailLogEntry() {
     }
 
-    public MailLogEntry(String uniqueMailId, String recipientEmail, String senderEmail, String subject, String bodySnippet, LocalDateTime sentTimestamp, String sentStatus, String errorMessage) {
+    public MailLogEntry(String uniqueMailId, String recipientEmail, LocalDateTime sentTimestamp, String sentStatus, String errorMessage) {
         this.uniqueMailId = uniqueMailId;
         this.recipientEmail = recipientEmail;
-        this.senderEmail = senderEmail;
-        this.subject = subject;
-        this.bodySnippet = bodySnippet;
         this.sentTimestamp = sentTimestamp;
         this.sentStatus = sentStatus;
         this.errorMessage = errorMessage;
@@ -93,30 +81,6 @@ public class MailLogEntry { // PanacheEntityBase entfernt
 
     public void setRecipientEmail(String recipientEmail) {
         this.recipientEmail = recipientEmail;
-    }
-
-    public String getSenderEmail() {
-        return senderEmail;
-    }
-
-    public void setSenderEmail(String senderEmail) {
-        this.senderEmail = senderEmail;
-    }
-
-    public String getSubject() {
-        return subject;
-    }
-
-    public void setSubject(String subject) {
-        this.subject = subject;
-    }
-
-    public String getBodySnippet() {
-        return bodySnippet;
-    }
-
-    public void setBodySnippet(String bodySnippet) {
-        this.bodySnippet = bodySnippet;
     }
 
     public LocalDateTime getSentTimestamp() {
