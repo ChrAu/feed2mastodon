@@ -125,6 +125,9 @@ const MailTest: React.FC = () => {
                                         {stats.lastMailReceptionStatus === 'PENDING_CHECK' && (
                                             <span title="Empfang ausstehend" className="mr-1">⚠️</span>
                                         )}
+                                        {stats.lastMailReceptionStatus === 'NOT_RECEIVED' && (
+                                            <span title="Nicht empfangen (vermutlich Spam oder geblockt)" className="mr-1">❌</span>
+                                        )}
                                         {stats.lastMailReceptionStatus}
                                     </td>
                                     <td className="py-2 px-4 border-b border-gray-200 dark:border-gray-600">
@@ -149,9 +152,10 @@ const MailTest: React.FC = () => {
                     <li><strong>Zuletzt gesendet:</strong> Der Zeitstempel, wann die letzte E-Mail über diesen Anbieter gesendet wurde.</li>
                     <li><strong>Sendestatus:</strong> Der Status des letzten Sendeversuchs (z.B. SUCCESS, FAILED).</li>
                     <li><strong>Empfangsstatus:</strong> Der Status des Empfangs der zuletzt gesendeten E-Mail.
-                        <ul>
+                        <ul className="list-disc list-inside ml-4 mt-2">
                             <li><code>RECEIVED</code>: Die E-Mail wurde erfolgreich empfangen.</li>
                             <li><code>PENDING_CHECK</code>: Der Empfang der E-Mail wird noch überprüft. Ein Warnsymbol (⚠️) wird angezeigt.</li>
+                            <li><code>NOT_RECEIVED</code>: Die E-Mail wurde nach Abschluss der Überprüfung nicht empfangen. Dies bedeutet vermutlich, dass sie als Spam markiert oder vom Anbieter geblockt wurde. Ein Fehler-Symbol (❌) wird angezeigt.</li>
                             <li>Andere Status können auf Probleme beim Empfang hinweisen.</li>
                         </ul>
                     </li>
