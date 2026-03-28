@@ -1,67 +1,58 @@
 package de.hexix.mail;
 
 import de.hexix.mail.model.MailboxAccount;
+import de.hexix.mail.oauth.OAuthProvider;
+import de.hexix.mail.oauth.OAuthTokenService;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Response;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.rest.client.inject.RestClient;
 
 import java.net.URI;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
+import java.util.logging.Logger;
 
 @Path("/api/oauth")
 public class MailOAuthResource {
 
-    @Inject
-    @RestClient
-    MicrosoftOAuthClient microsoftOAuthClient;
+    private static final Logger LOG = Logger.getLogger(MailOAuthResource.class.getName());
 
     @Inject
     MailboxAccountService mailboxAccountService;
 
-    @ConfigProperty(name = "microsoft.oauth.client.id")
-    String clientId;
-
-    @ConfigProperty(name = "microsoft.oauth.client.secret")
-    String clientSecret;
-
-    @ConfigProperty(name = "microsoft.oauth.redirect.uri")
-    String redirectUri;
-    
-    @ConfigProperty(name = "microsoft.oauth.tenant.id")
-    String tenantId;
+    @Inject
+    OAuthTokenService oauthTokenService;
 
     @GET
     @Path("/login")
     @Transactional
-    public Response login(@QueryParam("email") String email) {
+    public Response login(@QueryParam("email") String email, @QueryParam("provider") String providerId) {
         if (email == null || email.trim().isEmpty()) {
             return Response.status(Response.Status.BAD_REQUEST).entity("Email query parameter is required.").build();
         }
 
-        MailboxAccount account = mailboxAccountService.getMailboxAccountByEmail(email);
-        if (account == null) {
-            // Create a new account if it doesn't exist
-            account = new MailboxAccount(email, "outlook.office365.com", 993, email, "imaps");
-            account.setAuthenticationType("OAUTH");
-            mailboxAccountService.addMailboxAccount(account); // Fixed method name
+        OAuthProvider provider = null;
+
+        // 1. Versuche, den Provider über die explizite ID zu finden
+        if (providerId != null && !providerId.trim().isEmpty()) {
+            provider = oauthTokenService.getProviderById(providerId);
+        } else {
+            // 2. Wenn keine ID da ist, versuche es über die E-Mail-Domain
+            provider = oauthTokenService.getProviderByEmail(email);
         }
 
-        String scope = "https://outlook.office.com/IMAP.AccessAsUser.All offline_access";
-        
-        // URL-encode the parameters to avoid URI syntax exceptions
-        String authorizationUrl = "https://login.microsoftonline.com/" + tenantId + "/oauth2/v2.0/authorize" +
-                "?client_id=" + URLEncoder.encode(clientId, StandardCharsets.UTF_8) +
-                "&response_type=code" +
-                "&redirect_uri=" + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8) +
-                "&response_mode=query" +
-                "&scope=" + URLEncoder.encode(scope, StandardCharsets.UTF_8) +
-                "&state=" + URLEncoder.encode(email, StandardCharsets.UTF_8);
+        if (provider == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("Could not determine a suitable OAuth provider for the given email or provider ID.").build();
+        }
 
+        MailboxAccount account = mailboxAccountService.getMailboxAccountByEmail(email);
+        if (account == null) {
+            // Create a new account using provider defaults if it doesn't exist
+            account = provider.createNewAccount(email);
+            mailboxAccountService.addMailboxAccount(account);
+        }
+
+        String authorizationUrl = provider.getAuthorizationUrl(email);
         return Response.seeOther(URI.create(authorizationUrl)).build();
     }
 
@@ -78,23 +69,20 @@ public class MailOAuthResource {
             return Response.status(Response.Status.NOT_FOUND).entity("Mailbox account not found for email: " + email).build();
         }
 
-        String scope = "https://outlook.office.com/IMAP.AccessAsUser.All offline_access";
-        MicrosoftOAuthClient.TokenResponse tokenResponse = microsoftOAuthClient.getToken(
-                tenantId,
-                clientId,
-                scope,
-                code,
-                redirectUri,
-                "authorization_code",
-                clientSecret
-        );
+        // Find the right provider based on the account configuration
+        OAuthProvider provider = oauthTokenService.getProviderForAccount(account);
+        if (provider == null) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("No suitable OAuthProvider found for account: " + email).build();
+        }
 
-        account.setAccessToken(tokenResponse.access_token);
-        account.setRefreshToken(tokenResponse.refresh_token);
-        account.setAccessTokenExpiry(LocalDateTime.now().plusSeconds(tokenResponse.expires_in));
-        
-        mailboxAccountService.updateMailboxAccount(account);
-
-        return Response.ok("OAuth2 token received and stored for " + email).build();
+        try {
+            provider.processCallback(account, code);
+            mailboxAccountService.updateMailboxAccount(account);
+            return Response.ok("OAuth2 token successfully received and stored for " + email).build();
+        } catch (Exception e) {
+            LOG.severe("Error during OAuth callback for " + email + ": " + e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Error processing callback: " + e.getMessage()).build();
+        }
     }
 }

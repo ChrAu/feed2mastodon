@@ -21,6 +21,48 @@ public class OAuthTokenService {
     MailboxAccountService mailboxAccountService;
 
     /**
+     * Sucht den passenden Provider anhand seiner eindeutigen ID.
+     */
+    public OAuthProvider getProviderById(String providerId) {
+        if (providerId == null || providerId.isEmpty()) {
+            return null;
+        }
+        for (OAuthProvider provider : oauthProviders) {
+            if (providerId.equalsIgnoreCase(provider.getProviderId())) {
+                return provider;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Sucht den passenden Provider anhand des konfigurierten Kontos (z. B. anhand des Hostnamens).
+     */
+    public OAuthProvider getProviderForAccount(MailboxAccount account) {
+        for (OAuthProvider provider : oauthProviders) {
+            if (provider.supports(account)) {
+                return provider;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Sucht den passenden Provider anhand der E-Mail-Adresse (z. B. anhand der Domain).
+     */
+    public OAuthProvider getProviderByEmail(String email) {
+        if (email == null || email.isEmpty()) {
+            return null;
+        }
+        for (OAuthProvider provider : oauthProviders) {
+            if (provider.supportsEmail(email)) {
+                return provider;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Prüft, ob das Token abgelaufen ist, und erneuert es über den passenden Provider.
      * Speichert die Änderungen danach direkt im MailboxAccountService.
      * 
@@ -44,17 +86,14 @@ public class OAuthTokenService {
 
         LOG.info("Access token expired for " + account.getEmail() + ". Searching for suitable OAuthProvider...");
 
-        // Alle verfügbaren Provider durchgehen und den ersten passenden nutzen
-        for (OAuthProvider provider : oauthProviders) {
-            if (provider.supports(account)) {
-                LOG.info("Using " + provider.getClass().getSimpleName() + " to refresh token.");
-                
-                provider.refreshAccessToken(account);
-                
-                // Änderungen sofort in die DB schreiben
-                mailboxAccountService.updateMailboxAccount(account);
-                return;
-            }
+        OAuthProvider provider = getProviderForAccount(account);
+        if (provider != null) {
+            LOG.info("Using " + provider.getClass().getSimpleName() + " to refresh token.");
+            provider.refreshAccessToken(account);
+            
+            // Änderungen sofort in die DB schreiben
+            mailboxAccountService.updateMailboxAccount(account);
+            return;
         }
 
         throw new Exception("No suitable OAuthProvider found to refresh token for account: " + account.getEmail() + " with host " + account.getHost());
