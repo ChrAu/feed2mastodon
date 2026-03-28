@@ -2,14 +2,13 @@ package de.hexix.mail;
 
 import de.hexix.mail.model.MailboxAccount;
 import de.hexix.mail.model.MailLogEntry;
+import de.hexix.mail.oauth.OAuthTokenService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.mail.*;
 import jakarta.mail.search.BodyTerm;
 import jakarta.mail.search.SearchTerm;
 import jakarta.transaction.Transactional;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.rest.client.inject.RestClient;
 
 
 import java.time.LocalDateTime;
@@ -33,17 +32,7 @@ public class MailReceiverService {
     MailLogService mailLogService;
 
     @Inject
-    @RestClient
-    MicrosoftOAuthClient microsoftOAuthClient;
-
-    @ConfigProperty(name = "microsoft.oauth.client.id")
-    String clientId;
-
-    @ConfigProperty(name = "microsoft.oauth.client.secret")
-    String clientSecret;
-
-    @ConfigProperty(name = "microsoft.oauth.tenant.id")
-    String tenantId;
+    OAuthTokenService oauthTokenService;
 
     @Transactional
     public void checkAllMailboxesForReceivedEmails() {
@@ -65,7 +54,7 @@ public class MailReceiverService {
     @Transactional
     public void checkMailboxForRecipient(String recipientEmail) {
         LOG.info("Starting check for received emails in mailbox: " + recipientEmail);
-        MailboxAccount account = mailboxAccountService.getMailboxAccountByEmail(recipientEmail); // Diese Methode müssen wir noch hinzufügen
+        MailboxAccount account = mailboxAccountService.getMailboxAccountByEmail(recipientEmail);
 
         if (account == null) {
             LOG.warning("No mailbox account found for email: " + recipientEmail + ". Skipping check.");
@@ -104,31 +93,12 @@ public class MailReceiverService {
             
             // Connect using the appropriate credentials
             if ("OAUTH".equalsIgnoreCase(account.getAuthenticationType())) {
-                // Überprüfe, ob das Token abgelaufen ist und ein Refresh-Token vorhanden ist
-                if (account.getAccessTokenExpiry() != null && account.getAccessTokenExpiry().isBefore(LocalDateTime.now()) && account.getRefreshToken() != null) {
-                    LOG.info("Access token expired for " + account.getEmail() + ". Refreshing token...");
-                    try {
-                        String scope = "https://outlook.office.com/IMAP.AccessAsUser.All offline_access";
-                        MicrosoftOAuthClient.TokenResponse tokenResponse = microsoftOAuthClient.refreshToken(
-                                tenantId,
-                                clientId,
-                                scope,
-                                account.getRefreshToken(),
-                                "refresh_token",
-                                clientSecret
-                        );
-                        
-                        account.setAccessToken(tokenResponse.access_token);
-                        if (tokenResponse.refresh_token != null) {
-                            account.setRefreshToken(tokenResponse.refresh_token);
-                        }
-                        account.setAccessTokenExpiry(LocalDateTime.now().plusSeconds(tokenResponse.expires_in));
-                        mailboxAccountService.updateMailboxAccount(account);
-                        LOG.info("Access token successfully refreshed for " + account.getEmail());
-                    } catch (Exception e) {
-                        LOG.severe("Failed to refresh token for " + account.getEmail() + ": " + e.getMessage());
-                        return; // Ohne gültiges Token abbrechen
-                    }
+                try {
+                    // Generischer Token Refresh über den OAuthTokenService
+                    oauthTokenService.refreshIfNecessary(account);
+                } catch (Exception e) {
+                    LOG.severe("Failed to ensure valid token for " + account.getEmail() + ": " + e.getMessage());
+                    return; // Ohne gültiges Token abbrechen
                 }
 
                 // When using XOAUTH2 without an Authenticator, we must pass the token as the password
