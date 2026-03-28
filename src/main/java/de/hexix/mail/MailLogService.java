@@ -1,6 +1,7 @@
 package de.hexix.mail;
 
 import de.hexix.mail.model.MailLogEntry;
+import de.hexix.mail.model.MailboxAccount;
 import de.hexix.mail.model.dto.MailProviderStats;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -22,6 +23,9 @@ public class MailLogService {
 
     @Inject
     EntityManager entityManager;
+
+    @Inject
+    MailboxAccountService mailboxAccountService;
 
     @Transactional
     public void logMailSendAttempt(MailLogEntry logEntry) {
@@ -78,8 +82,25 @@ public class MailLogService {
             String provider = extractProviderFromEmail(recipientEmail);
 
             // Ensure the provider is initialized in the map
-            statsMap.computeIfAbsent(provider, k -> new MailProviderStats(k, null, null, null, 0));
+            statsMap.computeIfAbsent(provider, k -> {
+                MailProviderStats newStats = new MailProviderStats(k, null, null, null, 0);
+                // Hole den letzten Login-Zeitpunkt für diesen Provider, basierend auf der E-Mail
+                MailboxAccount account = mailboxAccountService.getMailboxAccountByEmail(recipientEmail);
+                if (account != null) {
+                    newStats.lastSuccessfulLogin = account.getLastSuccessfulLogin();
+                }
+                return newStats;
+            });
             MailProviderStats stats = statsMap.get(provider);
+
+            // Wenn das stats objekt schon für den provider erzeugt wurde von einer anderen Email, stelle sicher, 
+            // dass lastSuccessfulLogin gesetzt ist. (Da wir je Provider aggregieren, kann die Wahl des MailboxAccounts hier leicht variieren, falls es mehrere gäbe)
+            if (stats.lastSuccessfulLogin == null) {
+                 MailboxAccount account = mailboxAccountService.getMailboxAccountByEmail(recipientEmail);
+                 if (account != null) {
+                     stats.lastSuccessfulLogin = account.getLastSuccessfulLogin();
+                 }
+            }
 
             // Update last sent info (since entries are ordered by sentTimestamp DESC, the first one encountered is the latest)
             // This block ensures that 'lastSent' and 'lastSentStatus' are set only once for the latest entry of a provider

@@ -6,6 +6,7 @@ interface MailProviderStats {
     lastSentStatus: string;
     lastMailReceptionStatus: string;
     failuresLast7Days: number;
+    lastSuccessfulLogin: string | null;
 }
 
 const MailTest: React.FC = () => {
@@ -53,6 +54,7 @@ const MailTest: React.FC = () => {
                                 <th className="py-2 px-4 border-b border-gray-200 dark:border-gray-600 text-left text-gray-700 dark:text-gray-300">Sendestatus</th>
                                 <th className="py-2 px-4 border-b border-gray-200 dark:border-gray-600 text-left text-gray-700 dark:text-gray-300">Empfangsstatus</th>
                                 <th className="py-2 px-4 border-b border-gray-200 dark:border-gray-600 text-left text-gray-700 dark:text-gray-300">Fehler (letzte 7 Tage)</th>
+                                <th className="py-2 px-4 border-b border-gray-200 dark:border-gray-600 text-left text-gray-700 dark:text-gray-300">Letzter Login</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -72,6 +74,9 @@ const MailTest: React.FC = () => {
                                     </td>
                                     <td className="py-2 px-4 border-b border-gray-200 dark:border-gray-600">
                                         <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/4"></div>
+                                    </td>
+                                    <td className="py-2 px-4 border-b border-gray-200 dark:border-gray-600">
+                                        <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div>
                                     </td>
                                 </tr>
                             ))}
@@ -113,6 +118,7 @@ const MailTest: React.FC = () => {
                                 <th className="py-2 px-4 border-b border-gray-200 dark:border-gray-600 text-left text-gray-700 dark:text-gray-300">Sendestatus</th>
                                 <th className="py-2 px-4 border-b border-gray-200 dark:border-gray-600 text-left text-gray-700 dark:text-gray-300">Empfangsstatus</th>
                                 <th className="py-2 px-4 border-b border-gray-200 dark:border-gray-600 text-left text-gray-700 dark:text-gray-300">Fehler (letzte 7 Tage)</th>
+                                <th className="py-2 px-4 border-b border-gray-200 dark:border-gray-600 text-left text-gray-700 dark:text-gray-300">Letzter Login</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -136,6 +142,7 @@ const MailTest: React.FC = () => {
                                         )}
                                         {stats.failuresLast7Days}
                                     </td>
+                                    <td className="py-2 px-4 border-b border-gray-200 dark:border-gray-600">{stats.lastSuccessfulLogin ? new Date(stats.lastSuccessfulLogin).toLocaleString() : 'N/A'}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -160,6 +167,7 @@ const MailTest: React.FC = () => {
                         </ul>
                     </li>
                     <li><strong>Fehler (letzte 7 Tage):</strong> Die Anzahl der fehlgeschlagenen E-Mail-Sendeversuche in den letzten 7 Tagen. Ein Warnsymbol (⚠️) wird angezeigt, wenn dieser Wert größer als 0 ist.</li>
+                    <li><strong>Letzter Login:</strong> Der Zeitstempel des letzten erfolgreichen Logins beim Mail-Account dieses Anbieters, um E-Mails abzurufen.</li>
                 </ul>
             </div>
         </div>

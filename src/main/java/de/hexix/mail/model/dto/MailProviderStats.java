@@ -8,6 +8,7 @@ public class MailProviderStats {
     public String lastSentStatus; // Status des Sendens (SUCCESS/FAILED)
     public String lastMailReceptionStatus; // Status des Empfangs (RECEIVED/NOT_RECEIVED/ERROR/PENDING_CHECK/N/A)
     public long failuresLast7Days;
+    public LocalDateTime lastSuccessfulLogin; // Letzter erfolgreicher Login
 
     public MailProviderStats(String provider, LocalDateTime lastSent, String lastSentStatus, String lastMailReceptionStatus, long failuresLast7Days) {
         this.provider = provider;

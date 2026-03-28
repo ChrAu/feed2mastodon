@@ -49,6 +49,9 @@ public class MailboxAccount {
 
     private LocalDateTime accessTokenExpiry;
 
+    @Column(name = "last_successful_login")
+    private LocalDateTime lastSuccessfulLogin;
+
     // Default constructor for JPA
     public MailboxAccount() {
     }
@@ -161,5 +164,13 @@ public class MailboxAccount {
 
     public void setAccessTokenExpiry(LocalDateTime accessTokenExpiry) {
         this.accessTokenExpiry = accessTokenExpiry;
+    }
+
+    public LocalDateTime getLastSuccessfulLogin() {
+        return lastSuccessfulLogin;
+    }
+
+    public void setLastSuccessfulLogin(LocalDateTime lastSuccessfulLogin) {
+        this.lastSuccessfulLogin = lastSuccessfulLogin;
     }
 }

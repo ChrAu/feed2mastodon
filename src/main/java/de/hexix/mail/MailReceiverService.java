@@ -83,7 +83,7 @@ public class MailReceiverService {
             }
 
             Session session = Session.getInstance(props);
-            session.setDebug(true); // Set to true for detailed mail logging
+            session.setDebug(false); // Set to true for detailed mail logging
 
             store = session.getStore(account.getProtocol());
             
@@ -94,6 +94,11 @@ public class MailReceiverService {
             } else {
                 store.connect(account.getHost(), account.getPort(), account.getUsername(), account.getPassword());
             }
+
+            // Protokolliere den letzten erfolgreichen Login
+            account.setLastSuccessfulLogin(LocalDateTime.now());
+            mailboxAccountService.updateMailboxAccount(account);
+            LOG.info("Login successful for account: " + account.getEmail() + ". Last successful login updated.");
 
             folder = store.getFolder("INBOX"); // Or "inbox", depending on the mail server
             if (folder == null || !folder.exists()) {
