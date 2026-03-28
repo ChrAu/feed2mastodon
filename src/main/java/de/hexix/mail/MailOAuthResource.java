@@ -59,8 +59,16 @@ public class MailOAuthResource {
     @GET
     @Path("/callback")
     @Transactional
-    public Response callback(@QueryParam("code") String code, @QueryParam("state") String email) {
-        LOG.info("Received OAuth callback. Code: " + code + ", State (email): " + email);
+    public Response callback(@QueryParam("code") String code, @QueryParam("state") String email,
+                             @QueryParam("error") String error, @QueryParam("error_description") String errorDescription) {
+        LOG.info("Received OAuth callback. Code: " + code + ", State (email): " + email +
+                 ", Error: " + error + ", Error Description: " + errorDescription);
+
+        if (error != null) {
+            LOG.warning("OAuth callback received an error: " + error + " - " + errorDescription);
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("OAuth error: " + error + (errorDescription != null ? " (" + errorDescription + ")" : "")).build();
+        }
 
         if (code == null || email == null) {
             LOG.warning("Authorization code or state is missing in callback. Code: " + code + ", State: " + email);

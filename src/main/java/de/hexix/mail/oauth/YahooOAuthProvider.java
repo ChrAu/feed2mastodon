@@ -66,7 +66,7 @@ public class YahooOAuthProvider implements OAuthProvider {
     public String getAuthorizationUrl(String email) {
         // Yahoo OAuth 2.0 authorization endpoint and scopes
         // Scopes for IMAP access: "mail-r" and "offline_access"
-        String scope = "mail-r offline_access";
+        String scope = "mail-r";
         return "https://api.login.yahoo.com/oauth2/request_auth" +
                 "?client_id=" + URLEncoder.encode(clientId, StandardCharsets.UTF_8) +
                 "&response_type=code" +
