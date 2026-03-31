@@ -209,7 +209,7 @@ const Home = () => {
               key={service.id}
               className={`group relative p-8 rounded-3xl bg-slate-900/40 border border-white/5 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:bg-slate-800/60 shadow-xl overflow-hidden ${service.glow} cursor-pointer`}
               onMouseMove={handleMouseMove}
-              onClick={() => openServiceModal(service)} // This opens the modal
+              onClick={() => openServiceModal(service)}
               variants={cardVariants}
               initial="hidden"
               whileInView="visible"
@@ -229,12 +229,14 @@ const Home = () => {
                 </div>
               )}
 
-              <div className="relative z-10"> {/* Removed pointer-events-none here */}
+              <div className="relative z-10">
                 <div className={`w-14 h-14 ${service.bg} border ${service.color} rounded-2xl flex items-center justify-center mb-6 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-lg shadow-black/50`}>
                   <service.icon className={`w-7 h-7 ${service.text}`} />
                 </div>
 
-                <h3 className="text-xl font-bold text-white mb-2 flex items-center">
+                <h3
+                  className="text-xl font-bold text-white mb-2 flex items-center"
+                >
                   {service.name}
                   <ChevronRight className="w-4 h-4 ml-1 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-blue-400" />
                 </h3>
@@ -248,7 +250,7 @@ const Home = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()} // Prevent modal from opening when clicking this link
-                  className="flex items-center text-xs font-semibold uppercase tracking-widest text-slate-500 group-hover:text-blue-400 transition-colors relative z-20" // Added z-20 to ensure link is above other elements
+                  className="inline-flex items-center px-3 py-1 rounded-full border border-slate-700 bg-slate-800/50 text-xs font-semibold uppercase tracking-widest text-slate-400 group-hover:text-blue-400 group-hover:border-blue-400 transition-all relative z-20" // Neuer Stil
                   aria-label={`Starte ${service.name} direkt`}
                 >
                   Dienst Starten <ExternalLink className="w-3 h-3 ml-2" />
