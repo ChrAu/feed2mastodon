@@ -6,7 +6,8 @@ import {
   FileText,
   Lock,
   RefreshCw,
-  Utensils // Added Utensils icon
+  Utensils,
+  MapPin
 } from 'lucide-react';
 
 export interface Service {
@@ -20,7 +21,7 @@ export interface Service {
   text: string;
   url: string;
   monitorId?: number | string;
-  glowColor: string; // Added glowColor property
+  glowColor: string;
 }
 
 /**
@@ -38,8 +39,8 @@ export const SERVICES: Service[] = [
     bg: 'bg-purple-500/10',
     text: 'text-purple-400',
     url: 'https://sso.codeheap.dev',
-    monitorId: 21, // Beispiel ID
-    glowColor: 'bg-purple-400/20' // Added glowColor
+    monitorId: 21,
+    glowColor: 'bg-purple-400/20'
   },
   {
     id: 'nextcloud',
@@ -52,7 +53,7 @@ export const SERVICES: Service[] = [
     text: 'text-blue-400',
     url: 'https://nextcloud.codeheap.dev',
     monitorId: 30,
-    glowColor: 'bg-blue-400/20' // Added glowColor
+    glowColor: 'bg-blue-400/20'
   },
   {
     id: 'mailcow',
@@ -65,7 +66,7 @@ export const SERVICES: Service[] = [
     text: 'text-cyan-400',
     url: 'https://mail.codeheap.dev',
     monitorId: 26,
-    glowColor: 'bg-cyan-400/20' // Added glowColor
+    glowColor: 'bg-cyan-400/20'
   },
   {
     id: 'vaultwarden',
@@ -78,7 +79,7 @@ export const SERVICES: Service[] = [
     text: 'text-emerald-400',
     url: 'https://vaultwarden.codeheap.dev',
     monitorId: 23,
-    glowColor: 'bg-emerald-400/20' // Added glowColor
+    glowColor: 'bg-emerald-400/20'
   },
   {
     id: 'audiobookshelf',
@@ -91,7 +92,7 @@ export const SERVICES: Service[] = [
     text: 'text-red-400',
     url: 'https://audiobookshelf.codeheap.dev',
     monitorId: 32,
-    glowColor: 'bg-red-400/20' // Added glowColor
+    glowColor: 'bg-red-400/20'
   },
   {
     id: 'mealie',
@@ -104,21 +105,8 @@ export const SERVICES: Service[] = [
     text: 'text-yellow-400',
     url: 'https://mealie.codeheap.dev',
     monitorId: 66,
-    glowColor: 'bg-yellow-400/20' // Added glowColor
+    glowColor: 'bg-yellow-400/20'
   },
-  // {
-  //   id: 'blinko',
-  //   name: 'Blinko',
-  //   description: 'Schnelle Notizen',
-  //   icon: Edit3,
-  //   color: 'border-amber-500',
-  //   glow: 'group-hover:shadow-amber-500/50',
-  //   bg: 'bg-amber-500/10',
-  //   text: 'text-amber-400',
-  //   url: 'https://blinko.codeheap.dev',
-  //   monitorId: 33,
-  //   glowColor: 'bg-amber-400/20' // Added glowColor
-  // },
   {
     id: 'paperless',
     name: 'Paperless-ngx',
@@ -130,7 +118,7 @@ export const SERVICES: Service[] = [
     text: 'text-orange-400',
     url: 'https://paperless.codeheap.dev',
     monitorId: 34,
-    glowColor: 'bg-orange-400/20' // Added glowColor
+    glowColor: 'bg-orange-400/20'
   },
   {
     id: 'convertx',
@@ -143,6 +131,19 @@ export const SERVICES: Service[] = [
     text: 'text-pink-400',
     url: 'https://converter.codeheap.dev/',
     monitorId: 11,
-    glowColor: 'bg-pink-400/20' // Added glowColor
+    glowColor: 'bg-pink-400/20'
+  },
+  {
+    id: 'dawarich',
+    name: 'Dawarich',
+    description: 'Standortverlauf-Tracking',
+    icon: MapPin,
+    color: 'border-green-500',
+    glow: 'group-hover:shadow-green-500/50',
+    bg: 'bg-green-500/10',
+    text: 'text-green-400',
+    url: 'https://dawarich.codeheap.dev',
+    glowColor: 'bg-green-400/20',
+    monitorId: '28'
   }
 ];
