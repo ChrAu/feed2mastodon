@@ -3,15 +3,20 @@ import {
   ChevronRight,
   ExternalLink,
   Server,
-  Shield
+  Shield,
+  X // Import X icon for close button
 } from 'lucide-react';
-import { motion, AnimatePresence, Variants } from 'framer-motion'; // Import Variants
-import { SERVICES } from '../data/services';
+import { motion, AnimatePresence, Variants }
+from 'framer-motion';
+import { SERVICES, Service } from '../data/services'; // Import Service interface
 import StatusIndicator from '../components/StatusIndicator';
 import ProxmoxDashboard from "../components/ProxmoxDashboard";
-import PiHoleDashboard from "../components/PiHoleDashboard"; // Corrected import
+import PiHoleDashboard from "../components/PiHoleDashboard";
 
 const Home = () => {
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const { currentTarget } = e;
     const rect = currentTarget.getBoundingClientRect();
@@ -50,24 +55,24 @@ const Home = () => {
   }, [heroContent.length]);
 
   // New animation variants for hero section text
-  const containerVariants: Variants = { // Explicitly type as Variants
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.05, // Slightly reduced stagger for a bit more cohesion
+        staggerChildren: 0.05,
       },
     },
     exit: {
       opacity: 0,
       transition: {
-        duration: 0.3, // Slightly shorter exit duration for quicker disappearance
+        duration: 0.3,
       },
     },
   };
 
-  const itemVariants: Variants = { // Explicitly type as Variants
-    hidden: { y: 30, opacity: 0, rotateX: -45, scale: 0.9 }, // Reduced y, rotateX, and scale
+  const itemVariants: Variants = {
+    hidden: { y: 30, opacity: 0, rotateX: -45, scale: 0.9 },
     visible: {
       y: 0,
       opacity: 1,
@@ -75,9 +80,9 @@ const Home = () => {
       scale: 1,
       transition: {
         type: "spring",
-        damping: 15, // Increased damping for less bounce
-        stiffness: 100, // Reduced stiffness for a softer feel
-        mass: 1, // Slightly increased mass
+        damping: 15,
+        stiffness: 100,
+        mass: 1,
       },
     },
     exit: {
@@ -87,22 +92,22 @@ const Home = () => {
       scale: 0.9,
       transition: {
         duration: 0.25,
-        ease: [0.0, 0.0, 0.2, 1], // Added explicit ease
+        ease: [0.0, 0.0, 0.2, 1],
       },
     },
   };
 
-  const descriptionVariants: Variants = { // Explicitly type as Variants
-    hidden: { y: 20, opacity: 0, scale: 0.98 }, // Reduced y and scale
+  const descriptionVariants: Variants = {
+    hidden: { y: 20, opacity: 0, scale: 0.98 },
     visible: {
       y: 0,
       opacity: 1,
       scale: 1,
       transition: {
-        delay: 0.2, // Slightly reduced delay
+        delay: 0.2,
         type: "spring",
-        damping: 15, // Increased damping for less bounce
-        stiffness: 100, // Reduced stiffness for a softer feel
+        damping: 15,
+        stiffness: 100,
       },
     },
     exit: {
@@ -111,13 +116,13 @@ const Home = () => {
       scale: 0.98,
       transition: {
         duration: 0.25,
-        ease: [0.0, 0.0, 0.2, 1], // Added explicit ease
+        ease: [0.0, 0.0, 0.2, 1],
       },
     },
   };
 
   // Variants for cards
-  const cardVariants: Variants = { // Explicitly type as Variants
+  const cardVariants: Variants = {
     hidden: { opacity: 0, y: 50 },
     visible: {
       opacity: 1,
@@ -135,11 +140,20 @@ const Home = () => {
 
   const wordsForPrimaryHeadline = currentHeadlinePrimary.split(" ");
 
+  const openServiceModal = (service: Service) => {
+    setSelectedService(service);
+    setShowServiceModal(true);
+  };
+
+  const closeServiceModal = () => {
+    setShowServiceModal(false);
+    setSelectedService(null);
+  };
+
   return (
     <>
       {/* Hero Bereich */}
       <header className="relative z-10 pt-16 pb-12 px-6">
-        {/* Removed animated-gradient-bg */}
         <div className="max-w-7xl mx-auto text-center">
           <AnimatePresence mode="wait">
             <motion.h1
@@ -193,8 +207,9 @@ const Home = () => {
           {SERVICES.map((service, index) => (
             <motion.div
               key={service.id}
-              className={`group relative p-8 rounded-3xl bg-slate-900/40 border border-white/5 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:bg-slate-800/60 shadow-xl overflow-hidden ${service.glow}`}
+              className={`group relative p-8 rounded-3xl bg-slate-900/40 border border-white/5 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:bg-slate-800/60 shadow-xl overflow-hidden ${service.glow} cursor-pointer`}
               onMouseMove={handleMouseMove}
+              onClick={() => openServiceModal(service)} // This opens the modal
               variants={cardVariants}
               initial="hidden"
               whileInView="visible"
@@ -203,9 +218,6 @@ const Home = () => {
             >
               {/* Neuer Glüheffekt-Div */}
               <div className={`card-hover-glow absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${service.glowColor}`}></div>
-
-              {/* Link Wrapper */}
-              <a href={service.url} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-0" aria-label={`Öffne ${service.name}`}></a>
 
               {/* Dekorative Leiterbahnen-Stil-Elemente */}
               <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-white/5 to-transparent rounded-tr-3xl pointer-events-none`}></div>
@@ -217,7 +229,7 @@ const Home = () => {
                 </div>
               )}
 
-              <div className="relative z-10 pointer-events-none">
+              <div className="relative z-10"> {/* Removed pointer-events-none here */}
                 <div className={`w-14 h-14 ${service.bg} border ${service.color} rounded-2xl flex items-center justify-center mb-6 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-lg shadow-black/50`}>
                   <service.icon className={`w-7 h-7 ${service.text}`} />
                 </div>
@@ -227,12 +239,20 @@ const Home = () => {
                   <ChevronRight className="w-4 h-4 ml-1 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-blue-400" />
                 </h3>
                 <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                  {service.description}
+                  {service.shortDescription} {/* Display shortDescription */}
                 </p>
 
-                <div className="flex items-center text-xs font-semibold uppercase tracking-widest text-slate-500 group-hover:text-blue-400 transition-colors">
+                {/* Direct link to service */}
+                <a
+                  href={service.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()} // Prevent modal from opening when clicking this link
+                  className="flex items-center text-xs font-semibold uppercase tracking-widest text-slate-500 group-hover:text-blue-400 transition-colors relative z-20" // Added z-20 to ensure link is above other elements
+                  aria-label={`Starte ${service.name} direkt`}
+                >
                   Dienst Starten <ExternalLink className="w-3 h-3 ml-2" />
-                </div>
+                </a>
               </div>
 
               {/* Unterer Glow-Streifen */}
@@ -308,7 +328,7 @@ const Home = () => {
                 </div>
                 <h3 className="text-xl font-bold text-white mb-2 flex items-center">
                   Pi-Hole Status
-                  <ChevronRight className="w-4 h-4 ml-1 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-green-400" />
+                  <ChevronRight className="w-4 h-4 ml-1 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-blue-400" />
                 </h3>
                 <p className="text-slate-400 text-sm leading-relaxed mb-6">
                   Überblick über deine Netzwerk-Werbeblockierung.
@@ -321,6 +341,65 @@ const Home = () => {
           </div>
         </div>
       </main>
+
+      {/* Service Detail Modal */}
+      <AnimatePresence>
+        {showServiceModal && selectedService && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={closeServiceModal} // Close modal when clicking outside
+          >
+            <motion.div
+              initial={{ y: 50, opacity: 0, scale: 0.9 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 50, opacity: 0, scale: 0.9 }}
+              transition={{ type: "spring", damping: 20, stiffness: 300 }}
+              className="relative w-full max-w-lg p-8 rounded-3xl bg-slate-900/90 border border-white/10 shadow-2xl"
+              onClick={(e) => e.stopPropagation()} // Prevent modal from closing when clicking inside
+            >
+              <button
+                onClick={closeServiceModal}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+                aria-label="Modalfenster schließen"
+              >
+                <X size={24} />
+              </button>
+
+              <div className="flex items-center mb-6">
+                <div className={`w-16 h-16 ${selectedService.bg} border ${selectedService.color} rounded-2xl flex items-center justify-center mr-4 shadow-lg`}>
+                  <selectedService.icon className={`w-8 h-8 ${selectedService.text}`} />
+                </div>
+                <div>
+                  <h3 className="text-3xl font-bold text-white">{selectedService.name}</h3>
+                  {selectedService.monitorId && (
+                    <StatusIndicator monitorId={selectedService.monitorId} className="mt-2 !bg-slate-800/70 backdrop-blur-md !px-3 !py-1 text-sm" />
+                  )}
+                </div>
+              </div>
+
+              <p className="text-slate-300 text-base leading-relaxed mb-6">
+                {selectedService.longDescription}
+              </p>
+
+              <a
+                href={selectedService.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`inline-flex items-center px-6 py-3 rounded-full font-semibold text-white transition-all duration-300
+                  ${selectedService.bg.replace('/10', '/30')} border ${selectedService.color}
+                  hover:bg-opacity-80 hover:shadow-lg hover:shadow-current/20`}
+                style={{ borderColor: selectedService.color.replace('border-', '') }} // Dynamic border color
+              >
+                Dienst Starten
+                <ExternalLink className="w-4 h-4 ml-2" />
+              </a>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 };
