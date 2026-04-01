@@ -5,5 +5,6 @@ import java.time.ZonedDateTime;
 public record FuelPriceDto(
     double value,
     String unit,
-    ZonedDateTime lastChanged
+    ZonedDateTime lastChanged,
+    String entityId // Added entityId
 ) {}

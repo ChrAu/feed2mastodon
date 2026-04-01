@@ -231,7 +231,7 @@ public class HomeAssistantService {
                     }
 
                     stationPrices.computeIfAbsent(stationKey, k -> new HashMap<>())
-                            .put(fuelType, new FuelPriceDto(price, unit, lastChanged));
+                            .put(fuelType, new FuelPriceDto(price, unit, lastChanged, entityId)); // Pass entityId here
 
                 } else if (entityId.startsWith("binary_sensor.")) {
                     boolean status = "on".equalsIgnoreCase(entity.getState());
