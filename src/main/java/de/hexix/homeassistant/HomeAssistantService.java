@@ -3,6 +3,9 @@ package de.hexix.homeassistant;
 import de.hexix.homeassistant.dto.AttributesDto;
 import de.hexix.homeassistant.dto.CpuDto;
 import de.hexix.homeassistant.dto.EntityDto;
+import de.hexix.homeassistant.dto.FuelPriceDto;
+import de.hexix.homeassistant.dto.FuelPriceHistoryDto;
+import de.hexix.homeassistant.dto.FuelStationDto;
 import de.hexix.homeassistant.dto.TemperatureBucketDTO;
 import de.hexix.homeassistant.entity.HaEntity;
 import de.hexix.homeassistant.entity.HaStateHistory;
@@ -26,9 +29,14 @@ import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @ApplicationScoped
 public class HomeAssistantService {
@@ -59,6 +67,17 @@ public class HomeAssistantService {
             "sensor.pi_hole_eindeutige_dns_domains",
             "switch.pi_hole",
             "binary_sensor.pi_hole_status"
+    );
+
+    private static final List<String> FUEL_PRICE_IDS = List.of(
+            "sensor.aral_gosbach_diesel",
+            "sensor.aral_gosbach_super",
+            "sensor.aral_gosbach_super_e10",
+            "binary_sensor.aral_gosbach_status",
+            "sensor.totalenergies_deggingen_diesel",
+            "binary_sensor.totalenergies_deggingen_status",
+            "sensor.totalenergies_deggingen_super",
+            "sensor.totalenergies_deggingen_super_e10"
     );
 
     public List<EntityDto> currentState() {
@@ -173,6 +192,96 @@ public class HomeAssistantService {
 
         return query.setParameter("startDate", ZonedDateTime.now().minusSeconds(duration.toSeconds())).getResultList();
     }
+
+    public List<FuelStationDto> getFuelPrices() {
+        Map<String, Map<String, FuelPriceDto>> stationPrices = new HashMap<>();
+        Map<String, Boolean> stationStatus = new HashMap<>();
+        Map<String, String> stationNames = new HashMap<>(); // To store friendly names
+
+        for (String entityId : FUEL_PRICE_IDS) {
+            try {
+                EntityDto entity = homeAssistantClient.getState("Bearer " + apiToken, entityId);
+                // FIX: entity.getAttributes() already returns AttributesDto
+                AttributesDto attributes = entity.getAttributes();
+                String friendlyName = attributes.getFriendlyName();
+                ZonedDateTime lastChanged = ZonedDateTime.parse(entity.getLastChanged(), DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+
+                // Extract station name from friendly name (e.g., "Aral Gosbach Diesel" -> "Aral Gosbach")
+                Pattern pattern = Pattern.compile("^(.*?)(?: Diesel| Super| Super E10| Status)$");
+                Matcher matcher = pattern.matcher(friendlyName);
+                String stationKey;
+                if (matcher.find()) {
+                    stationKey = matcher.group(1).trim();
+                } else {
+                    stationKey = friendlyName.replace(" Status", "").trim(); // Fallback for status sensors
+                }
+                stationNames.put(stationKey, stationKey); // Store the base name
+
+                if (entityId.startsWith("sensor.")) {
+                    double price = Double.parseDouble(entity.getState());
+                    String unit = (String) attributes.getAdditionalAttributes().get("unit_of_measurement");
+
+                    String fuelType = "";
+                    if (entityId.contains("diesel")) {
+                        fuelType = "diesel";
+                    } else if (entityId.contains("super_e10")) {
+                        fuelType = "superE10";
+                    } else if (entityId.contains("super")) {
+                        fuelType = "super";
+                    }
+
+                    stationPrices.computeIfAbsent(stationKey, k -> new HashMap<>())
+                            .put(fuelType, new FuelPriceDto(price, unit, lastChanged));
+
+                } else if (entityId.startsWith("binary_sensor.")) {
+                    boolean status = "on".equalsIgnoreCase(entity.getState());
+                    stationStatus.put(stationKey, status);
+                }
+
+            } catch (Exception e) {
+                System.err.println("Fehler beim Abruf von Tankstellendaten für Entity: " + entityId + " - " + e.getMessage());
+                // Continue processing other entities even if one fails
+            }
+        }
+
+        List<FuelStationDto> result = new ArrayList<>();
+        for (Map.Entry<String, String> entry : stationNames.entrySet()) {
+            String stationKey = entry.getKey();
+            String stationDisplayName = entry.getValue(); // Use the extracted base name
+
+            Map<String, FuelPriceDto> prices = stationPrices.getOrDefault(stationKey, new HashMap<>());
+            boolean status = stationStatus.getOrDefault(stationKey, false); // Default to offline if status not found
+
+            result.add(new FuelStationDto(stationDisplayName, prices, status));
+        }
+
+        return result;
+    }
+
+    @Transactional
+    public List<FuelPriceHistoryDto> getFuelPriceHistory(String entityId, Duration duration) {
+        final TypedQuery<HaStateHistory> query = em.createNamedQuery(HaStateHistory.FIND_BY_ENTITY_ID_AND_DATE_RANGE, HaStateHistory.class);
+        final ZonedDateTime startDate = ZonedDateTime.now().minus(duration);
+
+        query.setParameter("entityId", entityId);
+        query.setParameter("startDate", startDate);
+
+        return query.getResultList().stream()
+                .filter(haStateHistory -> {
+                    try {
+                        Double.parseDouble(haStateHistory.getState());
+                        return true;
+                    } catch (NumberFormatException e) {
+                        return false;
+                    }
+                })
+                .map(haStateHistory -> new FuelPriceHistoryDto(
+                        haStateHistory.getLastChanged(),
+                        Double.parseDouble(haStateHistory.getState())
+                ))
+                .toList();
+    }
+
 
     private List<EntityDto> lastPiHoleData = null;
     private final BroadcastProcessor<List<EntityDto>> piHoleProcessor = BroadcastProcessor.create();

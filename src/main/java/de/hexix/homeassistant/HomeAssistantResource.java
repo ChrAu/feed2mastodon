@@ -3,6 +3,8 @@ package de.hexix.homeassistant;
 import de.hexix.homeassistant.dto.AttributesDto;
 import de.hexix.homeassistant.dto.CpuDto;
 import de.hexix.homeassistant.dto.EntityDto;
+import de.hexix.homeassistant.dto.FuelPriceHistoryDto; // Import FuelPriceHistoryDto
+import de.hexix.homeassistant.dto.FuelStationDto;
 import de.hexix.homeassistant.dto.TemperatureBucketDTO;
 import de.hexix.homeassistant.dto.TemperatureDeviceDto;
 import de.hexix.homeassistant.dto.TemperatureDto;
@@ -144,6 +146,22 @@ public class HomeAssistantResource {
                 .entrySet().stream()
                 .map(entry -> new TemperatureDeviceDto(entry.getKey().getKey(), entry.getKey().getValue(), entry.getValue()))
                 .toList();
+    }
+
+    @GET
+    @Path("/fuel-prices")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<FuelStationDto> getFuelPrices() {
+        return homeAssistantService.getFuelPrices();
+    }
+
+    @GET
+    @Path("/fuel-prices/history")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<FuelPriceHistoryDto> getFuelPriceHistory(
+            @QueryParam("entityId") String entityId,
+            @QueryParam("durationHours") int durationHours) {
+        return homeAssistantService.getFuelPriceHistory(entityId, Duration.ofHours(durationHours));
     }
 
     @GET
