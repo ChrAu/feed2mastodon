@@ -4,6 +4,7 @@ import {
   ExternalLink,
   Server,
   Shield,
+  Fuel, // Import Fuel icon for fuel prices
   X // Import X icon for close button
 } from 'lucide-react';
 import { motion, AnimatePresence, Variants }
@@ -12,6 +13,7 @@ import { SERVICES, Service } from '../data/services'; // Import Service interfac
 import StatusIndicator from '../components/StatusIndicator';
 import ProxmoxDashboard from "../components/ProxmoxDashboard";
 import PiHoleDashboard from "../components/PiHoleDashboard";
+import FuelPriceDashboard from "../components/FuelPriceDashboard"; // Import FuelPriceDashboard
 
 const Home = () => {
   const [showServiceModal, setShowServiceModal] = useState(false);
@@ -340,6 +342,21 @@ const Home = () => {
               {/* Unterer Glow-Streifen */}
               <div className={`absolute bottom-0 left-8 right-8 h-[2px] bg-gradient-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-100 transition-opacity text-green-400 pointer-events-none`}></div>
             </motion.div>
+          </div>
+        </div>
+
+        {/* Neuer Bereich für Tankstellenpreise */}
+        <div>
+          <div className="mt-16 text-center">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-8">
+              Aktuelle Tankstellenpreise <br className="hidden md:block" />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400">
+                Übersicht
+              </span>
+            </h2>
+          </div>
+          <div className="mt-8">
+            <FuelPriceDashboard />
           </div>
         </div>
       </main>
