@@ -27,7 +27,47 @@ interface FuelPriceChartProps {
   height?: number; // Optional height prop for chart
 }
 
-const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, height = 200 }) => {
+// Helper function to get display name for fuel type
+const getFuelTypeName = (fuelType: string) => {
+  switch (fuelType) {
+    case 'diesel': return 'Diesel';
+    case 'super': return 'Super';
+    case 'superE10': return 'Super E10';
+    default: return fuelType;
+  }
+};
+
+// Custom Tooltip component
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: any[];
+  label?: string;
+  fuelTypeName: string;
+}
+
+const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, fuelTypeName }) => {
+  if (active && payload && payload.length) {
+    const date = new Date(label!); // Parse the timestamp string
+    const formattedDate = date.toLocaleDateString('de-DE', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    return (
+      <div className="bg-slate-800 p-3 rounded-md border border-slate-700 text-white text-sm">
+        <p className="font-bold mb-1">{formattedDate}</p>
+        <p>{`${fuelTypeName}: ${payload[0].value.toFixed(3)} €`}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
+
+const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, height = 200 }) => {
   const [history, setHistory] = useState<FuelPriceHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,10 +82,12 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, height = 200 
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data: FuelPriceHistory[] = await response.json();
-        // Daten für Recharts aufbereiten: Zeitstempel formatieren
+        // Daten für Recharts aufbereiten: Zeitstempel beibehalten für volle Datums-/Zeitformatierung im Tooltip
         const formattedData = data.map(item => ({
           ...item,
-          timestamp: new Date(item.timestamp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+          // Keep original timestamp string for full date/time formatting in tooltip
+          // The XAxis will still use a formatted version for display
+          timestamp: item.timestamp // Keep original for tooltip, format for XAxis if needed
         }));
         setHistory(formattedData);
       } catch (err) {
@@ -75,11 +117,14 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, height = 200 
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={history} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-        <XAxis dataKey="timestamp" stroke="#94a3b8" />
+        <XAxis
+          dataKey="timestamp"
+          stroke="#94a3b8"
+          tickFormatter={(isoString) => new Date(isoString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+        />
         <YAxis stroke="#94a3b8" domain={['dataMin - 0.01', 'dataMax + 0.01']} tickFormatter={(value) => value.toFixed(2)} />
         <Tooltip
-          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569', color: '#e2e8f0' }}
-          labelStyle={{ color: '#94a3b8' }}
+          content={<CustomTooltip fuelTypeName={getFuelTypeName(fuelType)} />}
         />
         <Line type="monotone" dataKey="value" stroke="#8884d8" dot={false} />
       </LineChart>
@@ -163,15 +208,6 @@ const FuelPriceDashboard: React.FC = () => {
     setModalFuelPrice(null);
   };
 
-  const getFuelTypeName = (fuelType: string) => {
-    switch (fuelType) {
-      case 'diesel': return 'Diesel';
-      case 'super': return 'Super';
-      case 'superE10': return 'Super E10';
-      default: return fuelType;
-    }
-  };
-
   if (loading) {
     return <div className="text-slate-400 text-center py-4">Lade Tankstellendaten...</div>;
   }
@@ -204,7 +240,7 @@ const FuelPriceDashboard: React.FC = () => {
                   {getFuelTypeName(fuelType)}
                 </p>
                 <p className="text-2xl font-bold text-white flex items-baseline">
-                  {fuelPrice.value.toFixed(3)}<span className="text-base ml-1">{fuelPrice.unit}</span>
+                  {fuelPrice.value.toFixed(3)}<span className="ml-1">€</span>
                 </p>
                 <p className="text-slate-500 text-xs mt-2 flex items-center">
                   <Clock className="w-3 h-3 mr-1" />
@@ -234,7 +270,7 @@ const FuelPriceDashboard: React.FC = () => {
               <FuelPriceChart entityId={modalFuelPrice.fuelPrice.entityId} fuelType={modalFuelPrice.fuelType} height={400} />
             </div>
             <div className="mt-4 text-slate-300">
-              Aktueller Preis: <span className="font-bold">{modalFuelPrice.fuelPrice.value.toFixed(3)} {modalFuelPrice.fuelPrice.unit}</span>
+              Aktueller Preis: <span className="font-bold">{modalFuelPrice.fuelPrice.value.toFixed(3)} €</span>
             </div>
           </div>
         </div>

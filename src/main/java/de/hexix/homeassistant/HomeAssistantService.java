@@ -260,13 +260,63 @@ public class HomeAssistantService {
 
     @Transactional
     public List<FuelPriceHistoryDto> getFuelPriceHistory(String entityId, Duration duration) {
-        final TypedQuery<HaStateHistory> query = em.createNamedQuery(HaStateHistory.FIND_BY_ENTITY_ID_AND_DATE_RANGE, HaStateHistory.class);
-        final ZonedDateTime startDate = ZonedDateTime.now().minus(duration);
+        final ZonedDateTime now = ZonedDateTime.now();
+        final ZonedDateTime startDate = now.minus(duration);
 
-        query.setParameter("entityId", entityId);
-        query.setParameter("startDate", startDate);
+        // 1. Fetch historical data within the specified duration
+        final TypedQuery<HaStateHistory> historyQuery = em.createNamedQuery(HaStateHistory.FIND_BY_ENTITY_ID_AND_DATE_RANGE, HaStateHistory.class);
+        historyQuery.setParameter("entityId", entityId);
+        historyQuery.setParameter("startDate", startDate);
+        List<HaStateHistory> rawHistory = historyQuery.getResultList();
 
-        return query.getResultList().stream()
+        // 2. Get the current state/price
+        Double currentPrice = null;
+        try {
+            EntityDto currentEntity = homeAssistantClient.getState("Bearer " + apiToken, entityId);
+            currentPrice = Double.parseDouble(currentEntity.getState());
+        } catch (Exception e) {
+            System.err.println("Failed to get current state for entityId: " + entityId + " - " + e.getMessage());
+            // If current price cannot be fetched, we might not be able to draw the end point
+        }
+
+        // 3. Get the last known price BEFORE the startDate
+        Double priceBeforeStartDate = null;
+        TypedQuery<HaStateHistory> beforeQuery = em.createQuery(
+                "SELECT h FROM HaStateHistory h WHERE h.entityId = :entityId AND h.lastChanged < :startDate ORDER BY h.lastChanged DESC",
+                HaStateHistory.class
+        );
+        beforeQuery.setParameter("entityId", entityId);
+        beforeQuery.setParameter("startDate", startDate);
+        beforeQuery.setMaxResults(1);
+        HaStateHistory beforeHistory = beforeQuery.getSingleResultOrNull();
+
+        if (beforeHistory != null) {
+            try {
+                priceBeforeStartDate = Double.parseDouble(beforeHistory.getState());
+            } catch (NumberFormatException e) {
+                System.err.println("State before startDate is not a number for entityId: " + entityId + " - " + e.getMessage());
+            }
+        }
+
+        List<FuelPriceHistoryDto> finalHistory = new ArrayList<>();
+
+        // Add the synthetic point at the beginning (startDate)
+        if (priceBeforeStartDate != null) {
+            finalHistory.add(new FuelPriceHistoryDto(startDate, priceBeforeStartDate));
+        } else if (!rawHistory.isEmpty()) {
+            // If no history before startDate, but there is history within the range,
+            // use the first historical point's value at startDate.
+            // This prevents a gap if the first actual data point is much later than startDate.
+            try {
+                finalHistory.add(new FuelPriceHistoryDto(startDate, Double.parseDouble(rawHistory.get(0).getState())));
+            } catch (NumberFormatException e) {
+                // ignore
+            }
+        }
+
+
+        // Add actual historical data, filtering out non-numeric states
+        rawHistory.stream()
                 .filter(haStateHistory -> {
                     try {
                         Double.parseDouble(haStateHistory.getState());
@@ -279,7 +329,20 @@ public class HomeAssistantService {
                         haStateHistory.getLastChanged(),
                         Double.parseDouble(haStateHistory.getState())
                 ))
-                .toList();
+                .forEach(finalHistory::add);
+
+        // Add the synthetic point at the end (now)
+        // Only add if we have a current price and there's at least one point in the history
+        // (either from beforeStartDate, or actual history) to connect to.
+        if (currentPrice != null && (!finalHistory.isEmpty() || priceBeforeStartDate != null)) {
+            finalHistory.add(new FuelPriceHistoryDto(now, currentPrice));
+        } else if (currentPrice != null && finalHistory.isEmpty()) {
+            // If no history at all, but we have a current price, add just this one point
+            finalHistory.add(new FuelPriceHistoryDto(now, currentPrice));
+        }
+
+
+        return finalHistory;
     }
 
 
