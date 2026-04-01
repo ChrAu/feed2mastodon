@@ -29,7 +29,25 @@ const FuelPriceDashboard: React.FC = () => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data: FuelStation[] = await response.json();
-        setFuelStations(data);
+
+        // Sortiere die Tankstellen nach der gewünschten Reihenfolge
+        const sortedData = [...data].sort((a, b) => {
+          if (a.name === "ARAL Gosbach") return -1; // ARAL Gosbach kommt zuerst
+          if (b.name === "ARAL Gosbach") return 1;
+
+          if (a.name === "TotalEnergies Deggingen") {
+            if (b.name === "ARAL Gosbach") return 1; // TotalEnergies Deggingen kommt nach ARAL Gosbach
+            return -1; // TotalEnergies Deggingen kommt vor allen anderen, außer ARAL Gosbach
+          }
+          if (b.name === "TotalEnergies Deggingen") {
+            if (a.name === "ARAL Gosbach") return -1; // TotalEnergies Deggingen kommt nach ARAL Gosbach
+            return 1; // TotalEnergies Deggingen kommt vor allen anderen, außer ARAL Gosbach
+          }
+
+          return 0; // Behalte die ursprüngliche Reihenfolge für andere Tankstellen
+        });
+
+        setFuelStations(sortedData);
 
       } catch (err) {
         console.error("Failed to fetch fuel prices:", err);
