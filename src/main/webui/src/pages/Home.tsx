@@ -4,8 +4,7 @@ import {
   ExternalLink,
   Server,
   Shield,
-  Fuel, // Import Fuel icon for fuel prices
-  X // Import X icon for close button
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence, Variants }
 from 'framer-motion';
