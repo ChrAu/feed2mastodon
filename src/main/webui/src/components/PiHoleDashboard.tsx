@@ -25,17 +25,18 @@ const PiHoleDashboard: React.FC = () => {
     // Komponente für ein einzelnes Statistik-Feld mit Skeleton-Support
     const StatBox = ({ title, value, valueClassName = "text-white" }: { title: string, value: React.ReactNode, valueClassName?: string }) => (
         <div className="bg-slate-800/50 backdrop-blur-md shadow-xl rounded-xl p-4 border border-slate-700 h-[166px]"> {/* Feste Höhe hinzugefügt */}
-            <div className="text-xs text-orange-400 uppercase font-black tracking-wider">{title}</div>
-            <div className="h-4"></div> {/* Unsichtbarer Platzhalter für zweite Zeile, wie bei Proxmox */}
+            <div className="h-8"> {/* Feste Höhe für den Titelbereich, um zwei Zeilen aufzunehmen */}
+                <div className="text-xs text-orange-400 uppercase font-black tracking-wider">{title}</div>
+            </div>
             {loading ? (
                 <>
-                    <div className="h-8 w-24 bg-slate-700 animate-pulse rounded mt-1"></div> {/* h-8 für bessere Übereinstimmung mit text-2xl */}
+                    <div className="h-8 w-24 bg-slate-700 animate-pulse rounded mt-2"></div> {/* h-8 für bessere Übereinstimmung mit text-2xl */}
                     {/* Unsichtbarer Platzhalter, um die Höhe der Proxmox-Karten anzupassen */}
                     <div className="w-full bg-slate-900 rounded-full h-1.5 mt-4 opacity-0"></div>
                 </>
             ) : (
                 <>
-                    <div className={`text-2xl font-mono font-bold mt-1 ${valueClassName}`}>{value}</div>
+                    <div className={`text-2xl font-mono font-bold mt-2 ${valueClassName}`}>{value}</div>
                     {/* Unsichtbarer Platzhalter, um die Höhe der Proxmox-Karten anzupassen */}
                     <div className="w-full bg-slate-900 rounded-full h-1.5 mt-4 opacity-0"></div>
                 </>
