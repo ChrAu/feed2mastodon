@@ -42,6 +42,19 @@ jobs:
         with:
           fetch-depth: 0 # WICHTIG: Erforderlich, um den main-Branch für den Vergleich zu finden
 
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'zulu'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 'latest'
+
+
       # NEU: Schritt zur Versionsprüfung und Erhöhung
       - name: Check and Bump Version
         # Führe dies nur bei Pull Requests aus und nicht, wenn Dependabot der Auslöser ist
@@ -76,17 +89,6 @@ jobs:
           else
             echo "Version wurde bereits manuell erhöht ($PR_VERSION)."
           fi
-
-      - name: Set up JDK 25
-        uses: actions/setup-java@v5
-        with:
-          java-version: '25'
-          distribution: 'zulu'
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 'latest'
 
       - name: Build with Maven Wrapper
         env:
