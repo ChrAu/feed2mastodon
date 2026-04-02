@@ -1,4 +1,4 @@
-import {Clock, Fuel, X, RefreshCw} from 'lucide-react'; // X-Icon für den Schließen-Button, RefreshCw für Update-Info
+import {Clock, Fuel, X, RefreshCw, TrendingUp, TrendingDown} from 'lucide-react'; // X-Icon für den Schließen-Button, RefreshCw für Update-Info
 import React, {useEffect, useState} from 'react';
 import {CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 
@@ -8,6 +8,7 @@ interface FuelPrice {
   unit: string;
   lastChanged: string; // ZonedDateTime wird als String empfangen
   entityId: string; // Neu hinzugefügt
+  previousValue?: number; // Optionaler vorheriger Wert
 }
 
 interface FuelStation {
@@ -282,6 +283,26 @@ const FuelPriceDashboard: React.FC = () => {
     return `${secs}s`;
   };
 
+  const renderPriceDifference = (currentValue: number, previousValue?: number) => {
+    if (previousValue === undefined) return null;
+
+    const diff = currentValue - previousValue;
+    if (Math.abs(diff) < 0.001) return null; // Ignore very small differences
+
+    const diffInCents = Math.round(diff * 100);
+    const isIncrease = diff > 0;
+    const colorClass = isIncrease ? 'text-red-400' : 'text-green-400';
+    const Icon = isIncrease ? TrendingUp : TrendingDown;
+    const sign = isIncrease ? '+' : '';
+
+    return (
+      <div className={`flex items-center text-xs mt-1 ${colorClass}`}>
+        <Icon className="w-3 h-3 mr-1" />
+        <span>{sign}{diffInCents} Cent</span>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-8 relative">
       {/* Nächstes Update Info */}
@@ -313,9 +334,12 @@ const FuelPriceDashboard: React.FC = () => {
                 <p className="text-slate-300 text-sm mb-1">
                   {getFuelTypeName(fuelType)}
                 </p>
-                <p className="text-2xl font-bold text-white flex items-baseline">
-                  {fuelPrice.value.toFixed(3)}<span className="ml-1">€</span>
-                </p>
+                <div className="flex flex-col">
+                  <p className="text-2xl font-bold text-white flex items-baseline">
+                    {fuelPrice.value.toFixed(3)}<span className="ml-1">€</span>
+                  </p>
+                  {renderPriceDifference(fuelPrice.value, fuelPrice.previousValue)}
+                </div>
                 <p className="text-slate-500 text-xs mt-2 flex items-center">
                   <Clock className="w-3 h-3 mr-1" />
                   Vor {formatTimeAgo(fuelPrice.lastChanged)}
