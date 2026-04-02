@@ -27,6 +27,7 @@ interface FuelPriceChartProps {
   entityId: string;
   fuelType: string;
   height?: number; // Optional height prop for chart
+  durationHours?: number; // New prop for duration
 }
 
 // Helper function to get display name for fuel type
@@ -69,7 +70,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, f
 };
 
 
-const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, height = 200 }) => {
+const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, height = 200, durationHours = 24 }) => {
   const [history, setHistory] = useState<FuelPriceHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +81,7 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`/api/homeassistant/fuel-prices/history?entityId=${entityId}&durationHours=24`);
+        const response = await fetch(`/api/homeassistant/fuel-prices/history?entityId=${entityId}&durationHours=${durationHours}`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -92,7 +93,16 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
         setHistory(formattedData);
 
         if (formattedData.length > 0) {
-          const fourHoursInMs = 4 * 60 * 60 * 1000;
+          // Calculate tick interval based on duration
+          let tickIntervalMs;
+          if (durationHours <= 24) {
+             tickIntervalMs = 4 * 60 * 60 * 1000; // 4 hours
+          } else if (durationHours <= 72) {
+             tickIntervalMs = 12 * 60 * 60 * 1000; // 12 hours
+          } else {
+             tickIntervalMs = 24 * 60 * 60 * 1000; // 24 hours
+          }
+          
           const generatedGridTicks: number[] = [];
 
           const minTimestamp = formattedData[0].timestampMs;
@@ -104,14 +114,14 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
           let currentTickTime = startDate.getTime();
 
           while (currentTickTime < minTimestamp) {
-            currentTickTime += fourHoursInMs;
+            currentTickTime += tickIntervalMs;
           }
 
           // Ensure ticks do not go beyond the XAxis domain's upper bound
           const xAxisDomainUpperBound = maxTimestamp + 1000000;
           while (currentTickTime <= xAxisDomainUpperBound) {
             generatedGridTicks.push(currentTickTime);
-            currentTickTime += fourHoursInMs;
+            currentTickTime += tickIntervalMs;
           }
           setXTicks(generatedGridTicks);
         } else {
@@ -127,18 +137,18 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
     };
 
     fetchHistory().catch(console.error);
-  }, [entityId]);
+  }, [entityId, durationHours]);
 
   if (loading) {
-    return <div className="text-slate-500 text-center text-sm py-2">Lade Verlauf...</div>;
+    return <div className="text-slate-500 text-center text-sm py-2 h-full flex items-center justify-center min-h-[100px]">Lade Verlauf...</div>;
   }
 
   if (error) {
-    return <div className="text-red-400 text-center text-sm py-2">Fehler: {error}</div>;
+    return <div className="text-red-400 text-center text-sm py-2 h-full flex items-center justify-center min-h-[100px]">Fehler: {error}</div>;
   }
 
   if (history.length === 0) {
-    return <div className="text-slate-500 text-center text-sm py-2">Keine Verlaufsdaten verfügbar.</div>;
+    return <div className="text-slate-500 text-center text-sm py-2 h-full flex items-center justify-center min-h-[100px]">Keine Verlaufsdaten verfügbar.</div>;
   }
 
   return (
@@ -154,8 +164,8 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
           tickFormatter={(timestampMs) => {
             const date = new Date(timestampMs);
             const timeString = date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-            if (timeString === '00:00') {
-              return `${date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} ${timeString}`;
+            if (durationHours > 24 || timeString === '00:00') {
+              return `${date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} ${durationHours <= 24 ? timeString : ''}`.trim();
             }
             return timeString;
           }}
@@ -184,6 +194,7 @@ const FuelPriceDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalFuelPrice, setModalFuelPrice] = useState<{ fuelPrice: FuelPrice; fuelType: string; stationName: string } | null>(null);
+  const [modalDurationHours, setModalDurationHours] = useState<number>(24);
   const [nextUpdate, setNextUpdate] = useState<number>(updateIntervalSeconds); // Countdown state
 
   useEffect(() => {
@@ -257,6 +268,7 @@ const FuelPriceDashboard: React.FC = () => {
 
   const openModal = (fuelPrice: FuelPrice, fuelType: string, stationName: string) => {
     setModalFuelPrice({ fuelPrice, fuelType, stationName });
+    setModalDurationHours(24); // Reset to default when opening
     setIsModalOpen(true);
   };
 
@@ -346,7 +358,7 @@ const FuelPriceDashboard: React.FC = () => {
                 </p>
                 {/* Das Diagramm in den Kacheln verwendet jetzt wieder die Standardhöhe (200px) */}
                 <div className="mt-4">
-                  <FuelPriceChart entityId={fuelPrice.entityId} fuelType={fuelType} />
+                  <FuelPriceChart entityId={fuelPrice.entityId} fuelType={fuelType} durationHours={24} />
                 </div>
               </div>
             ))}
@@ -357,18 +369,54 @@ const FuelPriceDashboard: React.FC = () => {
       {/* Modal-Fenster */}
       {isModalOpen && modalFuelPrice && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onClick={closeModal}>
-          <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg w-full max-w-3xl relative" onClick={e => e.stopPropagation()}>
-            <button onClick={closeModal} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+          <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg w-full max-w-4xl relative flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <button onClick={closeModal} className="absolute top-4 right-4 text-slate-400 hover:text-white z-10">
               <X size={24} />
             </button>
-            <h3 className="text-2xl font-bold text-white mb-4">
-              {modalFuelPrice.stationName} - {getFuelTypeName(modalFuelPrice.fuelType)} Preisverlauf
-            </h3>
-            <div className="h-100"> {/* Größere Höhe für das Diagramm im Modal */}
-              <FuelPriceChart entityId={modalFuelPrice.fuelPrice.entityId} fuelType={modalFuelPrice.fuelType} height={400} />
+            
+            <div className="flex justify-between items-center mb-6 mr-8">
+              <h3 className="text-2xl font-bold text-white">
+                {modalFuelPrice.stationName} - {getFuelTypeName(modalFuelPrice.fuelType)}
+              </h3>
+              
+              {/* Zeitraum-Auswahl */}
+              <div className="flex space-x-2 bg-slate-900 rounded-lg p-1">
+                {[
+                  { label: '24h', value: 24 },
+                  { label: '3 Tage', value: 72 },
+                  { label: '7 Tage', value: 168 }
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setModalDurationHours(option.value)}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                      modalDurationHours === option.value
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="mt-4 text-slate-300">
-              Aktueller Preis: <span className="font-bold">{modalFuelPrice.fuelPrice.value.toFixed(3)} €</span>
+
+            <div className="flex-grow min-h-[400px]">
+              <FuelPriceChart 
+                entityId={modalFuelPrice.fuelPrice.entityId} 
+                fuelType={modalFuelPrice.fuelType} 
+                height={400} 
+                durationHours={modalDurationHours}
+              />
+            </div>
+            
+            <div className="mt-4 text-slate-300 flex justify-between items-center">
+              <div>
+                Aktueller Preis: <span className="font-bold text-white">{modalFuelPrice.fuelPrice.value.toFixed(3)} €</span>
+              </div>
+              <div className="text-sm text-slate-500">
+                Letzte Änderung: {new Date(modalFuelPrice.fuelPrice.lastChanged).toLocaleString('de-DE')}
+              </div>
             </div>
           </div>
         </div>
