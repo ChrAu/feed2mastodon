@@ -91,9 +91,6 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
         setHistory(formattedData);
 
         if (formattedData.length > 0) {
-          const firstDataTimestamp = formattedData[0].timestampMs;
-          const lastDataTimestamp = formattedData[formattedData.length - 1].timestampMs;
-
           const fourHoursInMs = 4 * 60 * 60 * 1000;
           const generatedGridTicks: number[] = [];
 
@@ -116,33 +113,6 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
             currentTickTime += fourHoursInMs;
           }
           setXTicks(generatedGridTicks);
-
-          // Determine specific ticks for labels
-          const newLabelTicks: number[] = [];
-          newLabelTicks.push(firstDataTimestamp); // First data point's timestamp
-
-          // Add intermediate ticks from generatedGridTicks
-          const intermediateTicks = generatedGridTicks.filter(tick =>
-            tick > firstDataTimestamp && tick < lastDataTimestamp
-          );
-
-          if (intermediateTicks.length > 0) {
-            // Try to pick two well-spaced intermediate ticks
-            if (intermediateTicks.length >= 2) {
-              newLabelTicks.push(intermediateTicks[Math.floor(intermediateTicks.length / 3)]);
-              newLabelTicks.push(intermediateTicks[Math.floor(2 * intermediateTicks.length / 3)]);
-            } else {
-              newLabelTicks.push(intermediateTicks[0]); // If only one intermediate, add it
-            }
-          }
-
-          // Only add lastDataTimestamp if it's not too close to the last intermediate tick
-          // or if there are no intermediate ticks
-          const lastLabelTime = newLabelTicks[newLabelTicks.length - 1];
-          if (Math.abs(lastDataTimestamp - lastLabelTime) > (2 * 60 * 60 * 1000) || newLabelTicks.length < 3) { // 2 hours buffer
-            newLabelTicks.push(lastDataTimestamp); // Last data point's timestamp
-          }
-
         } else {
           setXTicks([]);
         }
@@ -175,24 +145,25 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
       <LineChart data={history} margin={{ top: 5, right: 40, left: 10, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
         <XAxis
-          dataKey="timestampMs" // Verwende den numerischen Zeitstempel
-          type="number" // Wichtig für Zeitskalierung
-          scale="time" // Wichtig für Zeitskalierung
-          domain={['dataMin', 'dataMax + 1000000']} // Stellt sicher, dass die Achse den gesamten Datenbereich abdeckt
-          ticks={xTicks} // Alle 4-Stunden-Ticks für das Raster
-          tickFormatter={(timestampMs, index) => {
-
-              if(index === 1  || index === 3 ||  index === 5 || index === 6){
-                  return '';
-              }
+          dataKey="timestampMs"
+          type="number"
+          scale="time"
+          domain={['dataMin', 'dataMax + 1000000']}
+          ticks={xTicks}
+          tickFormatter={(timestampMs) => {
             const date = new Date(timestampMs);
-              return date.toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'});
+            const timeString = date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+            if (timeString === '00:00') {
+              return `${date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} ${timeString}`;
+            }
+            return timeString;
           }}
           stroke="#94a3b8"
-          interval={0} // Erzwingt die Anzeige aller Ticks (für das Raster)
-          angle={-45} // Dreht die Beschriftungen um 45 Grad
-          textAnchor="end" // Richtet den Text am Ende aus
-          height={60} // Gibt mehr Höhe für die gedrehten Beschriftungen
+          minTickGap={20}
+          tick={{ fontSize: 12 }}
+          angle={-45}
+          textAnchor="end"
+          height={60}
         />
         <YAxis stroke="#94a3b8" domain={['dataMin - 0.01', 'dataMax + 0.01']} tickFormatter={(value) => value.toFixed(2)} />
         <Tooltip
@@ -366,7 +337,7 @@ const FuelPriceDashboard: React.FC = () => {
             <button onClick={closeModal} className="absolute top-4 right-4 text-slate-400 hover:text-white">
               <X size={24} />
             </button>
-            <h3 className="2xl font-bold text-white mb-4">
+            <h3 className="text-2xl font-bold text-white mb-4">
               {modalFuelPrice.stationName} - {getFuelTypeName(modalFuelPrice.fuelType)} Preisverlauf
             </h3>
             <div className="h-100"> {/* Größere Höhe für das Diagramm im Modal */}
