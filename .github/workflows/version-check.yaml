@@ -8,7 +8,7 @@ on:
 
 jobs:
   version-management:
-    runs-on: ubuntu-latest # Oder Ihr self-hosted runner
+    runs-on: self-hosted # Oder Ihr self-hosted runner
     permissions:
       contents: write
     steps:
