@@ -229,9 +229,25 @@ public class HomeAssistantService {
                     } else if (entityId.contains("super")) {
                         fuelType = "super";
                     }
+                    
+                    // Fetch the previous price from database to calculate difference
+                    Double previousPrice = null;
+                    try {
+                        TypedQuery<HaStateHistory> beforeQuery = em.createNamedQuery(HaStateHistory.FIND_PREVIOUS_BY_ENTITY_ID_AND_LAST_CHANGED, HaStateHistory.class);
+                        beforeQuery.setParameter("entityId", entityId);
+                        beforeQuery.setParameter("lastChanged", lastChanged);
+                        beforeQuery.setMaxResults(1);
+                        HaStateHistory beforeHistory = beforeQuery.getSingleResultOrNull();
+
+                        if (beforeHistory != null) {
+                            previousPrice = Double.parseDouble(beforeHistory.getState());
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Failed to fetch previous price for " + entityId + ": " + e.getMessage());
+                    }
 
                     stationPrices.computeIfAbsent(stationKey, k -> new HashMap<>())
-                            .put(fuelType, new FuelPriceDto(price, unit, lastChanged, entityId)); // Pass entityId here
+                            .put(fuelType, new FuelPriceDto(price, unit, lastChanged, entityId, previousPrice)); // Pass entityId and previousPrice here
 
                 } else if (entityId.startsWith("binary_sensor.")) {
                     boolean status = "on".equalsIgnoreCase(entity.getState());
@@ -281,12 +297,9 @@ public class HomeAssistantService {
 
         // 3. Get the last known price BEFORE the startDate
         Double priceBeforeStartDate = null;
-        TypedQuery<HaStateHistory> beforeQuery = em.createQuery(
-                "SELECT h FROM HaStateHistory h WHERE h.entityId = :entityId AND h.lastChanged < :startDate ORDER BY h.lastChanged DESC",
-                HaStateHistory.class
-        );
+        TypedQuery<HaStateHistory> beforeQuery = em.createNamedQuery(HaStateHistory.FIND_PREVIOUS_BY_ENTITY_ID_AND_LAST_CHANGED, HaStateHistory.class);
         beforeQuery.setParameter("entityId", entityId);
-        beforeQuery.setParameter("startDate", startDate);
+        beforeQuery.setParameter("lastChanged", startDate);
         beforeQuery.setMaxResults(1);
         HaStateHistory beforeHistory = beforeQuery.getSingleResultOrNull();
 

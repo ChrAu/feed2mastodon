@@ -6,5 +6,6 @@ public record FuelPriceDto(
     double value,
     String unit,
     ZonedDateTime lastChanged,
-    String entityId // Added entityId
+    String entityId,
+    Double previousValue
 ) {}

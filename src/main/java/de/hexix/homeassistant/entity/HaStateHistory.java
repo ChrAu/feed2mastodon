@@ -1,6 +1,5 @@
 package de.hexix.homeassistant.entity;
 
-
 import de.hexix.homeassistant.dto.TemperatureBucketDTO;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -57,6 +56,10 @@ import java.time.ZonedDateTime;
         @NamedQuery(
                 name = HaStateHistory.FIND_BY_ENTITY_ID_AND_DATE_RANGE,
                 query = "SELECT h FROM HaStateHistory h WHERE h.entityId = :entityId AND h.lastChanged >= :startDate ORDER BY h.lastChanged ASC"
+        ),
+        @NamedQuery(
+                name = HaStateHistory.FIND_PREVIOUS_BY_ENTITY_ID_AND_LAST_CHANGED,
+                query = "SELECT h FROM HaStateHistory h WHERE h.entityId = :entityId AND h.lastChanged < :lastChanged ORDER BY h.lastChanged DESC"
         )
 })
 
@@ -118,6 +121,7 @@ public class HaStateHistory {
     public static final String FIND_All_TEMPERATUR_NO_DATA_TABLE = "HaStateHistory.findAllTemperaturNoDataTable";
     public static final String FIND_ALL_WEATHER_DATA = "HaStateHistory.findAllWeatherData";
     public static final String FIND_BY_ENTITY_ID_AND_DATE_RANGE = "HaStateHistory.findByEntityIdAndDateRange";
+    public static final String FIND_PREVIOUS_BY_ENTITY_ID_AND_LAST_CHANGED = "HaStateHistory.findPreviousByEntityIdAndLastChanged";
 
 
     public static final String NATIVE_FIND_AVG_TEMPERATUR_IN_BUCKETS = "HaStateHistory.findAvgTemperatureInBuckets";
