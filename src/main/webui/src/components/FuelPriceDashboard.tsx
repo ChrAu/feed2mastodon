@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Clock, Fuel, X } from 'lucide-react'; // X-Icon für den Schließen-Button
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import {Clock, Fuel, X} from 'lucide-react'; // X-Icon für den Schließen-Button
+import React, {useEffect, useState} from 'react';
+import {CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 
 // Angepasste Interfaces, um den Backend-DTOs zu entsprechen
 interface FuelPrice {
@@ -19,6 +19,7 @@ interface FuelStation {
 interface FuelPriceHistory {
   timestamp: string; // ZonedDateTime als String
   value: number;
+  timestampMs: number; // Neu hinzugefügt für Recharts XAxis Skalierung
 }
 
 interface FuelPriceChartProps {
@@ -41,13 +42,13 @@ const getFuelTypeName = (fuelType: string) => {
 interface CustomTooltipProps {
   active?: boolean;
   payload?: any[];
-  label?: string;
+  label?: number; // Label ist jetzt ein numerischer Zeitstempel (ms)
   fuelTypeName: string;
 }
 
 const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, fuelTypeName }) => {
   if (active && payload && payload.length) {
-    const date = new Date(label!); // Parse the timestamp string
+    const date = new Date(label!); // Parse the numeric timestamp
     const formattedDate = date.toLocaleDateString('de-DE', {
       year: 'numeric',
       month: '2-digit',
@@ -71,6 +72,7 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
   const [history, setHistory] = useState<FuelPriceHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [xTicks, setXTicks] = useState<number[]>([]); // All 4-hour interval ticks for grid
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -82,14 +84,67 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data: FuelPriceHistory[] = await response.json();
-        // Daten für Recharts aufbereiten: Zeitstempel beibehalten für volle Datums-/Zeitformatierung im Tooltip
         const formattedData = data.map(item => ({
           ...item,
-          // Keep original timestamp string for full date/time formatting in tooltip
-          // The XAxis will still use a formatted version for display
-          timestamp: item.timestamp // Keep original for tooltip, format for XAxis if needed
+          timestampMs: new Date(item.timestamp).getTime()
         }));
         setHistory(formattedData);
+
+        if (formattedData.length > 0) {
+          const firstDataTimestamp = formattedData[0].timestampMs;
+          const lastDataTimestamp = formattedData[formattedData.length - 1].timestampMs;
+
+          const fourHoursInMs = 4 * 60 * 60 * 1000;
+          const generatedGridTicks: number[] = [];
+
+          const minTimestamp = formattedData[0].timestampMs;
+          const maxTimestamp = formattedData[formattedData.length - 1].timestampMs;
+
+          const startDate = new Date(minTimestamp);
+          startDate.setHours(0, 0, 0, 0);
+
+          let currentTickTime = startDate.getTime();
+
+          while (currentTickTime < minTimestamp) {
+            currentTickTime += fourHoursInMs;
+          }
+
+          while (currentTickTime <= maxTimestamp + fourHoursInMs) {
+            generatedGridTicks.push(currentTickTime);
+            currentTickTime += fourHoursInMs;
+          }
+          setXTicks(generatedGridTicks);
+
+          // Determine specific ticks for labels
+          const newLabelTicks: number[] = [];
+          newLabelTicks.push(firstDataTimestamp); // First data point's timestamp
+
+          // Add intermediate ticks from generatedGridTicks
+          const intermediateTicks = generatedGridTicks.filter(tick =>
+            tick > firstDataTimestamp && tick < lastDataTimestamp
+          );
+
+          if (intermediateTicks.length > 0) {
+            // Try to pick two well-spaced intermediate ticks
+            if (intermediateTicks.length >= 2) {
+              newLabelTicks.push(intermediateTicks[Math.floor(intermediateTicks.length / 3)]);
+              newLabelTicks.push(intermediateTicks[Math.floor(2 * intermediateTicks.length / 3)]);
+            } else {
+              newLabelTicks.push(intermediateTicks[0]); // If only one intermediate, add it
+            }
+          }
+
+          // Only add lastDataTimestamp if it's not too close to the last intermediate tick
+          // or if there are no intermediate ticks
+          const lastLabelTime = newLabelTicks[newLabelTicks.length - 1];
+          if (Math.abs(lastDataTimestamp - lastLabelTime) > (2 * 60 * 60 * 1000) || newLabelTicks.length < 3) { // 2 hours buffer
+            newLabelTicks.push(lastDataTimestamp); // Last data point's timestamp
+          }
+
+        } else {
+          setXTicks([]);
+        }
+
       } catch (err) {
         console.error(`Failed to fetch history for ${entityId}:`, err);
         setError("Fehler beim Laden der Verlaufsdaten.");
@@ -118,15 +173,30 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
       <LineChart data={history} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
         <XAxis
-          dataKey="timestamp"
+          dataKey="timestampMs" // Verwende den numerischen Zeitstempel
+          type="number" // Wichtig für Zeitskalierung
+          scale="time" // Wichtig für Zeitskalierung
+          domain={['dataMin', 'dataMax']} // Stellt sicher, dass die Achse den gesamten Datenbereich abdeckt
+          ticks={xTicks} // Alle 4-Stunden-Ticks für das Raster
+          tickFormatter={(timestampMs, index) => {
+
+              if(index == 1  || index == 3 ||  index == 5 || index == 6){
+                  return '';
+              }
+            const date = new Date(timestampMs);
+              return date.toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'});
+          }}
           stroke="#94a3b8"
-          tickFormatter={(isoString) => new Date(isoString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+          interval={0} // Erzwingt die Anzeige aller Ticks (für das Raster)
+          angle={-45} // Dreht die Beschriftungen um 45 Grad
+          textAnchor="end" // Richtet den Text am Ende aus
+          height={60} // Gibt mehr Höhe für die gedrehten Beschriftungen
         />
         <YAxis stroke="#94a3b8" domain={['dataMin - 0.01', 'dataMax + 0.01']} tickFormatter={(value) => value.toFixed(2)} />
         <Tooltip
           content={<CustomTooltip fuelTypeName={getFuelTypeName(fuelType)} />}
         />
-        <Line type="monotone" dataKey="value" stroke="#8884d8" dot={false} />
+        <Line type="stepAfter" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} fill="none" />
       </LineChart>
     </ResponsiveContainer>
   );
@@ -225,7 +295,7 @@ const FuelPriceDashboard: React.FC = () => {
             {station.name}
             {station.status !== undefined && (
               <span className={`ml-3 px-2 py-1 text-xs font-semibold rounded-full ${station.status ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                {station.status ? 'Online' : 'Offline'}
+                {station.status ? 'Geöffnet' : 'Geschlossen'}
               </span>
             )}
           </h4>
@@ -263,7 +333,7 @@ const FuelPriceDashboard: React.FC = () => {
             <button onClick={closeModal} className="absolute top-4 right-4 text-slate-400 hover:text-white">
               <X size={24} />
             </button>
-            <h3 className="text-2xl font-bold text-white mb-4">
+            <h3 className="2xl font-bold text-white mb-4">
               {modalFuelPrice.stationName} - {getFuelTypeName(modalFuelPrice.fuelType)} Preisverlauf
             </h3>
             <div className="h-[400px]"> {/* Größere Höhe für das Diagramm im Modal */}
