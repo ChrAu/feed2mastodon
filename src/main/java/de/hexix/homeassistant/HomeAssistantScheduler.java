@@ -1,9 +1,11 @@
 package de.hexix.homeassistant;
 
 import de.hexix.homeassistant.dto.EntityDto;
+import de.hexix.util.DurationLogger;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.jboss.logging.Logger;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -20,8 +22,8 @@ public class HomeAssistantScheduler {
     @Inject
     AttributeMapperHelper attributeMapperHelper;
 
-//    @Scheduled(every = "1m" )
-    public void test(){
+    //    @Scheduled(every = "1m" )
+    public void test() {
         final List<EntityDto> entityDtos = homeAssistantService.currentState();
         final List<String> filterEntityIds = entityDtos.stream().map(EntityDto::getEntityId).filter(entityId -> entityId.contains("climate.")).distinct().toList();
 
@@ -35,22 +37,13 @@ public class HomeAssistantScheduler {
         System.out.println(entityDtos);
     }
 
-    @Scheduled(every = "1m" )
-    public void saveState(){
-        final List<EntityDto> entityDtos = homeAssistantService.currentState();
+    @Scheduled(every = "30s")
+    public void saveState() {
+        try (DurationLogger d = new DurationLogger("HomeAssistantScheduler.saveState()", Logger.getLogger(this.getClass()))) {
+            final List<EntityDto> entityDtos = homeAssistantService.currentState();
 
-       entityDtos.forEach(entityDto -> homeAssistantService.saveOrUpdate(entityDto));
-
-//        final List<EntityDto> climateDevices = entityDtos.stream().filter(entityDto -> entityDto.getEntityId().contains("climate.")).toList();
-//
-//        final EntityDto first = climateDevices.getFirst();
-//        final AttributesDto attributes = first.getAttributes();
-//
-//        final String s = attributeMapperHelper.attributesToString(attributes);
-//
-//        final AttributesDto attributesDto = attributeMapperHelper.stringToAttributes(s);
-//
-//        System.out.println();
+            entityDtos.forEach(entityDto -> homeAssistantService.saveOrUpdate(entityDto));
+        }
     }
 
 }
