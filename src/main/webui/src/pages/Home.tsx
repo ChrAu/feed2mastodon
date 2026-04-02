@@ -204,11 +204,11 @@ const Home = () => {
 
       {/* Service Grid */}
       <main className="relative z-10 max-w-7xl mx-auto px-6 pb-24">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="flex flex-wrap justify-center gap-6">
           {SERVICES.map((service, index) => (
             <motion.div
               key={service.id}
-              className={`group relative p-8 rounded-3xl bg-slate-900/40 border border-white/5 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:bg-slate-800/60 shadow-xl overflow-hidden ${service.glow} cursor-pointer`}
+              className={`group relative p-8 rounded-3xl bg-slate-900/40 border border-white/5 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:bg-slate-800/60 shadow-xl overflow-hidden ${service.glow} cursor-pointer w-full sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1rem)] xl:w-[calc(25%-1.125rem)]`}
               onMouseMove={handleMouseMove}
               onClick={() => openServiceModal(service)}
               variants={cardVariants}
