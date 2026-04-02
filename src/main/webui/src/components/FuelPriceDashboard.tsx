@@ -1,6 +1,7 @@
 import {Clock, Fuel, X, RefreshCw, TrendingUp, TrendingDown} from 'lucide-react'; // X-Icon für den Schließen-Button, RefreshCw für Update-Info
 import React, {useEffect, useState} from 'react';
 import {CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
+import FuelPriceCardSkeleton from './FuelPriceCardSkeleton'; // Import Skeleton
 
 // Angepasste Interfaces, um den Backend-DTOs zu entsprechen
 interface FuelPrice {
@@ -140,7 +141,7 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
   }, [entityId, durationHours]);
 
   if (loading) {
-    return <div className="text-slate-500 text-center text-sm py-2 h-full flex items-center justify-center min-h-[100px]">Lade Verlauf...</div>;
+    return <div className="text-slate-500 text-center text-sm py-2 h-full flex items-center justify-center min-h-[100px] animate-pulse bg-slate-800/30 rounded-lg">Lade Verlauf...</div>;
   }
 
   if (error) {
@@ -199,8 +200,6 @@ const FuelPriceDashboard: React.FC = () => {
 
   useEffect(() => {
     const fetchFuelPrices = async () => {
-      setLoading(true);
-      setError(null);
       try {
         const response = await fetch('/api/homeassistant/fuel-prices');
         if (!response.ok) {
@@ -227,6 +226,7 @@ const FuelPriceDashboard: React.FC = () => {
 
         setFuelStations(sortedData);
         setNextUpdate(updateIntervalSeconds); // Reset countdown on successful fetch
+        setError(null);
 
       } catch (err) {
         console.error("Failed to fetch fuel prices:", err);
@@ -278,11 +278,20 @@ const FuelPriceDashboard: React.FC = () => {
   };
 
   if (loading && fuelStations.length === 0) {
-    return <div className="text-slate-400 text-center py-4">Lade Tankstellendaten...</div>;
+    return (
+        <div className="space-y-8 relative mt-8">
+            <div className="flex justify-end mb-4">
+                <div className="h-8 bg-slate-800/80 rounded-full w-48 animate-pulse border border-slate-700"></div>
+            </div>
+            {[...Array(2)].map((_, i) => (
+                <FuelPriceCardSkeleton key={i} />
+            ))}
+        </div>
+    );
   }
 
   if (error && fuelStations.length === 0) {
-    return <div className="text-red-400 text-center py-4">Fehler: {error}</div>;
+    return <div className="text-red-400 text-center py-4 bg-red-900/20 border border-red-500/50 rounded-xl p-4 mt-8">Fehler: {error}</div>;
   }
 
   // Helper function to format seconds into minutes and seconds
@@ -318,7 +327,7 @@ const FuelPriceDashboard: React.FC = () => {
   return (
     <div className="space-y-8 relative">
       {/* Nächstes Update Info */}
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end mb-4 mt-8">
         <div className="flex items-center text-sm text-slate-400 bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-700 shadow-sm backdrop-blur-sm z-10">
           <RefreshCw className={`w-4 h-4 mr-2 ${nextUpdate < 5 ? 'animate-spin text-blue-400' : ''}`} />
           <span>Nächstes Update in {formatCountdown(nextUpdate)}</span>
