@@ -1,4 +1,4 @@
-import {Clock, Fuel, X} from 'lucide-react'; // X-Icon für den Schließen-Button
+import {Clock, Fuel, X, RefreshCw} from 'lucide-react'; // X-Icon für den Schließen-Button, RefreshCw für Update-Info
 import React, {useEffect, useState} from 'react';
 import {CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 
@@ -58,7 +58,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, f
     });
 
     return (
-      <div className="bg-slate-800 p-3 rounded-md border border-slate-700 text-white text-sm">
+      <div className="bg-slate-800 p-3 rounded-md border border-slate-700 text-white text-sm z-50">
         <p className="font-bold mb-1">{formattedDate}</p>
         <p>{`${fuelTypeName}: ${payload[0].value.toFixed(3)} €`}</p>
       </div>
@@ -109,7 +109,9 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
             currentTickTime += fourHoursInMs;
           }
 
-          while (currentTickTime <= maxTimestamp + fourHoursInMs) {
+          // Ensure ticks do not go beyond the XAxis domain's upper bound
+          const xAxisDomainUpperBound = maxTimestamp + 1000000;
+          while (currentTickTime <= xAxisDomainUpperBound) {
             generatedGridTicks.push(currentTickTime);
             currentTickTime += fourHoursInMs;
           }
@@ -153,7 +155,7 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
       }
     };
 
-    fetchHistory();
+    fetchHistory().catch(console.error);
   }, [entityId]);
 
   if (loading) {
@@ -170,17 +172,17 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={history} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+      <LineChart data={history} margin={{ top: 5, right: 40, left: 10, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
         <XAxis
           dataKey="timestampMs" // Verwende den numerischen Zeitstempel
           type="number" // Wichtig für Zeitskalierung
           scale="time" // Wichtig für Zeitskalierung
-          domain={['dataMin', 'dataMax']} // Stellt sicher, dass die Achse den gesamten Datenbereich abdeckt
+          domain={['dataMin', 'dataMax + 1000000']} // Stellt sicher, dass die Achse den gesamten Datenbereich abdeckt
           ticks={xTicks} // Alle 4-Stunden-Ticks für das Raster
           tickFormatter={(timestampMs, index) => {
 
-              if(index == 1  || index == 3 ||  index == 5 || index == 6){
+              if(index === 1  || index === 3 ||  index === 5 || index === 6){
                   return '';
               }
             const date = new Date(timestampMs);
@@ -204,11 +206,13 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
 
 
 const FuelPriceDashboard: React.FC = () => {
+  const updateIntervalSeconds = 5 * 60; // 5 Minuten
   const [fuelStations, setFuelStations] = useState<FuelStation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalFuelPrice, setModalFuelPrice] = useState<{ fuelPrice: FuelPrice; fuelType: string; stationName: string } | null>(null);
+  const [nextUpdate, setNextUpdate] = useState<number>(updateIntervalSeconds); // Countdown state
 
   useEffect(() => {
     const fetchFuelPrices = async () => {
@@ -239,6 +243,7 @@ const FuelPriceDashboard: React.FC = () => {
         });
 
         setFuelStations(sortedData);
+        setNextUpdate(updateIntervalSeconds); // Reset countdown on successful fetch
 
       } catch (err) {
         console.error("Failed to fetch fuel prices:", err);
@@ -248,10 +253,20 @@ const FuelPriceDashboard: React.FC = () => {
       }
     };
 
-    fetchFuelPrices();
-    // Refresh data every 5 minutes
-    const interval = setInterval(fetchFuelPrices, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    fetchFuelPrices().catch(console.error);
+
+    // Refresh data in intervall
+    const interval = setInterval(fetchFuelPrices, updateIntervalSeconds * 1000);
+
+    // Countdown timer for next update UI
+    const countdownInterval = setInterval(() => {
+        setNextUpdate(prev => (prev > 0 ? prev - 1 : updateIntervalSeconds));
+    }, 1000);
+
+    return () => {
+        clearInterval(interval);
+        clearInterval(countdownInterval);
+    };
   }, []);
 
   const formatTimeAgo = (isoString: string) => {
@@ -278,18 +293,36 @@ const FuelPriceDashboard: React.FC = () => {
     setModalFuelPrice(null);
   };
 
-  if (loading) {
+  if (loading && fuelStations.length === 0) {
     return <div className="text-slate-400 text-center py-4">Lade Tankstellendaten...</div>;
   }
 
-  if (error) {
+  if (error && fuelStations.length === 0) {
     return <div className="text-red-400 text-center py-4">Fehler: {error}</div>;
   }
 
+  // Helper function to format seconds into minutes and seconds
+  const formatCountdown = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (mins > 0) {
+      return `${mins}m ${secs.toString().padStart(2, '0')}s`;
+    }
+    return `${secs}s`;
+  };
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
+      {/* Nächstes Update Info */}
+      <div className="flex justify-end mb-4">
+        <div className="flex items-center text-sm text-slate-400 bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-700 shadow-sm backdrop-blur-sm z-10">
+          <RefreshCw className={`w-4 h-4 mr-2 ${nextUpdate < 5 ? 'animate-spin text-blue-400' : ''}`} />
+          <span>Nächstes Update in {formatCountdown(nextUpdate)}</span>
+        </div>
+      </div>
+
       {fuelStations.map((station, index) => (
-        <div key={index} className="bg-slate-800/50 p-6 rounded-xl border border-slate-700 shadow-lg">
+        <div key={index} className="bg-slate-800/50 p-6 rounded-xl border border-slate-700 shadow-lg mt-8">
           <h4 className="text-xl font-bold text-white mb-4 flex items-center">
             <Fuel className="w-6 h-6 mr-2 text-blue-400" />
             {station.name}
@@ -303,7 +336,7 @@ const FuelPriceDashboard: React.FC = () => {
             {Object.entries(station.fuelPrices).map(([fuelType, fuelPrice]) => (
               <div
                 key={fuelType}
-                className="bg-slate-900/50 p-4 rounded-lg border border-slate-700 cursor-pointer hover:bg-slate-800/70 transition-colors duration-200"
+                className="bg-slate-900/50 p-4 rounded-lg border border-slate-700 cursor-pointer hover:bg-slate-800/70 transition-colors duration-200 relative z-0"
                 onClick={() => openModal(fuelPrice, fuelType, station.name)}
               >
                 <p className="text-slate-300 text-sm mb-1">
@@ -336,7 +369,7 @@ const FuelPriceDashboard: React.FC = () => {
             <h3 className="2xl font-bold text-white mb-4">
               {modalFuelPrice.stationName} - {getFuelTypeName(modalFuelPrice.fuelType)} Preisverlauf
             </h3>
-            <div className="h-[400px]"> {/* Größere Höhe für das Diagramm im Modal */}
+            <div className="h-100"> {/* Größere Höhe für das Diagramm im Modal */}
               <FuelPriceChart entityId={modalFuelPrice.fuelPrice.entityId} fuelType={modalFuelPrice.fuelType} height={400} />
             </div>
             <div className="mt-4 text-slate-300">
