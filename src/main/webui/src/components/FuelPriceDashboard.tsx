@@ -141,9 +141,6 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
             newLabelTicks.push(lastDataTimestamp); // Last data point's timestamp
           }
 
-          // Sort and remove duplicates (important if first/last data points align with grid ticks)
-          const uniqueLabelTicks = Array.from(new Set(newLabelTicks)).sort((a, b) => a - b);
-
         } else {
           setXTicks([]);
         }
