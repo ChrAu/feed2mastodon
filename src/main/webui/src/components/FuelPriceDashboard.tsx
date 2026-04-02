@@ -109,7 +109,9 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
             currentTickTime += fourHoursInMs;
           }
 
-          while (currentTickTime <= maxTimestamp + fourHoursInMs) {
+          // Ensure ticks do not go beyond the XAxis domain's upper bound
+          const xAxisDomainUpperBound = maxTimestamp + 1000000;
+          while (currentTickTime <= xAxisDomainUpperBound) {
             generatedGridTicks.push(currentTickTime);
             currentTickTime += fourHoursInMs;
           }
@@ -170,13 +172,13 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={history} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+      <LineChart data={history} margin={{ top: 5, right: 40, left: 10, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
         <XAxis
           dataKey="timestampMs" // Verwende den numerischen Zeitstempel
           type="number" // Wichtig für Zeitskalierung
           scale="time" // Wichtig für Zeitskalierung
-          domain={['dataMin', 'dataMax']} // Stellt sicher, dass die Achse den gesamten Datenbereich abdeckt
+          domain={['dataMin', 'dataMax + 1000000']} // Stellt sicher, dass die Achse den gesamten Datenbereich abdeckt
           ticks={xTicks} // Alle 4-Stunden-Ticks für das Raster
           tickFormatter={(timestampMs, index) => {
 
