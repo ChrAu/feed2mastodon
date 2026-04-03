@@ -33,14 +33,14 @@ export const SERVICES: Service[] = [
   {
     id: 'keycloak',
     name: 'Keycloak',
-    shortDescription: 'Login-Dienst (IAM)',
-    longDescription: 'Keycloak ist ein Open-Source Identity and Access Management (IAM) System, das Single Sign-On (SSO) für Webanwendungen und APIs bietet. Es unterstützt Standardprotokolle wie OpenID Connect, OAuth 2.0 und SAML 2.0 und ermöglicht eine zentrale Benutzerverwaltung sowie erweiterte Sicherheitsfunktionen.',
+    shortDescription: 'Kontoverwaltung',
+    longDescription: 'Hier können Sie Ihre persönlichen Daten verwalten, Sicherheitseinstellungen anpassen und Ihr Passwort ändern. Die zentrale Kontoverwaltung bietet Ihnen volle Kontrolle über Ihre Identität und Zugänge für alle angebundenen Dienste.',
     icon: Shield,
     color: 'border-purple-500',
     glow: 'group-hover:shadow-purple-500/50',
     bg: 'bg-purple-500/10',
     text: 'text-purple-400',
-    url: 'https://sso.codeheap.dev',
+    url: 'https://sso.codeheap.dev/realms/codeheap/account/',
     monitorId: 21,
     glowColor: 'bg-purple-400/20'
   },
