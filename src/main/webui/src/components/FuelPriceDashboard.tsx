@@ -9,7 +9,7 @@ interface FuelPrice {
   unit: string;
   lastChanged: string; // ZonedDateTime wird als String empfangen
   entityId: string; // Neu hinzugefügt
-  previousValue?: number; // Optionaler vorheriger Wert
+  previousValue?: number | null; // Optionaler vorheriger Wert
 }
 
 interface FuelStation {
@@ -304,8 +304,8 @@ const FuelPriceDashboard: React.FC = () => {
     return `${secs}s`;
   };
 
-  const renderPriceDifference = (currentValue: number, previousValue?: number) => {
-    if (previousValue === undefined) return null;
+  const renderPriceDifference = (currentValue: number, previousValue?: number | null) => {
+    if (previousValue === undefined || previousValue === null) return null;
 
     const diff = currentValue - previousValue;
     if (Math.abs(diff) < 0.001) return null; // Ignore very small differences

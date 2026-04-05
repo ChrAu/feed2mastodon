@@ -59,7 +59,7 @@ import java.time.ZonedDateTime;
         ),
         @NamedQuery(
                 name = HaStateHistory.FIND_PREVIOUS_BY_ENTITY_ID_AND_LAST_CHANGED,
-                query = "SELECT h FROM HaStateHistory h WHERE h.entityId = :entityId AND h.lastChanged < :lastChanged ORDER BY h.lastChanged DESC"
+                query = "SELECT h FROM HaStateHistory h WHERE h.entityId = :entityId AND h.lastChanged < :lastChanged and h.state != 'unavailable' ORDER BY h.lastChanged DESC"
         )
 })
 
