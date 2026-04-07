@@ -4,7 +4,8 @@ import {CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAx
 import FuelPriceCardSkeleton from './FuelPriceCardSkeleton'; // Import Skeleton
 
 // Globale Konfiguration für die Prognoseberechnung
-const FORECAST_DAYS_HISTORY = 3; // Anzahl der historischen Tage, die in die Prognose einfließen
+const FORECAST_DAYS_HISTORY = 5; // Anzahl der historischen Tage
+const FORECAST_WEIGHT_BASE = 2;  // Basis für die exponentielle Gewichtung (z.B. 2 für normal stark, 3 für sehr stark)
 
 // Angepasste Interfaces, um den Backend-DTOs zu entsprechen
 interface FuelPrice {
@@ -119,8 +120,9 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
           const intervals = (12 * 60) / 5; // 144 Punkte
           for (let i = 1; i <= intervals; i++) {
             const futureMs = lastTimestampMs + i * 5 * 60 * 1000;
-            let sum = 0;
-            let count = 0;
+
+            let weightedSum = 0;
+            let totalWeight = 0;
 
             // Durchschnitt der letzten X Tage (konfigurierbar) zur exakt gleichen Uhrzeit bilden
             for (let daysAgo = 1; daysAgo <= FORECAST_DAYS_HISTORY; daysAgo++) {
@@ -142,15 +144,25 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
               }
 
               if (lastKnownPoint) {
-                sum += lastKnownPoint.value;
-                count++;
+                // Exponentielle Gewichtung: Jüngere Tage werden signifikant stärker gewichtet.
+                // Basis FORECAST_WEIGHT_BASE sorgt für eine sehr starke Ausrichtung am aktuellen Trend.
+                // Beispiel bei 5 Tagen Historie und Basis 3:
+                // Tag 1 (gestern): 3^4 = 81
+                // Tag 2: 3^3 = 27
+                // Tag 3: 3^2 = 9
+                // Tag 4: 3^1 = 3
+                // Tag 5: 3^0 = 1
+                const weight = Math.pow(FORECAST_WEIGHT_BASE, FORECAST_DAYS_HISTORY - daysAgo);
+
+                weightedSum += lastKnownPoint.value * weight;
+                totalWeight += weight;
               }
             }
 
-            if (count > 0) {
+            if (totalWeight > 0) {
               forecastData.push({
                 timestampMs: futureMs,
-                forecastValue: sum / count
+                forecastValue: weightedSum / totalWeight
               });
             }
           }
