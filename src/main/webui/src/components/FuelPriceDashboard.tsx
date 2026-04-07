@@ -100,7 +100,8 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [xTicks, setXTicks] = useState<number[]>([]); // All interval ticks for grid
-  const [xDomain, setXDomain] = useState<number[]>([0, 0]); // <-- NEU
+  const [xDomain, setXDomain] = useState<number[]>([0, 0]);
+  const [loadingAiForecast, setLoadingAiForecast] = useState(false); // New state for AI forecast loading
 
   useEffect(() => {
     let isMounted = true;
@@ -343,6 +344,7 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
 
         // Lade die AI-Prognose asynchron, ohne den initialen Render zu blockieren
         if (isHoltWintersForecastActive) {
+            setLoadingAiForecast(true); // Set AI forecast loading to true
             let holtWintersForecastHours = 0;
             if (selectedForecastOption === 'trend_12h_holt') {
                 holtWintersForecastHours = 12;
@@ -370,8 +372,15 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
                   })
                   .catch(e => {
                       console.warn("Failed to fetch Holt-Winters forecast", e);
+                  })
+                  .finally(() => { // Set AI forecast loading to false
+                      if (isMounted) setLoadingAiForecast(false);
                   });
+            } else {
+                if (isMounted) setLoadingAiForecast(false); // No AI forecast to fetch
             }
+        } else {
+            if (isMounted) setLoadingAiForecast(false); // No AI forecast active
         }
 
       } catch (err) {
@@ -405,57 +414,69 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
   const isHoltWintersForecastActive = selectedForecastOption === 'trend_12h_holt' || selectedForecastOption === '24h_holt' || selectedForecastOption === '48h_holt';
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={chartData} margin={{ top: 5, right: 40, left: 10, bottom: 30 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-          <XAxis
-              dataKey="timestampMs"
-              type="number"
-              scale="time"
-              domain={xDomain}
-              // allowDataOverflow={true}
-              ticks={xTicks}
-              tickFormatter={(timestampMs) => {
-                  const date = new Date(timestampMs);
-                  const timeString = date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    <div className="relative w-full" style={{ height: height }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={chartData} margin={{ top: 5, right: 40, left: 10, bottom: 30 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+            <XAxis
+                dataKey="timestampMs"
+                type="number"
+                scale="time"
+                domain={xDomain}
+                // allowDataOverflow={true}
+                ticks={xTicks}
+                tickFormatter={(timestampMs) => {
+                    const date = new Date(timestampMs);
+                    const timeString = date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 
-                  let totalHours = durationHours;
-                  if (selectedForecastOption === 'trend_12h_holt') {
-                      totalHours += 12;
-                  } else if (selectedForecastOption === '24h_holt') {
-                      totalHours += 24;
-                  } else if (selectedForecastOption === '48h_holt') {
-                      totalHours += 48;
-                  }
+                    let totalHours = durationHours;
+                    if (selectedForecastOption === 'trend_12h_holt') {
+                        totalHours += 12;
+                    } else if (selectedForecastOption === '24h_holt') {
+                        totalHours += 24;
+                    } else if (selectedForecastOption === '48h_holt') {
+                        totalHours += 48;
+                    }
 
-                  // Bei mehr als 24 Stunden Gesamtansicht: Immer Datum + Uhrzeit anzeigen
-                  if (totalHours > 24 || timeString === '00:00') {
-                      // Entferne die <= 48 Einschränkung, zeige einfach immer beides
-                      return `${date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} ${timeString}`;
-                  }
-                  // Bei 24h Ansicht: Nur Uhrzeit
-                  return timeString;
-              }}
-              stroke="#94a3b8"
-              minTickGap={20}
-              tick={{ fontSize: 12 }}
-              angle={-45}
-              textAnchor="end"
-              height={60}
+                    // Bei mehr als 24 Stunden Gesamtansicht: Immer Datum + Uhrzeit anzeigen
+                    if (totalHours > 24 || timeString === '00:00') {
+                        // Entferne die <= 48 Einschränkung, zeige einfach immer beides
+                        return `${date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} ${timeString}`;
+                    }
+                    // Bei 24h Ansicht: Nur Uhrzeit
+                    return timeString;
+                }}
+                stroke="#94a3b8"
+                minTickGap={20}
+                tick={{ fontSize: 12 }}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+            />
+          <YAxis stroke="#94a3b8" domain={['dataMin - 0.01', 'dataMax + 0.01']} tickFormatter={(value) => value.toFixed(2)} />
+          <Tooltip
+            content={<CustomTooltip fuelTypeName={getFuelTypeName(fuelType)} />}
           />
-        <YAxis stroke="#94a3b8" domain={['dataMin - 0.01', 'dataMax + 0.01']} tickFormatter={(value) => value.toFixed(2)} />
-        <Tooltip
-          content={<CustomTooltip fuelTypeName={getFuelTypeName(fuelType)} />}
-        />
-        <Line type="stepAfter" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} fill="none" isAnimationActive={false} />
-        {isTrendForecastActive && (
-          <Line type="stepAfter" dataKey="forecastValue" stroke="#82ca9d" strokeWidth={2} strokeDasharray="5 5" dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
-        )}
-        {isHoltWintersForecastActive && (
-          <Line type="stepAfter" dataKey="aiForecastValue" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 5" dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
-        )}
-      </LineChart>
-    </ResponsiveContainer>
+          <Line type="stepAfter" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} fill="none" isAnimationActive={false} />
+          {isTrendForecastActive && (
+            <Line type="stepAfter" dataKey="forecastValue" stroke="#82ca9d" strokeWidth={2} strokeDasharray="5 5" dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
+          )}
+          {isHoltWintersForecastActive && (
+            <Line type="stepAfter" dataKey="aiForecastValue" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 5" dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
+          )}
+          {loadingAiForecast && (
+              <g>
+                  {/* Positionierung: x = (Gesamtbreite - rechter_Margin - Spinner_Breite), y = oberer_Margin */}
+                  <foreignObject x="calc(100% - 40px - 32px)" y="5" width="32" height="32">
+                      <div className="p-2 bg-slate-800/50 rounded-full flex items-center justify-center">
+                          <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />
+                      </div>
+                  </foreignObject>
+              </g>
+          )}
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 };
 
