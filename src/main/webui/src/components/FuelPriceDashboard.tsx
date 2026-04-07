@@ -1,4 +1,4 @@
-import {Clock, Fuel, X, RefreshCw, TrendingUp, TrendingDown} from 'lucide-react'; // X-Icon für den Schließen-Button, RefreshCw für Update-Info
+import {Clock, Fuel, X, RefreshCw, TrendingUp, TrendingDown, ChevronDown, ChevronUp} from 'lucide-react'; // X-Icon für den Schließen-Button, RefreshCw für Update-Info
 import React, {useEffect, useState} from 'react';
 import {CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 import FuelPriceCardSkeleton from './FuelPriceCardSkeleton'; // Import Skeleton
@@ -40,7 +40,7 @@ interface FuelPriceChartProps {
   fuelType: string;
   height?: number; // Optional height prop for chart
   durationHours?: number; // New prop for duration
-  showForecast?: boolean; // New prop for forecast
+  selectedForecastOption?: 'none' | 'trend_12h_holt' | '24h_holt' | '48h_holt'; // New prop
 }
 
 // Helper function to get display name for fuel type
@@ -95,11 +95,12 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, f
 };
 
 
-const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, height = 200, durationHours = 24, showForecast = false }) => {
+const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, height = 200, durationHours = 24, selectedForecastOption = 'none' }) => {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [xTicks, setXTicks] = useState<number[]>([]); // All interval ticks for grid
+  const [xDomain, setXDomain] = useState<number[]>([0, 0]); // <-- NEU
 
   useEffect(() => {
     let isMounted = true;
@@ -107,9 +108,12 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
       setLoading(true);
       setError(null);
       try {
+        const isTrendForecastActive = selectedForecastOption === 'trend_12h_holt';
+        const isHoltWintersForecastActive = selectedForecastOption === 'trend_12h_holt' || selectedForecastOption === '24h_holt' || selectedForecastOption === '48h_holt';
+
         // Für die Prognose benötigen wir die entsprechende Historie in Stunden
-        const requiredHistoryHours = FORECAST_DAYS_HISTORY * 24;
-        const fetchDuration = showForecast ? Math.max(durationHours, requiredHistoryHours) : durationHours;
+        const requiredHistoryForTrend = FORECAST_DAYS_HISTORY * 24;
+        const fetchDuration = isTrendForecastActive ? Math.max(durationHours, requiredHistoryForTrend) : durationHours;
 
         const historyResponse = await fetch(`/api/homeassistant/fuel-prices/history?entityId=${entityId}&durationHours=${fetchDuration}`);
 
@@ -126,7 +130,7 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
         }));
 
         let forecastData: ChartDataPoint[] = [];
-        if (showForecast && fullHistory.length > 0) {
+        if (isTrendForecastActive && fullHistory.length > 0) {
           const lastPoint = fullHistory[fullHistory.length - 1];
           const lastTimestampMs = lastPoint.timestampMs;
 
@@ -278,7 +282,15 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
         if (initialChartData.length > 0) {
           // Calculate tick interval based on duration
           let tickIntervalMs;
-          const totalHours = durationHours + (showForecast ? 12 : 0);
+          let totalHours = durationHours;
+          if (selectedForecastOption === 'trend_12h_holt') {
+              totalHours += 12;
+          } else if (selectedForecastOption === '24h_holt') {
+              totalHours += 24;
+          } else if (selectedForecastOption === '48h_holt') {
+              totalHours += 48;
+          }
+
           if (totalHours <= 24) {
              tickIntervalMs = 4 * 60 * 60 * 1000; // 4 hours
           } else if (totalHours <= 48) {
@@ -289,50 +301,77 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
              tickIntervalMs = 24 * 60 * 60 * 1000; // 24 hours
           }
 
-          const generatedGridTicks: number[] = [];
-          const minTimestamp = initialChartData[0].timestampMs;
-          const maxTimestamp = initialChartData[initialChartData.length - 1].timestampMs;
+            const generatedGridTicks: number[] = [];
 
-          const startDate = new Date(minTimestamp);
-          startDate.setHours(0, 0, 0, 0);
+            // NEU: Wir holen uns den exakten Zeitstempel des ersten Datenpunktes
+            const dataMinTs = initialChartData[0].timestampMs;
+            const nowMs = new Date().getTime();
 
-          let currentTickTime = startDate.getTime();
+            let expectedForecastHours = 0;
+            if (selectedForecastOption === 'trend_12h_holt') expectedForecastHours = 12;
+            else if (selectedForecastOption === '24h_holt') expectedForecastHours = 24;
+            else if (selectedForecastOption === '48h_holt') expectedForecastHours = 48;
 
-          while (currentTickTime < minTimestamp) {
-            currentTickTime += tickIntervalMs;
-          }
+            const maxTimestamp = nowMs + (expectedForecastHours * 60 * 60 * 1000);
 
-          // Ensure ticks do not go beyond the XAxis domain's upper bound
-          const xAxisDomainUpperBound = maxTimestamp + 1000000;
-          while (currentTickTime <= xAxisDomainUpperBound) {
-            generatedGridTicks.push(currentTickTime);
-            currentTickTime += tickIntervalMs;
-          }
-          setXTicks(generatedGridTicks);
+            // Links: Das Diagramm startet exakt mit den Daten
+            // Rechts: Das Diagramm endet mit dem Ende der Prognose
+            setXDomain([dataMinTs, maxTimestamp]);
+
+            const startDate = new Date(dataMinTs);
+            startDate.setHours(0, 0, 0, 0);
+
+            let currentTickTime = startDate.getTime();
+
+            // WICHTIG: Wir spulen die Ticks vor, bis sie im sichtbaren Bereich liegen.
+            // Das verhindert, dass eine Uhrzeit links neben der Y-Achse auftaucht!
+            while (currentTickTime < dataMinTs) {
+                currentTickTime += tickIntervalMs;
+            }
+
+            // Generiere alle Ticks bis zum Ende der Prognose
+            const xAxisDomainUpperBound = maxTimestamp + 1000000;
+            while (currentTickTime <= xAxisDomainUpperBound) {
+                generatedGridTicks.push(currentTickTime);
+                currentTickTime += tickIntervalMs;
+            }
+
+            setXTicks(generatedGridTicks);
         } else {
           setXTicks([]);
         }
 
         // Lade die AI-Prognose asynchron, ohne den initialen Render zu blockieren
-        if (showForecast) {
-            fetch(`/api/homeassistant/fuel-prices/forecast?entityId=${entityId}`)
-              .then(res => {
-                  if (!res.ok) throw new Error("Failed to fetch AI forecast");
-                  return res.json();
-              })
-              .then(aiData => {
-                  if (!isMounted) return;
-                  const newAiForecastData = aiData.map((item: any) => ({
-                     timestampMs: new Date(item.timestamp).getTime(),
-                     aiForecastValue: item.predictedPrice
-                  }));
-                  
-                  const updatedChartData = updateChartData(newAiForecastData);
-                  setChartData(updatedChartData);
-              })
-              .catch(e => {
-                  console.warn("Failed to fetch Holt-Winters forecast", e);
-              });
+        if (isHoltWintersForecastActive) {
+            let holtWintersForecastHours = 0;
+            if (selectedForecastOption === 'trend_12h_holt') {
+                holtWintersForecastHours = 12;
+            } else if (selectedForecastOption === '24h_holt') {
+                holtWintersForecastHours = 24;
+            } else if (selectedForecastOption === '48h_holt') {
+                holtWintersForecastHours = 48;
+            }
+
+            if (holtWintersForecastHours > 0) {
+                fetch(`/api/homeassistant/fuel-prices/forecast?entityId=${entityId}&forecastHours=${holtWintersForecastHours}`)
+                  .then(res => {
+                      if (!res.ok) throw new Error("Failed to fetch AI forecast");
+                      return res.json();
+                  })
+                  .then(aiData => {
+                      if (!isMounted) return;
+                      const newAiForecastData = aiData.map((item: any) => ({
+                         timestampMs: new Date(item.timestamp).getTime(),
+                         aiForecastValue: item.predictedPrice
+                      }));
+
+                      const updatedChartData = updateChartData(newAiForecastData);
+                      setChartData(updatedChartData);
+                  })
+                  .catch(e => {
+                      console.warn("Failed to fetch Holt-Winters forecast", e);
+                  });
+            }
         }
 
       } catch (err) {
@@ -348,7 +387,7 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
     return () => {
       isMounted = false;
     };
-  }, [entityId, durationHours, showForecast]);
+  }, [entityId, durationHours, selectedForecastOption]);
 
   if (loading) {
     return <div className="text-slate-500 text-center text-sm py-2 h-full flex items-center justify-center min-h-25 animate-pulse bg-slate-800/30 rounded-lg">Lade Verlauf...</div>;
@@ -362,42 +401,58 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
     return <div className="text-slate-500 text-center text-sm py-2 h-full flex items-center justify-center min-h-25">Keine Verlaufsdaten verfügbar.</div>;
   }
 
+  const isTrendForecastActive = selectedForecastOption === 'trend_12h_holt';
+  const isHoltWintersForecastActive = selectedForecastOption === 'trend_12h_holt' || selectedForecastOption === '24h_holt' || selectedForecastOption === '48h_holt';
+
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={chartData} margin={{ top: 5, right: 40, left: 10, bottom: 5 }}>
+      <LineChart data={chartData} margin={{ top: 5, right: 40, left: 10, bottom: 30 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-        <XAxis
-          dataKey="timestampMs"
-          type="number"
-          scale="time"
-          domain={['dataMin', 'dataMax + 1000000']}
-          ticks={xTicks}
-          tickFormatter={(timestampMs) => {
-            const date = new Date(timestampMs);
-            const timeString = date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-            const totalHours = durationHours + (showForecast ? 12 : 0);
-            if (totalHours > 24 || timeString === '00:00') {
-              return `${date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} ${totalHours <= 48 ? timeString : ''}`.trim();
-            }
-            return timeString;
-          }}
-          stroke="#94a3b8"
-          minTickGap={20}
-          tick={{ fontSize: 12 }}
-          angle={-45}
-          textAnchor="end"
-          height={60}
-        />
+          <XAxis
+              dataKey="timestampMs"
+              type="number"
+              scale="time"
+              domain={xDomain}
+              // allowDataOverflow={true}
+              ticks={xTicks}
+              tickFormatter={(timestampMs) => {
+                  const date = new Date(timestampMs);
+                  const timeString = date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+
+                  let totalHours = durationHours;
+                  if (selectedForecastOption === 'trend_12h_holt') {
+                      totalHours += 12;
+                  } else if (selectedForecastOption === '24h_holt') {
+                      totalHours += 24;
+                  } else if (selectedForecastOption === '48h_holt') {
+                      totalHours += 48;
+                  }
+
+                  // Bei mehr als 24 Stunden Gesamtansicht: Immer Datum + Uhrzeit anzeigen
+                  if (totalHours > 24 || timeString === '00:00') {
+                      // Entferne die <= 48 Einschränkung, zeige einfach immer beides
+                      return `${date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} ${timeString}`;
+                  }
+                  // Bei 24h Ansicht: Nur Uhrzeit
+                  return timeString;
+              }}
+              stroke="#94a3b8"
+              minTickGap={20}
+              tick={{ fontSize: 12 }}
+              angle={-45}
+              textAnchor="end"
+              height={60}
+          />
         <YAxis stroke="#94a3b8" domain={['dataMin - 0.01', 'dataMax + 0.01']} tickFormatter={(value) => value.toFixed(2)} />
         <Tooltip
           content={<CustomTooltip fuelTypeName={getFuelTypeName(fuelType)} />}
         />
         <Line type="stepAfter" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} fill="none" isAnimationActive={false} />
-        {showForecast && (
-          <>
-            <Line type="stepAfter" dataKey="forecastValue" stroke="#82ca9d" strokeWidth={2} strokeDasharray="5 5" dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
-            <Line type="stepAfter" dataKey="aiForecastValue" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 5" dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
-          </>
+        {isTrendForecastActive && (
+          <Line type="stepAfter" dataKey="forecastValue" stroke="#82ca9d" strokeWidth={2} strokeDasharray="5 5" dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
+        )}
+        {isHoltWintersForecastActive && (
+          <Line type="stepAfter" dataKey="aiForecastValue" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 5" dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
         )}
       </LineChart>
     </ResponsiveContainer>
@@ -413,8 +468,9 @@ const FuelPriceDashboard: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalFuelPrice, setModalFuelPrice] = useState<{ fuelPrice: FuelPrice; fuelType: string; stationName: string } | null>(null);
   const [modalDurationHours, setModalDurationHours] = useState<number>(24);
-  const [showForecastModal, setShowForecastModal] = useState<boolean>(true); // Neu: Toggle für Prognose
+  const [selectedForecastOption, setSelectedForecastOption] = useState<'none' | 'trend_12h_holt' | '24h_holt' | '48h_holt'>('trend_12h_holt'); // Neu: Toggle für Prognose
   const [nextUpdate, setNextUpdate] = useState<number>(updateIntervalSeconds); // Countdown state
+  const [showHelpSection, setShowHelpSection] = useState<boolean>(false); // State for help section visibility
 
   useEffect(() => {
     const fetchFuelPrices = async () => {
@@ -487,7 +543,8 @@ const FuelPriceDashboard: React.FC = () => {
   const openModal = (fuelPrice: FuelPrice, fuelType: string, stationName: string) => {
     setModalFuelPrice({ fuelPrice, fuelType, stationName });
     setModalDurationHours(24); // Reset to default when opening
-    setShowForecastModal(true); // Default: Prognose an
+    setSelectedForecastOption('trend_12h_holt'); // Default forecast option
+    setShowHelpSection(false); // Collapse help section by default when opening modal
     setIsModalOpen(true);
   };
 
@@ -586,7 +643,7 @@ const FuelPriceDashboard: React.FC = () => {
                 </p>
                 {/* Das Diagramm in den Kacheln verwendet jetzt wieder die Standardhöhe (200px) ohne Prognose */}
                 <div className="mt-4">
-                  <FuelPriceChart entityId={fuelPrice.entityId} fuelType={fuelType} durationHours={24} />
+                  <FuelPriceChart entityId={fuelPrice.entityId} fuelType={fuelType} durationHours={24} selectedForecastOption='none' />
                 </div>
               </div>
             ))}
@@ -596,7 +653,7 @@ const FuelPriceDashboard: React.FC = () => {
 
       {/* Modal-Fenster */}
       {isModalOpen && modalFuelPrice && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 sm:p-6" onClick={closeModal}>
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-start justify-center z-50 p-4 sm:p-6 pt-16 sm:pt-24" onClick={closeModal}>
           <div className="bg-slate-800 p-4 sm:p-6 rounded-xl border border-slate-700 shadow-lg w-full max-w-4xl relative flex flex-col max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <button onClick={closeModal} className="absolute top-2 right-2 sm:top-4 sm:right-4 text-slate-400 hover:text-white z-10 p-2 bg-slate-800/50 rounded-full">
               <X size={24} />
@@ -607,20 +664,31 @@ const FuelPriceDashboard: React.FC = () => {
                 {modalFuelPrice.stationName} - {getFuelTypeName(modalFuelPrice.fuelType)}
               </h3>
 
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                {/* Prognose-Toggle */}
-                <label className="flex items-center space-x-2 text-sm text-slate-300 cursor-pointer whitespace-nowrap bg-slate-800 border border-slate-700 px-3 py-2 rounded-lg">
-                  <input
-                    type="checkbox"
-                    checked={showForecastModal}
-                    onChange={(e) => setShowForecastModal(e.target.checked)}
-                    className="rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900 w-4 h-4"
-                  />
-                  <span>12h Prognose</span>
-                </label>
+              <div className="flex flex-col sm:flex-row items-start sm:items-start gap-4">
+                {/* Prognose-Auswahl */}
+                <div className="flex flex-wrap gap-2 bg-slate-900 rounded-lg p-1 w-full sm:w-auto">
+                  {[
+                    { label: 'Keine Prognose', value: 'none' },
+                    { label: 'Trend + 12h HW', value: 'trend_12h_holt' }, // HW for Holt-Winters
+                    { label: '24h HW', value: '24h_holt' },
+                    { label: '48h HW', value: '48h_holt' }
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setSelectedForecastOption(option.value as 'none' | 'trend_12h_holt' | '24h_holt' | '48h_holt')}
+                      className={`flex-1 sm:flex-none px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+                        selectedForecastOption === option.value
+                          ? 'bg-blue-600 text-white'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
 
                 {/* Zeitraum-Auswahl */}
-                <div className="flex space-x-2 bg-slate-900 rounded-lg p-1 w-full sm:w-auto overflow-x-auto">
+                <div className="flex flex-wrap gap-2 bg-slate-900 rounded-lg p-1 w-full sm:w-auto">
                   {[
                     { label: '24h', value: 24 },
                     { label: '3 Tage', value: 72 },
@@ -642,14 +710,75 @@ const FuelPriceDashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="grow min-h-75 sm:min-h-100">
-              <FuelPriceChart
-                entityId={modalFuelPrice.fuelPrice.entityId}
-                fuelType={modalFuelPrice.fuelType}
-                height={400}
-                durationHours={modalDurationHours}
-                showForecast={showForecastModal}
-              />
+              <div className="shrink-0 w-full">
+                  <FuelPriceChart
+                      entityId={modalFuelPrice.fuelPrice.entityId}
+                      fuelType={modalFuelPrice.fuelType}
+                      height={400}
+                      durationHours={modalDurationHours}
+                      selectedForecastOption={selectedForecastOption}
+                  />
+              </div>
+
+            {/* Help Section */}
+            <div className="mt-8 border-t border-slate-700 pt-4">
+              <button
+                type="button"
+                onClick={() => setShowHelpSection(!showHelpSection)}
+                className="flex items-center justify-between w-full text-slate-300 hover:text-white text-lg font-semibold py-2"
+              >
+                Hilfe & Erklärungen
+                {showHelpSection ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+              </button>
+              <div
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  showHelpSection ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'
+                }`}
+              >
+                <div className="text-sm text-slate-400 space-y-3 pb-4">
+                  <p>
+                    Dieses Diagramm zeigt den historischen Preisverlauf der ausgewählten Kraftstoffart.
+                    Sie können verschiedene Prognosemodelle und Zeiträume auswählen:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>
+                      <strong>Keine Prognose:</strong> Zeigt nur den tatsächlichen Preisverlauf an.
+                    </li>
+                    <li>
+                      <strong>Trend + 12h HW:</strong> Zeigt eine 12-Stunden-Prognose basierend auf einem gewichteten Durchschnitt der letzten 7 Tage (grüne Linie)
+                      und zusätzlich eine 12-Stunden-Prognose mittels Holt-Winters-Modell (orange Linie).
+                      Die Trend-Prognose berücksichtigt, dass Preise in der Regel nur um 12 Uhr mittags steigen.
+                    </li>
+                    <li>
+                      <strong>24h HW:</strong> Zeigt eine 24-Stunden-Prognose mittels Holt-Winters-Modell (orange Linie).
+                    </li>
+                    <li>
+                      <strong>48h HW:</strong> Zeigt eine 48-Stunden-Prognose mittels Holt-Winters-Modell (orange Linie).
+                    </li>
+                  </ul>
+                  <p>
+                    Die Holt-Winters-Prognose ist ein statistisches Modell, das saisonale Trends und Muster in den Daten erkennt,
+                    um zukünftige Werte vorherzusagen.
+                  </p>
+                  <p>
+                    Die Linien im Diagramm bedeuten:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>
+                      <span className="inline-block w-4 h-0.5 bg-[#8884d8] mr-2"></span>
+                      Aktueller Preisverlauf
+                    </li>
+                    <li>
+                      <span className="inline-block w-4 h-0.5 bg-[#82ca9d] mr-2"></span>
+                      Prognose (Trend)
+                    </li>
+                    <li>
+                      <span className="inline-block w-4 h-0.5 bg-[#f59e0b] mr-2"></span>
+                      Prognose (Holt-Winters)
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
 
             <div className="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-slate-300 border-t border-slate-700 pt-4">
