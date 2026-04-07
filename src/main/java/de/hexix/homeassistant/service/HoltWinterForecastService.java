@@ -79,9 +79,9 @@ public class HoltWinterForecastService {
 
         String entityId = historyData.getFirst().getEntityId();
         CachedParams cache = paramCache.get(entityId);
-        
+
         double alpha, beta, gamma;
-        
+
         if (cache != null && ChronoUnit.HOURS.between(cache.timestamp, now) < 3) {
             alpha = cache.alpha;
             beta = cache.beta;
@@ -89,7 +89,7 @@ public class HoltWinterForecastService {
             System.out.printf("Nutze gecachte Parameter für %s: alpha=%.2f, beta=%.2f, gamma=%.2f%n", entityId, alpha, beta, gamma);
         } else {
             // Optimiere die Holt-Winters Parameter durch Grid Search
-            double[] bestParams = optimizeHoltWintersParameters(normalizedGrid, zyklusLaenge, vorhersageSchritte);
+            double[] bestParams = optimizeHoltWintersParameters(normalizedGrid, zyklusLaenge, rasterMinutes);
             alpha = bestParams[0];
             beta = bestParams[1];
             gamma = bestParams[2];
@@ -139,12 +139,16 @@ public class HoltWinterForecastService {
 
     /**
      * Sucht die optimalen Werte für Alpha, Beta und Gamma mithilfe eines Grid Search.
-     * Es werden die Parameter gewählt, die den RMSE (Root Mean Square Error) für die letzten 'vorhersageSchritte' der Trainingsdaten minimieren.
+     * Es werden die Parameter gewählt, die den RMSE (Root Mean Square Error) für einen Testzeitraum von 36 Stunden minimieren.
      */
-    private double[] optimizeHoltWintersParameters(double[] data, int period, int vorhersageSchritte) {
+    private double[] optimizeHoltWintersParameters(double[] data, int period, int rasterMinutes) {
         int n = data.length;
-        // Wir brauchen mindestens 2 Perioden + die Vorhersageschritte, um testen zu können
-        if (n < period * 2 + vorhersageSchritte) {
+
+        // Testzeitraum in Schritten für die Optimierung (mindestens 36 Stunden)
+        int optimizationTestSteps = (36 * 60) / rasterMinutes;
+
+        // Wir brauchen mindestens 2 Perioden + die Testschritte, um testen zu können
+        if (n < period * 2 + optimizationTestSteps) {
             System.out.println("Nicht genug Daten für Parameter-Optimierung. Verwende Standardwerte.");
             return new double[]{0.4, 0.1, 0.5}; // Standardwerte
         }
@@ -153,19 +157,19 @@ public class HoltWinterForecastService {
         double minRmse = Double.MAX_VALUE;
 
         // Wir spalten die Daten in Trainings- und Validierungsdaten auf
-        int trainSize = n - vorhersageSchritte;
+        int trainSize = n - optimizationTestSteps;
         double[] trainData = new double[trainSize];
         System.arraycopy(data, 0, trainData, 0, trainSize);
 
-        double[] testData = new double[vorhersageSchritte];
-        System.arraycopy(data, trainSize, testData, 0, vorhersageSchritte);
+        double[] testData = new double[optimizationTestSteps];
+        System.arraycopy(data, trainSize, testData, 0, optimizationTestSteps);
 
         // Grid Search für alpha, beta, gamma in Schritten von 0.1 (0.1 bis 0.9)
-        for (double alpha = 0.1; alpha < 1.0; alpha += 0.025) {
-            for (double beta = 0.1; beta < 1.0; beta += 0.025) {
-                for (double gamma = 0.1; gamma < 1.0; gamma += 0.025) {
+        for (double alpha = 0.0; alpha < 1.0; alpha += 0.025) {
+            for (double beta = 0.0; beta < 1.0; beta += 0.025) {
+                for (double gamma = 0.0; gamma < 1.0; gamma += 0.025) {
                     try {
-                        double[] forecast = predictHoltWinters(trainData, alpha, beta, gamma, period, vorhersageSchritte);
+                        double[] forecast = predictHoltWinters(trainData, alpha, beta, gamma, period, optimizationTestSteps);
                         double rmse = calculateRMSE(testData, forecast);
 
                         if (rmse < minRmse) {
