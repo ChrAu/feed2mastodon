@@ -477,20 +477,20 @@ const FuelPriceDashboard: React.FC = () => {
 
       {/* Modal-Fenster */}
       {isModalOpen && modalFuelPrice && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onClick={closeModal}>
-          <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg w-full max-w-4xl relative flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
-            <button onClick={closeModal} className="absolute top-4 right-4 text-slate-400 hover:text-white z-10">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 sm:p-6" onClick={closeModal}>
+          <div className="bg-slate-800 p-4 sm:p-6 rounded-xl border border-slate-700 shadow-lg w-full max-w-4xl relative flex flex-col max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <button onClick={closeModal} className="absolute top-2 right-2 sm:top-4 sm:right-4 text-slate-400 hover:text-white z-10 p-2 bg-slate-800/50 rounded-full">
               <X size={24} />
             </button>
 
-            <div className="flex justify-between items-center mb-6 mr-8">
-              <h3 className="text-2xl font-bold text-white">
+            <div className="flex flex-col mb-4 sm:mb-6 pr-8">
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-4">
                 {modalFuelPrice.stationName} - {getFuelTypeName(modalFuelPrice.fuelType)}
               </h3>
 
-              <div className="flex items-center space-x-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 {/* Prognose-Toggle */}
-                <label className="flex items-center space-x-2 text-sm text-slate-300 cursor-pointer">
+                <label className="flex items-center space-x-2 text-sm text-slate-300 cursor-pointer whitespace-nowrap bg-slate-800 border border-slate-700 px-3 py-2 rounded-lg">
                   <input
                     type="checkbox"
                     checked={showForecastModal}
@@ -501,7 +501,7 @@ const FuelPriceDashboard: React.FC = () => {
                 </label>
 
                 {/* Zeitraum-Auswahl */}
-                <div className="flex space-x-2 bg-slate-900 rounded-lg p-1">
+                <div className="flex space-x-2 bg-slate-900 rounded-lg p-1 w-full sm:w-auto overflow-x-auto">
                   {[
                     { label: '24h', value: 24 },
                     { label: '3 Tage', value: 72 },
@@ -510,7 +510,7 @@ const FuelPriceDashboard: React.FC = () => {
                     <button
                       key={option.value}
                       onClick={() => setModalDurationHours(option.value)}
-                      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                      className={`flex-1 sm:flex-none px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
                         modalDurationHours === option.value
                           ? 'bg-blue-600 text-white'
                           : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
@@ -523,7 +523,7 @@ const FuelPriceDashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex-grow min-h-[400px]">
+            <div className="flex-grow min-h-[300px] sm:min-h-[400px]">
               <FuelPriceChart
                 entityId={modalFuelPrice.fuelPrice.entityId}
                 fuelType={modalFuelPrice.fuelType}
@@ -533,12 +533,14 @@ const FuelPriceDashboard: React.FC = () => {
               />
             </div>
 
-            <div className="mt-4 text-slate-300 flex justify-between items-center">
-              <div>
-                Aktueller Preis: <span className="font-bold text-white">{modalFuelPrice.fuelPrice.value.toFixed(3)} €</span>
+            <div className="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-slate-300 border-t border-slate-700 pt-4">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-slate-400">Aktueller Preis:</span>
+                <span className="font-bold text-white text-lg whitespace-nowrap">{modalFuelPrice.fuelPrice.value.toFixed(3)} €</span>
               </div>
-              <div className="text-sm text-slate-500">
-                Letzte Änderung: {new Date(modalFuelPrice.fuelPrice.lastChanged).toLocaleString('de-DE')}
+              <div className="flex items-center space-x-2 text-sm text-slate-500">
+                <span className="text-slate-400">Letzte Änderung:</span>
+                <span className="whitespace-nowrap">{new Date(modalFuelPrice.fuelPrice.lastChanged).toLocaleString('de-DE')}</span>
               </div>
             </div>
           </div>
