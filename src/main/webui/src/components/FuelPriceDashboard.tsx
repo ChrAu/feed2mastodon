@@ -116,6 +116,12 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
           const lastPoint = fullHistory[fullHistory.length - 1];
           const lastTimestampMs = lastPoint.timestampMs;
 
+          let previousForecastValue = lastPoint.value;
+          const berlinTimeFormatter = new Intl.DateTimeFormat('de-DE', { 
+            timeZone: 'Europe/Berlin', 
+            hour: 'numeric' 
+          });
+
           // Generiere 12 Stunden Prognose im 5-Minuten-Takt
           const intervals = (12 * 60) / 5; // 144 Punkte
           for (let i = 1; i <= intervals; i++) {
@@ -160,10 +166,26 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
             }
 
             if (totalWeight > 0) {
+              const rawForecastValue = weightedSum / totalWeight;
+              let forecastValue = rawForecastValue;
+
+              // Extrahiere die Stunde in deutscher Zeit
+              const hourString = berlinTimeFormatter.format(new Date(futureMs));
+              const berlinHour = parseInt(hourString, 10);
+              const is12OClock = berlinHour === 12;
+
+              // Neue Regel: Preise dürfen nur um 12 Uhr (12:00 - 12:59) steigen.
+              // Zu allen anderen Zeiten wird ein eventueller Anstieg unterbunden.
+              if (!is12OClock && rawForecastValue > previousForecastValue) {
+                forecastValue = previousForecastValue;
+              }
+
               forecastData.push({
                 timestampMs: futureMs,
-                forecastValue: weightedSum / totalWeight
+                forecastValue: forecastValue
               });
+
+              previousForecastValue = forecastValue;
             }
           }
         }
@@ -235,15 +257,15 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
   }, [entityId, durationHours, showForecast]);
 
   if (loading) {
-    return <div className="text-slate-500 text-center text-sm py-2 h-full flex items-center justify-center min-h-[100px] animate-pulse bg-slate-800/30 rounded-lg">Lade Verlauf...</div>;
+    return <div className="text-slate-500 text-center text-sm py-2 h-full flex items-center justify-center min-h-25 animate-pulse bg-slate-800/30 rounded-lg">Lade Verlauf...</div>;
   }
 
   if (error) {
-    return <div className="text-red-400 text-center text-sm py-2 h-full flex items-center justify-center min-h-[100px]">Fehler: {error}</div>;
+    return <div className="text-red-400 text-center text-sm py-2 h-full flex items-center justify-center min-h-25">Fehler: {error}</div>;
   }
 
   if (chartData.length === 0) {
-    return <div className="text-slate-500 text-center text-sm py-2 h-full flex items-center justify-center min-h-[100px]">Keine Verlaufsdaten verfügbar.</div>;
+    return <div className="text-slate-500 text-center text-sm py-2 h-full flex items-center justify-center min-h-25">Keine Verlaufsdaten verfügbar.</div>;
   }
 
   return (
@@ -523,7 +545,7 @@ const FuelPriceDashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex-grow min-h-[300px] sm:min-h-[400px]">
+            <div className="grow min-h-75 sm:min-h-100">
               <FuelPriceChart
                 entityId={modalFuelPrice.fuelPrice.entityId}
                 fuelType={modalFuelPrice.fuelType}

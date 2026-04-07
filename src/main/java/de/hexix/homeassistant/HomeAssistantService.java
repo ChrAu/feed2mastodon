@@ -4,12 +4,14 @@ import de.hexix.homeassistant.dto.AttributesDto;
 import de.hexix.homeassistant.dto.CpuDto;
 import de.hexix.homeassistant.dto.EntityDto;
 import de.hexix.homeassistant.dto.FuelPriceDto;
+import de.hexix.homeassistant.dto.FuelPriceForecastDto;
 import de.hexix.homeassistant.dto.FuelPriceHistoryDto;
 import de.hexix.homeassistant.dto.FuelStationDto;
 import de.hexix.homeassistant.dto.TemperatureBucketDTO;
 import de.hexix.homeassistant.entity.HaEntity;
 import de.hexix.homeassistant.entity.HaStateHistory;
 import de.hexix.homeassistant.entity.HaTemperatureHistory;
+import de.hexix.homeassistant.service.HoltWinterForecastService;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
@@ -54,6 +56,9 @@ public class HomeAssistantService {
     @Inject
     EntityManager em;
 
+    @Inject
+    HoltWinterForecastService holtWinterForecastService;
+
     // Liste der relevanten IDs basierend auf deinem Input
     private static final List<String> PI_HOLE_IDS = List.of(
             "sensor.pi_hole_blockierte_anzeigen",
@@ -69,7 +74,7 @@ public class HomeAssistantService {
             "binary_sensor.pi_hole_status"
     );
 
-    private static final List<String> FUEL_PRICE_IDS = List.of(
+    public static final List<String> FUEL_PRICE_IDS = List.of(
             "sensor.aral_gosbach_diesel",
             "sensor.aral_gosbach_super",
             "sensor.aral_gosbach_super_e10",
@@ -356,6 +361,23 @@ public class HomeAssistantService {
 
 
         return finalHistory;
+    }
+
+    @Transactional
+    public List<FuelPriceForecastDto> getFuelPriceForecast(String entityId, Duration historyDuration, Duration forecastDuration, int rasterMinutes) {
+        if (!FUEL_PRICE_IDS.contains(entityId)) {
+             throw new IllegalArgumentException("Entity ID " + entityId + " is not supported for fuel price forecasting.");
+        }
+
+        final ZonedDateTime now = ZonedDateTime.now();
+        final ZonedDateTime startDate = now.minus(historyDuration);
+
+        final TypedQuery<HaStateHistory> historyQuery = em.createNamedQuery(HaStateHistory.FIND_BY_ENTITY_ID_AND_DATE_RANGE, HaStateHistory.class);
+        historyQuery.setParameter("entityId", entityId);
+        historyQuery.setParameter("startDate", startDate);
+        List<HaStateHistory> historyData = historyQuery.getResultList();
+
+        return holtWinterForecastService.calculateForecast(historyData, forecastDuration, rasterMinutes);
     }
 
 
