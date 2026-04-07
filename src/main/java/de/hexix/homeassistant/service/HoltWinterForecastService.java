@@ -119,7 +119,7 @@ public class HoltWinterForecastService {
             return new double[]{0.4, 0.1, 0.5}; // Standardwerte
         }
 
-        double[] bestParams = new double[]{0.4, 0.1, 0.5};
+        double[] bestParams = new double[]{0.4, 0.3, 0.4};
         double minRmse = Double.MAX_VALUE;
 
         // Wir spalten die Daten in Trainings- und Validierungsdaten auf
