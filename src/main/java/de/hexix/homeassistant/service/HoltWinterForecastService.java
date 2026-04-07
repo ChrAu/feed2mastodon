@@ -78,7 +78,7 @@ public class HoltWinterForecastService {
         ZonedDateTime firstTimestamp = rawData.getFirst().timestamp;
         int minuteMod = firstTimestamp.getMinute() % rasterMinutes;
         ZonedDateTime gridStart = firstTimestamp.minusMinutes(minuteMod).truncatedTo(ChronoUnit.MINUTES);
-        
+
         long totalSlots = normalizedGrid.length;
         ZonedDateTime prognoseStart = gridStart.plusMinutes(totalSlots * rasterMinutes);
 
@@ -88,7 +88,7 @@ public class HoltWinterForecastService {
 
         for (int i = 0; i < prognose.length; i++) {
             ZonedDateTime progTime = prognoseStart.plusMinutes((long) i * rasterMinutes);
-            
+
             double rawForecastValue = prognose[i];
             double forecastValue = rawForecastValue;
 
@@ -180,13 +180,13 @@ public class HoltWinterForecastService {
 
         long totalSlots = ChronoUnit.MINUTES.between(gridStart, actualEndTime) / intervalMinutes + 1;
         if (totalSlots <= 0) return new double[0];
-        
+
         double[] normalizedGrid = new double[(int) totalSlots];
 
         double lastKnownPrice = rawData.getFirst().price;
         int rawDataIndex = 0;
 
-        for (int i = 0; i < totalSlots; i++) {
+        for (long i = 0; i < totalSlots; i++) {
             ZonedDateTime currentSlotStart = gridStart.plusMinutes((long) i * intervalMinutes);
             ZonedDateTime currentSlotEnd = currentSlotStart.plusMinutes(intervalMinutes);
 
