@@ -3,6 +3,8 @@ package de.hexix.homeassistant.service;
 import de.hexix.homeassistant.dto.FuelPriceForecastDto;
 import de.hexix.homeassistant.entity.HaStateHistory;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.ZoneId;
@@ -16,6 +18,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @ApplicationScoped
 public class HoltWinterForecastService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(HoltWinterForecastService.class);
 
     private static class CachedParams {
         final double alpha;
@@ -31,7 +35,10 @@ public class HoltWinterForecastService {
         }
     }
 
+    private record ForecastCacheKey(String entityId, ZonedDateTime lastHistoryTimestamp, Duration forecastDuration, int rasterMinutes) {}
+
     private final Map<String, CachedParams> paramCache = new ConcurrentHashMap<>();
+    private final Map<ForecastCacheKey, List<FuelPriceForecastDto>> forecastResultCache = new ConcurrentHashMap<>();
 
     public static class PricePoint {
         public ZonedDateTime timestamp;
@@ -46,6 +53,16 @@ public class HoltWinterForecastService {
     public List<FuelPriceForecastDto> calculateForecast(List<HaStateHistory> historyData, Duration forecastDuration, int rasterMinutes) {
         if (historyData == null || historyData.isEmpty()) {
             return List.of();
+        }
+
+        String entityId = historyData.getFirst().getEntityId();
+        ZonedDateTime lastHistoryTimestamp = historyData.getLast().getLastChanged();
+        ForecastCacheKey cacheKey = new ForecastCacheKey(entityId, lastHistoryTimestamp, forecastDuration, rasterMinutes);
+
+        // Check if the forecast result is already in the cache
+        if (forecastResultCache.containsKey(cacheKey)) {
+            LOG.info("Returning cached forecast for entityId: {} with lastHistoryTimestamp: {}, forecastDuration: {}, rasterMinutes: {}", entityId, lastHistoryTimestamp, forecastDuration, rasterMinutes);
+            return forecastResultCache.get(cacheKey);
         }
 
         List<PricePoint> rawData = new ArrayList<>();
@@ -77,24 +94,24 @@ public class HoltWinterForecastService {
         // Vorhersage Schritte berechnen
         int vorhersageSchritte = (int) (forecastDuration.toMinutes() / rasterMinutes);
 
-        String entityId = historyData.getFirst().getEntityId();
         CachedParams cache = paramCache.get(entityId);
 
         double alpha, beta, gamma;
 
-        if (cache != null && ChronoUnit.HOURS.between(cache.timestamp, now) < 3) {
+
+        if (cache != null && lastHistoryTimestamp.isEqual(cache.timestamp)) {
             alpha = cache.alpha;
             beta = cache.beta;
             gamma = cache.gamma;
-            System.out.printf("Nutze gecachte Parameter für %s: alpha=%.2f, beta=%.2f, gamma=%.2f%n", entityId, alpha, beta, gamma);
+            LOG.info("Nutze gecachte Parameter für {}: alpha={:.2f}, beta={:.2f}, gamma={:.2f}", entityId, alpha, beta, gamma);
         } else {
             // Optimiere die Holt-Winters Parameter durch Grid Search
             double[] bestParams = optimizeHoltWintersParameters(normalizedGrid, zyklusLaenge, rasterMinutes);
             alpha = bestParams[0];
             beta = bestParams[1];
             gamma = bestParams[2];
-            paramCache.put(entityId, new CachedParams(alpha, beta, gamma, now));
-            System.out.printf("Optimale Parameter gefunden für %s: alpha=%.2f, beta=%.2f, gamma=%.2f%n", entityId, alpha, beta, gamma);
+            paramCache.put(entityId, new CachedParams(alpha, beta, gamma, lastHistoryTimestamp));
+            LOG.info("Optimale Parameter gefunden für {}: alpha={:.2f}, beta={:.2f}, gamma={:.2f}", entityId, alpha, beta, gamma);
         }
 
         double[] prognose;
@@ -134,6 +151,8 @@ public class HoltWinterForecastService {
             previousForecastValue = forecastValue;
         }
 
+        // Cache the calculated result
+        forecastResultCache.put(cacheKey, result);
         return result;
     }
 
@@ -149,7 +168,7 @@ public class HoltWinterForecastService {
 
         // Wir brauchen mindestens 2 Perioden + die Testschritte, um testen zu können
         if (n < period * 2 + optimizationTestSteps) {
-            System.out.println("Nicht genug Daten für Parameter-Optimierung. Verwende Standardwerte.");
+            LOG.info("Nicht genug Daten für Parameter-Optimierung. Verwende Standardwerte.");
             return new double[]{0.4, 0.1, 0.5}; // Standardwerte
         }
 
