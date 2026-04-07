@@ -102,6 +102,7 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
   const [xTicks, setXTicks] = useState<number[]>([]); // All interval ticks for grid
 
   useEffect(() => {
+    let isMounted = true;
     const fetchHistory = async () => {
       setLoading(true);
       setError(null);
@@ -110,18 +111,15 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
         const requiredHistoryHours = FORECAST_DAYS_HISTORY * 24;
         const fetchDuration = showForecast ? Math.max(durationHours, requiredHistoryHours) : durationHours;
 
-        const historyPromise = fetch(`/api/homeassistant/fuel-prices/history?entityId=${entityId}&durationHours=${fetchDuration}`);
-        const aiForecastPromise = showForecast
-            ? fetch(`/api/homeassistant/fuel-prices/forecast?entityId=${entityId}`).catch(e => { console.warn("Failed to fetch Holt-Winters forecast", e); return null; })
-            : Promise.resolve(null);
-
-        const [historyResponse, aiForecastResponse] = await Promise.all([historyPromise, aiForecastPromise]);
+        const historyResponse = await fetch(`/api/homeassistant/fuel-prices/history?entityId=${entityId}&durationHours=${fetchDuration}`);
 
         if (!historyResponse.ok) {
           throw new Error(`HTTP error! status: ${historyResponse.status}`);
         }
 
         const data: FuelPriceHistory[] = await historyResponse.json();
+        if (!isMounted) return;
+
         const fullHistory = data.map(item => ({
           ...item,
           timestampMs: new Date(item.timestamp).getTime()
@@ -200,19 +198,6 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
           }
         }
 
-        let aiForecastData: ChartDataPoint[] = [];
-        if (showForecast && aiForecastResponse && aiForecastResponse.ok) {
-           try {
-               const aiData = await aiForecastResponse.json();
-               aiForecastData = aiData.map((item: any) => ({
-                  timestampMs: new Date(item.timestamp).getTime(),
-                  aiForecastValue: item.predictedPrice
-               }));
-           } catch (e) {
-               console.warn("Failed to parse Holt-Winters forecast JSON", e);
-           }
-        }
-
         const now = new Date().getTime();
         const minDisplayMs = now - durationHours * 60 * 60 * 1000;
 
@@ -221,71 +206,76 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
           .filter(pt => pt.timestampMs >= minDisplayMs)
           .map(pt => ({ timestampMs: pt.timestampMs, value: pt.value }));
 
-        // Daten mergen basierend auf timestampMs
-        const pointMap = new Map<number, ChartDataPoint>();
+        // Funktion zum Aktualisieren der Chart-Daten (inklusive optionaler AI-Prognose)
+        const updateChartData = (aiForecastData: ChartDataPoint[] = []) => {
+            const pointMap = new Map<number, ChartDataPoint>();
 
-        const addPoint = (ts: number, data: Partial<ChartDataPoint>) => {
-           // Wir runden den Timestamp auf volle 5 Minuten, damit die Prognosen
-           // den gleichen Timestamp auf der X-Achse haben und zusammen im Tooltip auftauchen
-           const roundedTs = Math.round(ts / (5 * 60 * 1000)) * (5 * 60 * 1000);
+            const addPoint = (ts: number, data: Partial<ChartDataPoint>) => {
+               // Wir runden den Timestamp auf volle 5 Minuten, damit die Prognosen
+               // den gleichen Timestamp auf der X-Achse haben und zusammen im Tooltip auftauchen
+               const roundedTs = Math.round(ts / (5 * 60 * 1000)) * (5 * 60 * 1000);
 
-           if (!pointMap.has(roundedTs)) {
-               pointMap.set(roundedTs, { timestampMs: roundedTs });
-           }
-           Object.assign(pointMap.get(roundedTs)!, data);
+               if (!pointMap.has(roundedTs)) {
+                   pointMap.set(roundedTs, { timestampMs: roundedTs });
+               }
+               Object.assign(pointMap.get(roundedTs)!, data);
+            };
+
+            displayHistory.forEach(pt => addPoint(pt.timestampMs, { value: pt.value }));
+            forecastData.forEach(pt => addPoint(pt.timestampMs, { forecastValue: pt.forecastValue }));
+            aiForecastData.forEach(pt => addPoint(pt.timestampMs, { aiForecastValue: pt.aiForecastValue }));
+
+            // Verbinde die aktuelle Linie mit den Prognoselinien
+            if (displayHistory.length > 0) {
+                const lastHistoryVal = displayHistory[displayHistory.length - 1].value;
+                const lastHistoryTs = displayHistory[displayHistory.length - 1].timestampMs;
+
+                if (forecastData.length > 0) {
+                    addPoint(lastHistoryTs, { forecastValue: lastHistoryVal });
+                }
+                if (aiForecastData.length > 0) {
+                    addPoint(lastHistoryTs, { aiForecastValue: lastHistoryVal });
+                }
+            }
+
+            const finalChartData = Array.from(pointMap.values()).sort((a, b) => a.timestampMs - b.timestampMs);
+
+            // Forward-Fill für Step-Charts:
+            // Da die Holt-Winters-Prognose z.B. alle 10 Minuten einen Wert hat, die historische Prognose
+            // aber alle 5 Minuten, füllen wir fehlende Werte mit dem zuletzt bekannten auf.
+            // Das entspricht genau der visuellen Logik eines Step-Charts und garantiert,
+            // dass das Tooltip auf jedem Punkt beide Werte anzeigt.
+            let currentForecast: number | undefined = undefined;
+            let currentAiForecast: number | undefined = undefined;
+
+            let forecastStartTs = 0;
+            if (displayHistory.length > 0) {
+                forecastStartTs = Math.round(displayHistory[displayHistory.length - 1].timestampMs / (5 * 60 * 1000)) * (5 * 60 * 1000);
+            }
+
+            finalChartData.forEach(pt => {
+                if (pt.timestampMs >= forecastStartTs) {
+                    if (pt.forecastValue !== undefined) {
+                        currentForecast = pt.forecastValue;
+                    } else if (currentForecast !== undefined) {
+                        pt.forecastValue = currentForecast;
+                    }
+
+                    if (pt.aiForecastValue !== undefined) {
+                        currentAiForecast = pt.aiForecastValue;
+                    } else if (currentAiForecast !== undefined) {
+                        pt.aiForecastValue = currentAiForecast;
+                    }
+                }
+            });
+
+            return finalChartData;
         };
 
-        displayHistory.forEach(pt => addPoint(pt.timestampMs, { value: pt.value }));
-        forecastData.forEach(pt => addPoint(pt.timestampMs, { forecastValue: pt.forecastValue }));
-        aiForecastData.forEach(pt => addPoint(pt.timestampMs, { aiForecastValue: pt.aiForecastValue }));
+        const initialChartData = updateChartData([]);
+        setChartData(initialChartData);
 
-        // Verbinde die aktuelle Linie mit den Prognoselinien
-        if (displayHistory.length > 0) {
-            const lastHistoryVal = displayHistory[displayHistory.length - 1].value;
-            const lastHistoryTs = displayHistory[displayHistory.length - 1].timestampMs;
-
-            if (forecastData.length > 0) {
-                addPoint(lastHistoryTs, { forecastValue: lastHistoryVal });
-            }
-            if (aiForecastData.length > 0) {
-                addPoint(lastHistoryTs, { aiForecastValue: lastHistoryVal });
-            }
-        }
-
-        const finalChartData = Array.from(pointMap.values()).sort((a, b) => a.timestampMs - b.timestampMs);
-
-        // Forward-Fill für Step-Charts:
-        // Da die Holt-Winters-Prognose z.B. alle 10 Minuten einen Wert hat, die historische Prognose
-        // aber alle 5 Minuten, füllen wir fehlende Werte mit dem zuletzt bekannten auf.
-        // Das entspricht genau der visuellen Logik eines Step-Charts und garantiert,
-        // dass das Tooltip auf jedem Punkt beide Werte anzeigt.
-        let currentForecast: number | undefined = undefined;
-        let currentAiForecast: number | undefined = undefined;
-
-        let forecastStartTs = 0;
-        if (displayHistory.length > 0) {
-            forecastStartTs = Math.round(displayHistory[displayHistory.length - 1].timestampMs / (5 * 60 * 1000)) * (5 * 60 * 1000);
-        }
-
-        finalChartData.forEach(pt => {
-            if (pt.timestampMs >= forecastStartTs) {
-                if (pt.forecastValue !== undefined) {
-                    currentForecast = pt.forecastValue;
-                } else if (currentForecast !== undefined) {
-                    pt.forecastValue = currentForecast;
-                }
-
-                if (pt.aiForecastValue !== undefined) {
-                    currentAiForecast = pt.aiForecastValue;
-                } else if (currentAiForecast !== undefined) {
-                    pt.aiForecastValue = currentAiForecast;
-                }
-            }
-        });
-
-        setChartData(finalChartData);
-
-        if (finalChartData.length > 0) {
+        if (initialChartData.length > 0) {
           // Calculate tick interval based on duration
           let tickIntervalMs;
           const totalHours = durationHours + (showForecast ? 12 : 0);
@@ -300,8 +290,8 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
           }
 
           const generatedGridTicks: number[] = [];
-          const minTimestamp = finalChartData[0].timestampMs;
-          const maxTimestamp = finalChartData[finalChartData.length - 1].timestampMs;
+          const minTimestamp = initialChartData[0].timestampMs;
+          const maxTimestamp = initialChartData[initialChartData.length - 1].timestampMs;
 
           const startDate = new Date(minTimestamp);
           startDate.setHours(0, 0, 0, 0);
@@ -323,15 +313,41 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
           setXTicks([]);
         }
 
+        // Lade die AI-Prognose asynchron, ohne den initialen Render zu blockieren
+        if (showForecast) {
+            fetch(`/api/homeassistant/fuel-prices/forecast?entityId=${entityId}`)
+              .then(res => {
+                  if (!res.ok) throw new Error("Failed to fetch AI forecast");
+                  return res.json();
+              })
+              .then(aiData => {
+                  if (!isMounted) return;
+                  const newAiForecastData = aiData.map((item: any) => ({
+                     timestampMs: new Date(item.timestamp).getTime(),
+                     aiForecastValue: item.predictedPrice
+                  }));
+                  
+                  const updatedChartData = updateChartData(newAiForecastData);
+                  setChartData(updatedChartData);
+              })
+              .catch(e => {
+                  console.warn("Failed to fetch Holt-Winters forecast", e);
+              });
+        }
+
       } catch (err) {
         console.error(`Failed to fetch history for ${entityId}:`, err);
-        setError("Fehler beim Laden der Verlaufsdaten.");
+        if (isMounted) setError("Fehler beim Laden der Verlaufsdaten.");
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchHistory().catch(console.error);
+
+    return () => {
+      isMounted = false;
+    };
   }, [entityId, durationHours, showForecast]);
 
   if (loading) {
