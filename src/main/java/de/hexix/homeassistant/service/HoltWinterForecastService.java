@@ -79,8 +79,8 @@ public class HoltWinterForecastService {
         int minuteMod = firstTimestamp.getMinute() % rasterMinutes;
         ZonedDateTime gridStart = firstTimestamp.minusMinutes(minuteMod).truncatedTo(ChronoUnit.MINUTES);
 
-        long totalSlots = normalizedGrid.length;
-        ZonedDateTime prognoseStart = gridStart.plusMinutes(totalSlots * rasterMinutes);
+        int totalSlots = normalizedGrid.length;
+        ZonedDateTime prognoseStart = gridStart.plusMinutes((long) totalSlots * rasterMinutes);
 
         List<FuelPriceForecastDto> result = new ArrayList<>();
         double previousForecastValue = normalizedGrid[normalizedGrid.length - 1];
@@ -178,17 +178,18 @@ public class HoltWinterForecastService {
         int minuteMod = firstTimestamp.getMinute() % intervalMinutes;
         ZonedDateTime gridStart = firstTimestamp.minusMinutes(minuteMod).truncatedTo(ChronoUnit.MINUTES);
 
-        long totalSlots = ChronoUnit.MINUTES.between(gridStart, actualEndTime) / intervalMinutes + 1;
-        if (totalSlots <= 0) return new double[0];
+        long totalSlotsLong = ChronoUnit.MINUTES.between(gridStart, actualEndTime) / intervalMinutes + 1;
+        if (totalSlotsLong <= 0) return new double[0];
 
-        double[] normalizedGrid = new double[(int) totalSlots];
+        if(totalSlotsLong > Integer.MAX_VALUE){
+            throw new IllegalArgumentException("Zeitraum ist zu groß");
+        }
+
+        int totalSlots = (int) totalSlotsLong;
+        double[] normalizedGrid = new double[totalSlots];
 
         double lastKnownPrice = rawData.getFirst().price;
         int rawDataIndex = 0;
-
-        if(totalSlots > Integer.MAX_VALUE){
-            throw new IllegalArgumentException("Zeitraum ist zu groß");
-        }
 
         for (int i = 0; i < totalSlots; i++) {
             ZonedDateTime currentSlotStart = gridStart.plusMinutes((long) i * intervalMinutes);
