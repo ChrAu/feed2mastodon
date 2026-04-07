@@ -3,6 +3,7 @@ package de.hexix.homeassistant;
 import de.hexix.homeassistant.dto.AttributesDto;
 import de.hexix.homeassistant.dto.CpuDto;
 import de.hexix.homeassistant.dto.EntityDto;
+import de.hexix.homeassistant.dto.FuelPriceForecastDto; // Import FuelPriceForecastDto
 import de.hexix.homeassistant.dto.FuelPriceHistoryDto; // Import FuelPriceHistoryDto
 import de.hexix.homeassistant.dto.FuelStationDto;
 import de.hexix.homeassistant.dto.TemperatureBucketDTO;
@@ -13,6 +14,7 @@ import de.hexix.homeassistant.entity.HaStateHistory;
 import de.hexix.util.DurationLogger;
 import io.smallrye.mutiny.Multi;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -162,6 +164,16 @@ public class HomeAssistantResource {
             @QueryParam("entityId") String entityId,
             @QueryParam("durationHours") int durationHours) {
         return homeAssistantService.getFuelPriceHistory(entityId, Duration.ofHours(durationHours));
+    }
+
+    @GET
+    @Path("/fuel-prices/forecast")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<FuelPriceForecastDto> getFuelPriceForecast(
+            @QueryParam("entityId") String entityId,
+            @QueryParam("historyDays") @DefaultValue("3650") long historyDays,
+            @QueryParam("forecastHours") @DefaultValue("12") int forecastHours) {
+        return homeAssistantService.getFuelPriceForecast(entityId, Duration.ofDays(historyDays), Duration.ofHours(forecastHours), 10);
     }
 
     @GET
