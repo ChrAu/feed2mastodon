@@ -164,10 +164,9 @@ public class HoltWinterForecastService {
         double[] testData = new double[optimizationTestSteps];
         System.arraycopy(data, trainSize, testData, 0, optimizationTestSteps);
 
-        // Grid Search für alpha, beta, gamma in Schritten von 0.1 (0.1 bis 0.9)
-        for (double alpha = 0.0; alpha < 1.0; alpha += 0.025) {
-            for (double beta = 0.0; beta < 1.0; beta += 0.025) {
-                for (double gamma = 0.0; gamma < 1.0; gamma += 0.025) {
+        for (double alpha = 0.0; alpha <= 1.0; alpha += 0.025) {
+            for (double beta = 0.0; beta <= 1.0; beta += 0.025) {
+                for (double gamma = 0.0; gamma <= 1.0; gamma += 0.025) {
                     try {
                         double[] forecast = predictHoltWinters(trainData, alpha, beta, gamma, period, optimizationTestSteps);
                         double rmse = calculateRMSE(testData, forecast);
