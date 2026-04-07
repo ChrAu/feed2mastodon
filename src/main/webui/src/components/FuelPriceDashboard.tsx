@@ -3,6 +3,10 @@ import React, {useEffect, useState} from 'react';
 import {CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 import FuelPriceCardSkeleton from './FuelPriceCardSkeleton'; // Import Skeleton
 
+// Globale Konfiguration für die Prognoseberechnung
+const FORECAST_DAYS_HISTORY = 5; // Anzahl der historischen Tage
+const FORECAST_WEIGHT_BASE = 2;  // Basis für die exponentielle Gewichtung (z.B. 2 für normal stark, 3 für sehr stark)
+
 // Angepasste Interfaces, um den Backend-DTOs zu entsprechen
 interface FuelPrice {
   value: number;
@@ -24,11 +28,18 @@ interface FuelPriceHistory {
   timestampMs: number; // Neu hinzugefügt für Recharts XAxis Skalierung
 }
 
+interface ChartDataPoint {
+  timestampMs: number;
+  value?: number;
+  forecastValue?: number;
+}
+
 interface FuelPriceChartProps {
   entityId: string;
   fuelType: string;
   height?: number; // Optional height prop for chart
   durationHours?: number; // New prop for duration
+  showForecast?: boolean; // New prop for forecast
 }
 
 // Helper function to get display name for fuel type
@@ -61,9 +72,14 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, f
     });
 
     return (
-      <div className="bg-slate-800 p-3 rounded-md border border-slate-700 text-white text-sm z-50">
+      <div className="bg-slate-800 p-3 rounded-md border border-slate-700 text-white text-sm z-50 shadow-xl">
         <p className="font-bold mb-1">{formattedDate}</p>
-        <p>{`${fuelTypeName}: ${payload[0].value.toFixed(3)} €`}</p>
+        {payload.map((entry, index) => (
+          <p key={index} style={{ color: entry.color }}>
+            {entry.dataKey === 'value' ? `${fuelTypeName}: ` : `Prognose: `}
+            {entry.value.toFixed(3)} €
+          </p>
+        ))}
       </div>
     );
   }
@@ -71,43 +87,121 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, f
 };
 
 
-const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, height = 200, durationHours = 24 }) => {
-  const [history, setHistory] = useState<FuelPriceHistory[]>([]);
+const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, height = 200, durationHours = 24, showForecast = false }) => {
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [xTicks, setXTicks] = useState<number[]>([]); // All 4-hour interval ticks for grid
+  const [xTicks, setXTicks] = useState<number[]>([]); // All interval ticks for grid
 
   useEffect(() => {
     const fetchHistory = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`/api/homeassistant/fuel-prices/history?entityId=${entityId}&durationHours=${durationHours}`);
+        // Für die Prognose benötigen wir die entsprechende Historie in Stunden
+        const requiredHistoryHours = FORECAST_DAYS_HISTORY * 24;
+        const fetchDuration = showForecast ? Math.max(durationHours, requiredHistoryHours) : durationHours;
+        const response = await fetch(`/api/homeassistant/fuel-prices/history?entityId=${entityId}&durationHours=${fetchDuration}`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data: FuelPriceHistory[] = await response.json();
-        const formattedData = data.map(item => ({
+        const fullHistory = data.map(item => ({
           ...item,
           timestampMs: new Date(item.timestamp).getTime()
         }));
-        setHistory(formattedData);
 
-        if (formattedData.length > 0) {
+        let forecastData: ChartDataPoint[] = [];
+        if (showForecast && fullHistory.length > 0) {
+          const lastPoint = fullHistory[fullHistory.length - 1];
+          const lastTimestampMs = lastPoint.timestampMs;
+
+          // Generiere 12 Stunden Prognose im 5-Minuten-Takt
+          const intervals = (12 * 60) / 5; // 144 Punkte
+          for (let i = 1; i <= intervals; i++) {
+            const futureMs = lastTimestampMs + i * 5 * 60 * 1000;
+
+            let weightedSum = 0;
+            let totalWeight = 0;
+
+            // Durchschnitt der letzten X Tage (konfigurierbar) zur exakt gleichen Uhrzeit bilden
+            for (let daysAgo = 1; daysAgo <= FORECAST_DAYS_HISTORY; daysAgo++) {
+              const targetMs = futureMs - daysAgo * 24 * 60 * 60 * 1000;
+
+              let lastKnownPoint = null;
+              // Rückwärts suchen, um den neuesten Punkt VOR oder exakt ZUM targetMs zu finden
+              for (let j = fullHistory.length - 1; j >= 0; j--) {
+                if (fullHistory[j].timestampMs <= targetMs) {
+                  lastKnownPoint = fullHistory[j];
+                  break;
+                }
+              }
+
+              // Falls der gesuchte Zeitpunkt kurz vor dem Anfang der Historie liegt,
+              // nehmen wir den ältesten verfügbaren Punkt als beste Annäherung
+              if (!lastKnownPoint && fullHistory.length > 0) {
+                lastKnownPoint = fullHistory[0];
+              }
+
+              if (lastKnownPoint) {
+                // Exponentielle Gewichtung: Jüngere Tage werden signifikant stärker gewichtet.
+                // Basis FORECAST_WEIGHT_BASE sorgt für eine sehr starke Ausrichtung am aktuellen Trend.
+                // Beispiel bei 5 Tagen Historie und Basis 3:
+                // Tag 1 (gestern): 3^4 = 81
+                // Tag 2: 3^3 = 27
+                // Tag 3: 3^2 = 9
+                // Tag 4: 3^1 = 3
+                // Tag 5: 3^0 = 1
+                const weight = Math.pow(FORECAST_WEIGHT_BASE, FORECAST_DAYS_HISTORY - daysAgo);
+
+                weightedSum += lastKnownPoint.value * weight;
+                totalWeight += weight;
+              }
+            }
+
+            if (totalWeight > 0) {
+              forecastData.push({
+                timestampMs: futureMs,
+                forecastValue: weightedSum / totalWeight
+              });
+            }
+          }
+        }
+
+        const now = new Date().getTime();
+        const minDisplayMs = now - durationHours * 60 * 60 * 1000;
+
+        // Filter die Daten auf die vom Nutzer gewünschte Anzeigedauer
+        let displayHistory: ChartDataPoint[] = fullHistory
+          .filter(pt => pt.timestampMs >= minDisplayMs)
+          .map(pt => ({ timestampMs: pt.timestampMs, value: pt.value }));
+
+        // Verbinde die aktuelle Linie mit der Prognoselinie, indem der letzte echte Wert
+        // auch als Startwert für die Prognose gesetzt wird
+        if (displayHistory.length > 0 && forecastData.length > 0) {
+          displayHistory[displayHistory.length - 1].forecastValue = displayHistory[displayHistory.length - 1].value;
+        }
+
+        const finalChartData = [...displayHistory, ...forecastData];
+        setChartData(finalChartData);
+
+        if (finalChartData.length > 0) {
           // Calculate tick interval based on duration
           let tickIntervalMs;
-          if (durationHours <= 24) {
+          const totalHours = durationHours + (showForecast ? 12 : 0);
+          if (totalHours <= 24) {
              tickIntervalMs = 4 * 60 * 60 * 1000; // 4 hours
-          } else if (durationHours <= 72) {
+          } else if (totalHours <= 48) {
+             tickIntervalMs = 8 * 60 * 60 * 1000; // 8 hours
+          } else if (totalHours <= 96) {
              tickIntervalMs = 12 * 60 * 60 * 1000; // 12 hours
           } else {
              tickIntervalMs = 24 * 60 * 60 * 1000; // 24 hours
           }
-          
-          const generatedGridTicks: number[] = [];
 
-          const minTimestamp = formattedData[0].timestampMs;
-          const maxTimestamp = formattedData[formattedData.length - 1].timestampMs;
+          const generatedGridTicks: number[] = [];
+          const minTimestamp = finalChartData[0].timestampMs;
+          const maxTimestamp = finalChartData[finalChartData.length - 1].timestampMs;
 
           const startDate = new Date(minTimestamp);
           startDate.setHours(0, 0, 0, 0);
@@ -138,7 +232,7 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
     };
 
     fetchHistory().catch(console.error);
-  }, [entityId, durationHours]);
+  }, [entityId, durationHours, showForecast]);
 
   if (loading) {
     return <div className="text-slate-500 text-center text-sm py-2 h-full flex items-center justify-center min-h-[100px] animate-pulse bg-slate-800/30 rounded-lg">Lade Verlauf...</div>;
@@ -148,13 +242,13 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
     return <div className="text-red-400 text-center text-sm py-2 h-full flex items-center justify-center min-h-[100px]">Fehler: {error}</div>;
   }
 
-  if (history.length === 0) {
+  if (chartData.length === 0) {
     return <div className="text-slate-500 text-center text-sm py-2 h-full flex items-center justify-center min-h-[100px]">Keine Verlaufsdaten verfügbar.</div>;
   }
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={history} margin={{ top: 5, right: 40, left: 10, bottom: 5 }}>
+      <LineChart data={chartData} margin={{ top: 5, right: 40, left: 10, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
         <XAxis
           dataKey="timestampMs"
@@ -165,8 +259,9 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
           tickFormatter={(timestampMs) => {
             const date = new Date(timestampMs);
             const timeString = date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-            if (durationHours > 24 || timeString === '00:00') {
-              return `${date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} ${durationHours <= 24 ? timeString : ''}`.trim();
+            const totalHours = durationHours + (showForecast ? 12 : 0);
+            if (totalHours > 24 || timeString === '00:00') {
+              return `${date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} ${totalHours <= 48 ? timeString : ''}`.trim();
             }
             return timeString;
           }}
@@ -181,7 +276,10 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
         <Tooltip
           content={<CustomTooltip fuelTypeName={getFuelTypeName(fuelType)} />}
         />
-        <Line type="stepAfter" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} fill="none" />
+        <Line type="stepAfter" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} fill="none" isAnimationActive={false} />
+        {showForecast && (
+          <Line type="stepAfter" dataKey="forecastValue" stroke="#82ca9d" strokeWidth={2} strokeDasharray="5 5" dot={false} fill="none" isAnimationActive={false} />
+        )}
       </LineChart>
     </ResponsiveContainer>
   );
@@ -196,6 +294,7 @@ const FuelPriceDashboard: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalFuelPrice, setModalFuelPrice] = useState<{ fuelPrice: FuelPrice; fuelType: string; stationName: string } | null>(null);
   const [modalDurationHours, setModalDurationHours] = useState<number>(24);
+  const [showForecastModal, setShowForecastModal] = useState<boolean>(true); // Neu: Toggle für Prognose
   const [nextUpdate, setNextUpdate] = useState<number>(updateIntervalSeconds); // Countdown state
 
   useEffect(() => {
@@ -269,6 +368,7 @@ const FuelPriceDashboard: React.FC = () => {
   const openModal = (fuelPrice: FuelPrice, fuelType: string, stationName: string) => {
     setModalFuelPrice({ fuelPrice, fuelType, stationName });
     setModalDurationHours(24); // Reset to default when opening
+    setShowForecastModal(true); // Default: Prognose an
     setIsModalOpen(true);
   };
 
@@ -365,7 +465,7 @@ const FuelPriceDashboard: React.FC = () => {
                   <Clock className="w-3 h-3 mr-1" />
                   Vor {formatTimeAgo(fuelPrice.lastChanged)}
                 </p>
-                {/* Das Diagramm in den Kacheln verwendet jetzt wieder die Standardhöhe (200px) */}
+                {/* Das Diagramm in den Kacheln verwendet jetzt wieder die Standardhöhe (200px) ohne Prognose */}
                 <div className="mt-4">
                   <FuelPriceChart entityId={fuelPrice.entityId} fuelType={fuelType} durationHours={24} />
                 </div>
@@ -382,43 +482,57 @@ const FuelPriceDashboard: React.FC = () => {
             <button onClick={closeModal} className="absolute top-4 right-4 text-slate-400 hover:text-white z-10">
               <X size={24} />
             </button>
-            
+
             <div className="flex justify-between items-center mb-6 mr-8">
               <h3 className="text-2xl font-bold text-white">
                 {modalFuelPrice.stationName} - {getFuelTypeName(modalFuelPrice.fuelType)}
               </h3>
-              
-              {/* Zeitraum-Auswahl */}
-              <div className="flex space-x-2 bg-slate-900 rounded-lg p-1">
-                {[
-                  { label: '24h', value: 24 },
-                  { label: '3 Tage', value: 72 },
-                  { label: '7 Tage', value: 168 }
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setModalDurationHours(option.value)}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                      modalDurationHours === option.value
-                        ? 'bg-blue-600 text-white'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+
+              <div className="flex items-center space-x-6">
+                {/* Prognose-Toggle */}
+                <label className="flex items-center space-x-2 text-sm text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showForecastModal}
+                    onChange={(e) => setShowForecastModal(e.target.checked)}
+                    className="rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900 w-4 h-4"
+                  />
+                  <span>12h Prognose</span>
+                </label>
+
+                {/* Zeitraum-Auswahl */}
+                <div className="flex space-x-2 bg-slate-900 rounded-lg p-1">
+                  {[
+                    { label: '24h', value: 24 },
+                    { label: '3 Tage', value: 72 },
+                    { label: '7 Tage', value: 168 }
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setModalDurationHours(option.value)}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                        modalDurationHours === option.value
+                          ? 'bg-blue-600 text-white'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
             <div className="flex-grow min-h-[400px]">
-              <FuelPriceChart 
-                entityId={modalFuelPrice.fuelPrice.entityId} 
-                fuelType={modalFuelPrice.fuelType} 
-                height={400} 
+              <FuelPriceChart
+                entityId={modalFuelPrice.fuelPrice.entityId}
+                fuelType={modalFuelPrice.fuelType}
+                height={400}
                 durationHours={modalDurationHours}
+                showForecast={showForecastModal}
               />
             </div>
-            
+
             <div className="mt-4 text-slate-300 flex justify-between items-center">
               <div>
                 Aktueller Preis: <span className="font-bold text-white">{modalFuelPrice.fuelPrice.value.toFixed(3)} €</span>
