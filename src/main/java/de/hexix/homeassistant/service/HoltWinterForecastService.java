@@ -5,6 +5,7 @@ import de.hexix.homeassistant.entity.HaStateHistory;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.time.Duration;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -74,7 +75,7 @@ public class HoltWinterForecastService {
             return List.of();
         }
 
-        ZonedDateTime firstTimestamp = rawData.get(0).timestamp;
+        ZonedDateTime firstTimestamp = rawData.getFirst().timestamp;
         int minuteMod = firstTimestamp.getMinute() % rasterMinutes;
         ZonedDateTime gridStart = firstTimestamp.minusMinutes(minuteMod).truncatedTo(ChronoUnit.MINUTES);
         
@@ -82,9 +83,25 @@ public class HoltWinterForecastService {
         ZonedDateTime prognoseStart = gridStart.plusMinutes(totalSlots * rasterMinutes);
 
         List<FuelPriceForecastDto> result = new ArrayList<>();
+        double previousForecastValue = normalizedGrid[normalizedGrid.length - 1];
+        ZoneId berlinZone = ZoneId.of("Europe/Berlin");
+
         for (int i = 0; i < prognose.length; i++) {
             ZonedDateTime progTime = prognoseStart.plusMinutes((long) i * rasterMinutes);
-            result.add(new FuelPriceForecastDto(progTime, prognose[i]));
+            
+            double rawForecastValue = prognose[i];
+            double forecastValue = rawForecastValue;
+
+            ZonedDateTime berlinTime = progTime.withZoneSameInstant(berlinZone);
+            int berlinHour = berlinTime.getHour();
+            boolean is12OClock = (berlinHour == 12);
+
+            if (!is12OClock && rawForecastValue > previousForecastValue) {
+                forecastValue = previousForecastValue;
+            }
+
+            result.add(new FuelPriceForecastDto(progTime, forecastValue));
+            previousForecastValue = forecastValue;
         }
 
         return result;
@@ -153,8 +170,8 @@ public class HoltWinterForecastService {
 
         // Sicherheitshalber nach Zeit sortieren
         rawData.sort(Comparator.comparing(p -> p.timestamp));
-        ZonedDateTime firstTimestamp = rawData.get(0).timestamp;
-        ZonedDateTime lastTimestamp = rawData.get(rawData.size() - 1).timestamp;
+        ZonedDateTime firstTimestamp = rawData.getFirst().timestamp;
+        ZonedDateTime lastTimestamp = rawData.getLast().timestamp;
 
         ZonedDateTime actualEndTime = endTime.isAfter(lastTimestamp) ? endTime : lastTimestamp;
 
@@ -166,7 +183,7 @@ public class HoltWinterForecastService {
         
         double[] normalizedGrid = new double[(int) totalSlots];
 
-        double lastKnownPrice = rawData.get(0).price;
+        double lastKnownPrice = rawData.getFirst().price;
         int rawDataIndex = 0;
 
         for (int i = 0; i < totalSlots; i++) {
@@ -187,7 +204,7 @@ public class HoltWinterForecastService {
             }
 
             if (!pricesInSlot.isEmpty()) {
-                lastKnownPrice = pricesInSlot.get(pricesInSlot.size() - 1);
+                lastKnownPrice = pricesInSlot.getLast();
             }
             normalizedGrid[i] = lastKnownPrice;
         }
