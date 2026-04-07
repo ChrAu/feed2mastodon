@@ -16,6 +16,14 @@ public class MailOAuthResource {
 
     private static final Logger LOG = Logger.getLogger(MailOAuthResource.class.getName());
 
+    private static String sanitizeForLog(String input) {
+        if (input == null) {
+            return null;
+        }
+        // Replace line breaks and carriage returns to prevent log injection via multi-line entries
+        return input.replace('\n', ' ').replace('\r', ' ');
+    }
+
     @Inject
     MailboxAccountService mailboxAccountService;
 
@@ -62,10 +70,10 @@ public class MailOAuthResource {
     public Response callback(@QueryParam("code") String code, @QueryParam("state") String email,
                              @QueryParam("error") String error, @QueryParam("error_description") String errorDescription) {
         LOG.info("Received OAuth callback. Code: " + code + ", State (email): " + email +
-                 ", Error: " + error + ", Error Description: " + errorDescription);
+                 ", Error: " + sanitizeForLog(error) + ", Error Description: " + sanitizeForLog(errorDescription));
 
         if (error != null) {
-            LOG.warning("OAuth callback received an error: " + error + " - " + errorDescription);
+            LOG.warning("OAuth callback received an error: " + sanitizeForLog(error) + " - " + sanitizeForLog(errorDescription));
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity("OAuth error: " + error + (errorDescription != null ? " (" + errorDescription + ")" : "")).build();
         }
