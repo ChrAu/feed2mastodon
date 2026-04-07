@@ -186,7 +186,11 @@ public class HoltWinterForecastService {
         double lastKnownPrice = rawData.getFirst().price;
         int rawDataIndex = 0;
 
-        for (long i = 0; i < totalSlots; i++) {
+        if(totalSlots > Integer.MAX_VALUE){
+            throw new IllegalArgumentException("Zeitraum ist zu groß");
+        }
+
+        for (int i = 0; i < totalSlots; i++) {
             ZonedDateTime currentSlotStart = gridStart.plusMinutes((long) i * intervalMinutes);
             ZonedDateTime currentSlotEnd = currentSlotStart.plusMinutes(intervalMinutes);
 
