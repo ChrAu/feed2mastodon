@@ -4,7 +4,7 @@ import {CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAx
 import FuelPriceCardSkeleton from './FuelPriceCardSkeleton'; // Import Skeleton
 
 // Globale Konfiguration für die Prognoseberechnung
-const FORECAST_DAYS_HISTORY = 5; // Anzahl der historischen Tage
+const FORECAST_DAYS_HISTORY = 7; // Auf 7 Tage angepasst
 const FORECAST_WEIGHT_BASE = 2;  // Basis für die exponentielle Gewichtung (z.B. 2 für normal stark, 3 für sehr stark)
 
 // Angepasste Interfaces, um den Backend-DTOs zu entsprechen
@@ -32,6 +32,7 @@ interface ChartDataPoint {
   timestampMs: number;
   value?: number;
   forecastValue?: number;
+  aiForecastValue?: number;
 }
 
 interface FuelPriceChartProps {
@@ -74,12 +75,19 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, f
     return (
       <div className="bg-slate-800 p-3 rounded-md border border-slate-700 text-white text-sm z-50 shadow-xl">
         <p className="font-bold mb-1">{formattedDate}</p>
-        {payload.map((entry, index) => (
-          <p key={index} style={{ color: entry.color }}>
-            {entry.dataKey === 'value' ? `${fuelTypeName}: ` : `Prognose: `}
-            {entry.value.toFixed(3)} €
-          </p>
-        ))}
+        {payload.map((entry, index) => {
+          let labelText = '';
+          if (entry.dataKey === 'value') labelText = `${fuelTypeName}: `;
+          else if (entry.dataKey === 'forecastValue') labelText = 'Prognose (Trend): ';
+          else if (entry.dataKey === 'aiForecastValue') labelText = 'Prognose (Holt-Winters): ';
+
+          return (
+            <p key={index} style={{ color: entry.color }}>
+              {labelText}
+              {Number(entry.value).toFixed(3)} €
+            </p>
+          );
+        })}
       </div>
     );
   }
@@ -94,6 +102,7 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
   const [xTicks, setXTicks] = useState<number[]>([]); // All interval ticks for grid
 
   useEffect(() => {
+    let isMounted = true;
     const fetchHistory = async () => {
       setLoading(true);
       setError(null);
@@ -101,11 +110,16 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
         // Für die Prognose benötigen wir die entsprechende Historie in Stunden
         const requiredHistoryHours = FORECAST_DAYS_HISTORY * 24;
         const fetchDuration = showForecast ? Math.max(durationHours, requiredHistoryHours) : durationHours;
-        const response = await fetch(`/api/homeassistant/fuel-prices/history?entityId=${entityId}&durationHours=${fetchDuration}`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+
+        const historyResponse = await fetch(`/api/homeassistant/fuel-prices/history?entityId=${entityId}&durationHours=${fetchDuration}`);
+
+        if (!historyResponse.ok) {
+          throw new Error(`HTTP error! status: ${historyResponse.status}`);
         }
-        const data: FuelPriceHistory[] = await response.json();
+
+        const data: FuelPriceHistory[] = await historyResponse.json();
+        if (!isMounted) return;
+
         const fullHistory = data.map(item => ({
           ...item,
           timestampMs: new Date(item.timestamp).getTime()
@@ -117,9 +131,9 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
           const lastTimestampMs = lastPoint.timestampMs;
 
           let previousForecastValue = lastPoint.value;
-          const berlinTimeFormatter = new Intl.DateTimeFormat('de-DE', { 
-            timeZone: 'Europe/Berlin', 
-            hour: 'numeric' 
+          const berlinTimeFormatter = new Intl.DateTimeFormat('de-DE', {
+            timeZone: 'Europe/Berlin',
+            hour: 'numeric'
           });
 
           // Generiere 12 Stunden Prognose im 5-Minuten-Takt
@@ -152,12 +166,6 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
               if (lastKnownPoint) {
                 // Exponentielle Gewichtung: Jüngere Tage werden signifikant stärker gewichtet.
                 // Basis FORECAST_WEIGHT_BASE sorgt für eine sehr starke Ausrichtung am aktuellen Trend.
-                // Beispiel bei 5 Tagen Historie und Basis 3:
-                // Tag 1 (gestern): 3^4 = 81
-                // Tag 2: 3^3 = 27
-                // Tag 3: 3^2 = 9
-                // Tag 4: 3^1 = 3
-                // Tag 5: 3^0 = 1
                 const weight = Math.pow(FORECAST_WEIGHT_BASE, FORECAST_DAYS_HISTORY - daysAgo);
 
                 weightedSum += lastKnownPoint.value * weight;
@@ -198,16 +206,76 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
           .filter(pt => pt.timestampMs >= minDisplayMs)
           .map(pt => ({ timestampMs: pt.timestampMs, value: pt.value }));
 
-        // Verbinde die aktuelle Linie mit der Prognoselinie, indem der letzte echte Wert
-        // auch als Startwert für die Prognose gesetzt wird
-        if (displayHistory.length > 0 && forecastData.length > 0) {
-          displayHistory[displayHistory.length - 1].forecastValue = displayHistory[displayHistory.length - 1].value;
-        }
+        // Funktion zum Aktualisieren der Chart-Daten (inklusive optionaler AI-Prognose)
+        const updateChartData = (aiForecastData: ChartDataPoint[] = []) => {
+            const pointMap = new Map<number, ChartDataPoint>();
 
-        const finalChartData = [...displayHistory, ...forecastData];
-        setChartData(finalChartData);
+            const addPoint = (ts: number, data: Partial<ChartDataPoint>) => {
+               // Wir runden den Timestamp auf volle 5 Minuten, damit die Prognosen
+               // den gleichen Timestamp auf der X-Achse haben und zusammen im Tooltip auftauchen
+               const roundedTs = Math.round(ts / (5 * 60 * 1000)) * (5 * 60 * 1000);
 
-        if (finalChartData.length > 0) {
+               if (!pointMap.has(roundedTs)) {
+                   pointMap.set(roundedTs, { timestampMs: roundedTs });
+               }
+               Object.assign(pointMap.get(roundedTs)!, data);
+            };
+
+            displayHistory.forEach(pt => addPoint(pt.timestampMs, { value: pt.value }));
+            forecastData.forEach(pt => addPoint(pt.timestampMs, { forecastValue: pt.forecastValue }));
+            aiForecastData.forEach(pt => addPoint(pt.timestampMs, { aiForecastValue: pt.aiForecastValue }));
+
+            // Verbinde die aktuelle Linie mit den Prognoselinien
+            if (displayHistory.length > 0) {
+                const lastHistoryVal = displayHistory[displayHistory.length - 1].value;
+                const lastHistoryTs = displayHistory[displayHistory.length - 1].timestampMs;
+
+                if (forecastData.length > 0) {
+                    addPoint(lastHistoryTs, { forecastValue: lastHistoryVal });
+                }
+                if (aiForecastData.length > 0) {
+                    addPoint(lastHistoryTs, { aiForecastValue: lastHistoryVal });
+                }
+            }
+
+            const finalChartData = Array.from(pointMap.values()).sort((a, b) => a.timestampMs - b.timestampMs);
+
+            // Forward-Fill für Step-Charts:
+            // Da die Holt-Winters-Prognose z.B. alle 10 Minuten einen Wert hat, die historische Prognose
+            // aber alle 5 Minuten, füllen wir fehlende Werte mit dem zuletzt bekannten auf.
+            // Das entspricht genau der visuellen Logik eines Step-Charts und garantiert,
+            // dass das Tooltip auf jedem Punkt beide Werte anzeigt.
+            let currentForecast: number | undefined = undefined;
+            let currentAiForecast: number | undefined = undefined;
+
+            let forecastStartTs = 0;
+            if (displayHistory.length > 0) {
+                forecastStartTs = Math.round(displayHistory[displayHistory.length - 1].timestampMs / (5 * 60 * 1000)) * (5 * 60 * 1000);
+            }
+
+            finalChartData.forEach(pt => {
+                if (pt.timestampMs >= forecastStartTs) {
+                    if (pt.forecastValue !== undefined) {
+                        currentForecast = pt.forecastValue;
+                    } else if (currentForecast !== undefined) {
+                        pt.forecastValue = currentForecast;
+                    }
+
+                    if (pt.aiForecastValue !== undefined) {
+                        currentAiForecast = pt.aiForecastValue;
+                    } else if (currentAiForecast !== undefined) {
+                        pt.aiForecastValue = currentAiForecast;
+                    }
+                }
+            });
+
+            return finalChartData;
+        };
+
+        const initialChartData = updateChartData([]);
+        setChartData(initialChartData);
+
+        if (initialChartData.length > 0) {
           // Calculate tick interval based on duration
           let tickIntervalMs;
           const totalHours = durationHours + (showForecast ? 12 : 0);
@@ -222,8 +290,8 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
           }
 
           const generatedGridTicks: number[] = [];
-          const minTimestamp = finalChartData[0].timestampMs;
-          const maxTimestamp = finalChartData[finalChartData.length - 1].timestampMs;
+          const minTimestamp = initialChartData[0].timestampMs;
+          const maxTimestamp = initialChartData[initialChartData.length - 1].timestampMs;
 
           const startDate = new Date(minTimestamp);
           startDate.setHours(0, 0, 0, 0);
@@ -245,15 +313,41 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
           setXTicks([]);
         }
 
+        // Lade die AI-Prognose asynchron, ohne den initialen Render zu blockieren
+        if (showForecast) {
+            fetch(`/api/homeassistant/fuel-prices/forecast?entityId=${entityId}`)
+              .then(res => {
+                  if (!res.ok) throw new Error("Failed to fetch AI forecast");
+                  return res.json();
+              })
+              .then(aiData => {
+                  if (!isMounted) return;
+                  const newAiForecastData = aiData.map((item: any) => ({
+                     timestampMs: new Date(item.timestamp).getTime(),
+                     aiForecastValue: item.predictedPrice
+                  }));
+                  
+                  const updatedChartData = updateChartData(newAiForecastData);
+                  setChartData(updatedChartData);
+              })
+              .catch(e => {
+                  console.warn("Failed to fetch Holt-Winters forecast", e);
+              });
+        }
+
       } catch (err) {
         console.error(`Failed to fetch history for ${entityId}:`, err);
-        setError("Fehler beim Laden der Verlaufsdaten.");
+        if (isMounted) setError("Fehler beim Laden der Verlaufsdaten.");
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchHistory().catch(console.error);
+
+    return () => {
+      isMounted = false;
+    };
   }, [entityId, durationHours, showForecast]);
 
   if (loading) {
@@ -300,7 +394,10 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
         />
         <Line type="stepAfter" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} fill="none" isAnimationActive={false} />
         {showForecast && (
-          <Line type="stepAfter" dataKey="forecastValue" stroke="#82ca9d" strokeWidth={2} strokeDasharray="5 5" dot={false} fill="none" isAnimationActive={false} />
+          <>
+            <Line type="stepAfter" dataKey="forecastValue" stroke="#82ca9d" strokeWidth={2} strokeDasharray="5 5" dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
+            <Line type="stepAfter" dataKey="aiForecastValue" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 5" dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
+          </>
         )}
       </LineChart>
     </ResponsiveContainer>

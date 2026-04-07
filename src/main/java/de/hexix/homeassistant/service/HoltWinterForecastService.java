@@ -11,9 +11,27 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @ApplicationScoped
 public class HoltWinterForecastService {
+
+    private static class CachedParams {
+        final double alpha;
+        final double beta;
+        final double gamma;
+        final ZonedDateTime timestamp;
+
+        CachedParams(double alpha, double beta, double gamma, ZonedDateTime timestamp) {
+            this.alpha = alpha;
+            this.beta = beta;
+            this.gamma = gamma;
+            this.timestamp = timestamp;
+        }
+    }
+
+    private final Map<String, CachedParams> paramCache = new ConcurrentHashMap<>();
 
     public static class PricePoint {
         public ZonedDateTime timestamp;
@@ -59,13 +77,25 @@ public class HoltWinterForecastService {
         // Vorhersage Schritte berechnen
         int vorhersageSchritte = (int) (forecastDuration.toMinutes() / rasterMinutes);
 
-        // Optimiere die Holt-Winters Parameter durch Grid Search
-        double[] bestParams = optimizeHoltWintersParameters(normalizedGrid, zyklusLaenge, vorhersageSchritte);
-        double alpha = bestParams[0];
-        double beta = bestParams[1];
-        double gamma = bestParams[2];
-
-        System.out.printf("Optimale Parameter gefunden: alpha=%.2f, beta=%.2f, gamma=%.2f%n", alpha, beta, gamma);
+        String entityId = historyData.getFirst().getEntityId();
+        CachedParams cache = paramCache.get(entityId);
+        
+        double alpha, beta, gamma;
+        
+        if (cache != null && ChronoUnit.HOURS.between(cache.timestamp, now) < 3) {
+            alpha = cache.alpha;
+            beta = cache.beta;
+            gamma = cache.gamma;
+            System.out.printf("Nutze gecachte Parameter für %s: alpha=%.2f, beta=%.2f, gamma=%.2f%n", entityId, alpha, beta, gamma);
+        } else {
+            // Optimiere die Holt-Winters Parameter durch Grid Search
+            double[] bestParams = optimizeHoltWintersParameters(normalizedGrid, zyklusLaenge, vorhersageSchritte);
+            alpha = bestParams[0];
+            beta = bestParams[1];
+            gamma = bestParams[2];
+            paramCache.put(entityId, new CachedParams(alpha, beta, gamma, now));
+            System.out.printf("Optimale Parameter gefunden für %s: alpha=%.2f, beta=%.2f, gamma=%.2f%n", entityId, alpha, beta, gamma);
+        }
 
         double[] prognose;
         try {
@@ -119,7 +149,7 @@ public class HoltWinterForecastService {
             return new double[]{0.4, 0.1, 0.5}; // Standardwerte
         }
 
-        double[] bestParams = new double[]{0.4, 0.1, 0.5};
+        double[] bestParams = new double[]{0.3, 0.0, 0.4};
         double minRmse = Double.MAX_VALUE;
 
         // Wir spalten die Daten in Trainings- und Validierungsdaten auf
@@ -131,9 +161,9 @@ public class HoltWinterForecastService {
         System.arraycopy(data, trainSize, testData, 0, vorhersageSchritte);
 
         // Grid Search für alpha, beta, gamma in Schritten von 0.1 (0.1 bis 0.9)
-        for (double alpha = 0.1; alpha < 1.0; alpha += 0.1) {
-            for (double beta = 0.1; beta < 1.0; beta += 0.1) {
-                for (double gamma = 0.1; gamma < 1.0; gamma += 0.1) {
+        for (double alpha = 0.1; alpha < 1.0; alpha += 0.025) {
+            for (double beta = 0.1; beta < 1.0; beta += 0.025) {
+                for (double gamma = 0.1; gamma < 1.0; gamma += 0.025) {
                     try {
                         double[] forecast = predictHoltWinters(trainData, alpha, beta, gamma, period, vorhersageSchritte);
                         double rmse = calculateRMSE(testData, forecast);
