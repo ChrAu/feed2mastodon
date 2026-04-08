@@ -1,4 +1,4 @@
-import {Clock, Fuel, X, RefreshCw, TrendingUp, TrendingDown, ChevronDown, ChevronUp} from 'lucide-react';
+import {Clock, Fuel, X, RefreshCw, TrendingUp, TrendingDown, ChevronDown, ChevronUp, ZoomIn, ZoomOut, ChevronLeft, ChevronRight} from 'lucide-react';
 import React, {useEffect, useState} from 'react';
 import {CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 import FuelPriceCardSkeleton from './FuelPriceCardSkeleton';
@@ -31,10 +31,9 @@ interface ChartDataPoint {
     value?: number;
     forecastValue?: number;
     aiForecastValue?: number;
-    savedForecastValue?: number; // Neu: Für die gespeicherte Prognose
+    savedForecastValue?: number;
 }
 
-// Neu: Interfaces für das Backtesting
 interface FuelPriceForecastDto {
     timestamp: string;
     predictedPrice: number;
@@ -54,7 +53,8 @@ interface FuelPriceChartProps {
     height?: number;
     durationHours?: number;
     selectedForecastOption?: 'none' | 'trend_12h_holt' | '24h_holt' | '48h_holt';
-    savedForecastData?: FuelPriceForecastDto[]; // Neu: Die Daten der ausgewählten alten Prognose
+    savedForecastData?: FuelPriceForecastDto[];
+    isCheckMode?: boolean;
 }
 
 const getFuelTypeName = (fuelType: string) => {
@@ -107,13 +107,16 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, f
     return null;
 };
 
-const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, height = 200, durationHours = 24, selectedForecastOption = 'none', savedForecastData }) => {
+const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, height = 200, durationHours = 24, selectedForecastOption = 'none', savedForecastData, isCheckMode = false }) => {
     const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [xTicks, setXTicks] = useState<number[]>([]);
-    const [xDomain, setXDomain] = useState<number[]>([0, 0]);
     const [loadingAiForecast, setLoadingAiForecast] = useState(false);
+
+    // NEU: States für das Zoom- und Pan-Sichtfenster
+    const [xDomain, setXDomain] = useState<number[]>([0, 0]);
+    const [yDomain, setYDomain] = useState<any[]>(['dataMin - 0.01', 'dataMax + 0.01']);
+    const [xTicks, setXTicks] = useState<number[]>([]);
 
     useEffect(() => {
         let isMounted = true;
@@ -125,7 +128,11 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
                 const isHoltWintersForecastActive = selectedForecastOption === 'trend_12h_holt' || selectedForecastOption === '24h_holt' || selectedForecastOption === '48h_holt';
 
                 const requiredHistoryForTrend = FORECAST_DAYS_HISTORY * 24;
-                const fetchDuration = isTrendForecastActive ? Math.max(durationHours, requiredHistoryForTrend) : durationHours;
+
+                // NEU: Im Check-Modus laden wir vorsichtshalber immer 7 Tage, damit man weit nach links scrollen kann
+                const fetchDuration = isCheckMode
+                    ? Math.max(durationHours, 168)
+                    : (isTrendForecastActive ? Math.max(durationHours, requiredHistoryForTrend) : durationHours);
 
                 const historyResponse = await fetch(`/api/homeassistant/fuel-prices/history?entityId=${entityId}&durationHours=${fetchDuration}`);
 
@@ -144,13 +151,10 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
                 const currentTimeMs = new Date().getTime();
                 if (fullHistory.length > 0) {
                     const lastPoint = fullHistory[fullHistory.length - 1];
-
-                    // Falls der letzte Punkt in der Historie älter als 1 Minute ist,
-                    // verlängern wir die Linie künstlich bis zum exakten aktuellen Zeitpunkt.
                     if (currentTimeMs - lastPoint.timestampMs > 60000) {
                         fullHistory.push({
                             timestamp: new Date(currentTimeMs).toISOString(),
-                            value: lastPoint.value, // Wir schreiben den alten Preis fort
+                            value: lastPoint.value,
                             timestampMs: currentTimeMs
                         });
                     }
@@ -160,7 +164,6 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
                 if (isTrendForecastActive && fullHistory.length > 0) {
                     const lastPoint = fullHistory[fullHistory.length - 1];
                     const lastTimestampMs = lastPoint.timestampMs;
-
                     let previousForecastValue = lastPoint.value;
                     const berlinTimeFormatter = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', hour: 'numeric' });
 
@@ -180,9 +183,7 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
                                 }
                             }
 
-                            if (!lastKnownPoint && fullHistory.length > 0) {
-                                lastKnownPoint = fullHistory[0];
-                            }
+                            if (!lastKnownPoint && fullHistory.length > 0) lastKnownPoint = fullHistory[0];
 
                             if (lastKnownPoint) {
                                 const weight = Math.pow(FORECAST_WEIGHT_BASE, FORECAST_DAYS_HISTORY - daysAgo);
@@ -209,7 +210,8 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
                 }
 
                 const now = new Date().getTime();
-                const minDisplayMs = now - durationHours * 60 * 60 * 1000;
+                // NEU: Im Check-Modus werfen wir keine alten Daten weg, damit sie beim Scrollen da sind
+                const minDisplayMs = isCheckMode ? 0 : now - durationHours * 60 * 60 * 1000;
 
                 let displayHistory: ChartDataPoint[] = fullHistory
                     .filter(pt => pt.timestampMs >= minDisplayMs)
@@ -220,9 +222,7 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
 
                     const addPoint = (ts: number, data: Partial<ChartDataPoint>) => {
                         const roundedTs = Math.round(ts / (5 * 60 * 1000)) * (5 * 60 * 1000);
-                        if (!pointMap.has(roundedTs)) {
-                            pointMap.set(roundedTs, { timestampMs: roundedTs });
-                        }
+                        if (!pointMap.has(roundedTs)) pointMap.set(roundedTs, { timestampMs: roundedTs });
                         Object.assign(pointMap.get(roundedTs)!, data);
                     };
 
@@ -230,7 +230,6 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
                     forecastData.forEach(pt => addPoint(pt.timestampMs, { forecastValue: pt.forecastValue }));
                     aiForecastData.forEach(pt => addPoint(pt.timestampMs, { aiForecastValue: pt.aiForecastValue }));
 
-                    // Neu: Historische (gespeicherte) Prognosepunkte hinzufügen
                     if (savedForecastData) {
                         savedForecastData.forEach(pt => {
                             const ts = new Date(pt.timestamp).getTime();
@@ -247,19 +246,21 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
 
                     const finalChartData = Array.from(pointMap.values()).sort((a, b) => a.timestampMs - b.timestampMs);
 
+                    let currentValue: number | undefined = undefined;
                     let currentForecast: number | undefined = undefined;
                     let currentAiForecast: number | undefined = undefined;
-                    let currentSavedForecast: number | undefined = undefined; // Neu
+                    let currentSavedForecast: number | undefined = undefined;
 
-                    // Modifiziert: Wir füllen Werte nach vorne auf für alle Linien
                     finalChartData.forEach(pt => {
+                        if (pt.value !== undefined) currentValue = pt.value;
+                        else if (currentValue !== undefined && pt.timestampMs <= currentTimeMs) pt.value = currentValue;
+
                         if (pt.forecastValue !== undefined) currentForecast = pt.forecastValue;
                         else if (currentForecast !== undefined && pt.timestampMs >= (forecastData[0]?.timestampMs || 0)) pt.forecastValue = currentForecast;
 
                         if (pt.aiForecastValue !== undefined) currentAiForecast = pt.aiForecastValue;
                         else if (currentAiForecast !== undefined && pt.timestampMs >= (aiForecastData[0]?.timestampMs || 0)) pt.aiForecastValue = currentAiForecast;
 
-                        // Neu: Forward-Fill für gespeicherte Vorhersage
                         if (pt.savedForecastValue !== undefined) currentSavedForecast = pt.savedForecastValue;
                         else if (currentSavedForecast !== undefined && savedForecastData && pt.timestampMs >= new Date(savedForecastData[0].timestamp).getTime()) pt.savedForecastValue = currentSavedForecast;
                     });
@@ -270,43 +271,16 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
                 const initialChartData = updateChartData([]);
                 setChartData(initialChartData);
 
+                // Initiales Sichtfenster (Domain) einstellen
                 if (initialChartData.length > 0) {
-                    let tickIntervalMs;
-                    let totalHours = durationHours;
-                    if (selectedForecastOption === 'trend_12h_holt') totalHours += 12;
-                    else if (selectedForecastOption === '24h_holt') totalHours += 24;
-                    else if (selectedForecastOption === '48h_holt') totalHours += 48;
-
-                    if (totalHours <= 24) tickIntervalMs = 4 * 60 * 60 * 1000;
-                    else if (totalHours <= 48) tickIntervalMs = 8 * 60 * 60 * 1000;
-                    else if (totalHours <= 96) tickIntervalMs = 12 * 60 * 60 * 1000;
-                    else tickIntervalMs = 24 * 60 * 60 * 1000;
-
-                    const generatedGridTicks: number[] = [];
-                    const dataMinTs = initialChartData[0].timestampMs;
-                    const nowMs = new Date().getTime();
-
                     let expectedForecastHours = 0;
                     if (selectedForecastOption === 'trend_12h_holt') expectedForecastHours = 12;
                     else if (selectedForecastOption === '24h_holt') expectedForecastHours = 24;
                     else if (selectedForecastOption === '48h_holt') expectedForecastHours = 48;
 
-                    const maxTimestamp = nowMs + (expectedForecastHours * 60 * 60 * 1000);
-                    setXDomain([dataMinTs, maxTimestamp]);
-
-                    const startDate = new Date(dataMinTs);
-                    startDate.setHours(0, 0, 0, 0);
-                    let currentTickTime = startDate.getTime();
-
-                    while (currentTickTime < dataMinTs) currentTickTime += tickIntervalMs;
-                    const xAxisDomainUpperBound = maxTimestamp + 1000000;
-                    while (currentTickTime <= xAxisDomainUpperBound) {
-                        generatedGridTicks.push(currentTickTime);
-                        currentTickTime += tickIntervalMs;
-                    }
-                    setXTicks(generatedGridTicks);
-                } else {
-                    setXTicks([]);
+                    const maxTimestamp = now + (expectedForecastHours * 60 * 60 * 1000);
+                    const initialMinTs = now - (durationHours * 60 * 60 * 1000);
+                    setXDomain([initialMinTs, maxTimestamp]);
                 }
 
                 if (isHoltWintersForecastActive) {
@@ -351,7 +325,91 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
         fetchHistory().catch(console.error);
 
         return () => { isMounted = false; };
-    }, [entityId, durationHours, selectedForecastOption, savedForecastData]);
+    }, [entityId, durationHours, selectedForecastOption, savedForecastData, isCheckMode]);
+
+
+    // NEU: Berechnet die Ticks und die Y-Achse dynamisch neu, wenn sich das Sichtfenster ändert
+    useEffect(() => {
+        if (xDomain[0] === 0 || chartData.length === 0) return;
+
+        const minTs = xDomain[0];
+        const maxTs = xDomain[1];
+
+        // 1. Ticks berechnen
+        const rangeHours = (maxTs - minTs) / 3600000;
+        let tickIntervalMs;
+        if (rangeHours <= 12) tickIntervalMs = 2 * 60 * 60 * 1000;
+        else if (rangeHours <= 24) tickIntervalMs = 4 * 60 * 60 * 1000;
+        else if (rangeHours <= 48) tickIntervalMs = 8 * 60 * 60 * 1000;
+        else if (rangeHours <= 96) tickIntervalMs = 12 * 60 * 60 * 1000;
+        else tickIntervalMs = 24 * 60 * 60 * 1000;
+
+        const generatedGridTicks: number[] = [];
+        const startDate = new Date(minTs);
+        startDate.setHours(0, 0, 0, 0);
+        let currentTickTime = startDate.getTime();
+
+        while (currentTickTime < minTs) currentTickTime += tickIntervalMs;
+        const xAxisDomainUpperBound = maxTs + 1000000;
+        while (currentTickTime <= xAxisDomainUpperBound) {
+            generatedGridTicks.push(currentTickTime);
+            currentTickTime += tickIntervalMs;
+        }
+        setXTicks(generatedGridTicks);
+
+        // 2. Y-Achse dynamisch auf den sichtbaren Bereich anpassen (Auto-Zoom)
+        const visibleData = chartData.filter(d => d.timestampMs >= minTs && d.timestampMs <= maxTs);
+        let visibleMin = Number.MAX_VALUE;
+        let visibleMax = Number.MIN_VALUE;
+
+        visibleData.forEach(d => {
+            if (d.value !== undefined) { visibleMin = Math.min(visibleMin, d.value); visibleMax = Math.max(visibleMax, d.value); }
+            if (d.forecastValue !== undefined) { visibleMin = Math.min(visibleMin, d.forecastValue); visibleMax = Math.max(visibleMax, d.forecastValue); }
+            if (d.aiForecastValue !== undefined) { visibleMin = Math.min(visibleMin, d.aiForecastValue); visibleMax = Math.max(visibleMax, d.aiForecastValue); }
+            if (d.savedForecastValue !== undefined) { visibleMin = Math.min(visibleMin, d.savedForecastValue); visibleMax = Math.max(visibleMax, d.savedForecastValue); }
+        });
+
+        if (visibleMin !== Number.MAX_VALUE) {
+            setYDomain([visibleMin - 0.01, visibleMax + 0.01]);
+        }
+
+    }, [xDomain, chartData]);
+
+    // --- NEU: Button Handler für Zoom und Pan ---
+    const handleZoomIn = () => {
+        setXDomain(prev => {
+            if (prev[0] === 0) return prev;
+            const range = prev[1] - prev[0];
+            const quarter = range / 4;
+            return [prev[0] + quarter, prev[1] - quarter]; // Schneidet 25% links und rechts ab
+        });
+    };
+
+    const handleZoomOut = () => {
+        setXDomain(prev => {
+            if (prev[0] === 0) return prev;
+            const range = prev[1] - prev[0];
+            const half = range / 2;
+            return [prev[0] - half, prev[1] + half]; // Erweitert um 50% links und rechts
+        });
+    };
+
+    const handlePanLeft = () => {
+        setXDomain(prev => {
+            if (prev[0] === 0) return prev;
+            const shift = (prev[1] - prev[0]) * 0.25; // Verschiebt um 25% nach links
+            return [prev[0] - shift, prev[1] - shift];
+        });
+    };
+
+    const handlePanRight = () => {
+        setXDomain(prev => {
+            if (prev[0] === 0) return prev;
+            const shift = (prev[1] - prev[0]) * 0.25; // Verschiebt um 25% nach rechts
+            return [prev[0] + shift, prev[1] + shift];
+        });
+    };
+
 
     if (loading) return <div className="text-slate-500 text-center text-sm py-2 h-full flex items-center justify-center min-h-25 animate-pulse bg-slate-800/30 rounded-lg">Lade Verlauf...</div>;
     if (error) return <div className="text-red-400 text-center text-sm py-2 h-full flex items-center justify-center min-h-25">Fehler: {error}</div>;
@@ -362,24 +420,43 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
 
     return (
         <div className="relative w-full" style={{ height: height }}>
+
+            {/* NEU: Das Zoom/Pan Control-Panel (Wird nur im Check-Modus angezeigt) */}
+            {isCheckMode && (
+                <div className="absolute top-2 right-10 z-10 flex gap-1 bg-slate-800/90 p-1.5 rounded-lg border border-slate-600 shadow-xl backdrop-blur-sm">
+                    <button onClick={handlePanLeft} className="p-1.5 hover:bg-slate-700 rounded-md text-slate-300 transition-colors" title="Nach links (ältere Daten)">
+                        <ChevronLeft size={18} />
+                    </button>
+                    <div className="w-px bg-slate-600 mx-1"></div>
+                    <button onClick={handleZoomIn} className="p-1.5 hover:bg-slate-700 rounded-md text-slate-300 transition-colors" title="Reinzoomen (+)">
+                        <ZoomIn size={18} />
+                    </button>
+                    <button onClick={handleZoomOut} className="p-1.5 hover:bg-slate-700 rounded-md text-slate-300 transition-colors" title="Rauszoomen (-)">
+                        <ZoomOut size={18} />
+                    </button>
+                    <div className="w-px bg-slate-600 mx-1"></div>
+                    <button onClick={handlePanRight} className="p-1.5 hover:bg-slate-700 rounded-md text-slate-300 transition-colors" title="Nach rechts (neuere Daten)">
+                        <ChevronRight size={18} />
+                    </button>
+                </div>
+            )}
+
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 5, right: 40, left: 10, bottom: 30 }}>
+                <LineChart data={chartData} margin={{ top: 25, right: 40, left: 10, bottom: 30 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                     <XAxis
                         dataKey="timestampMs"
                         type="number"
                         scale="time"
                         domain={xDomain}
+                        allowDataOverflow={true} /* WICHTIG: Erlaubt das Abschneiden der Datenränder beim Zoomen */
                         ticks={xTicks}
                         tickFormatter={(timestampMs) => {
                             const date = new Date(timestampMs);
                             const timeString = date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                            let totalHours = durationHours;
-                            if (selectedForecastOption === 'trend_12h_holt') totalHours += 12;
-                            else if (selectedForecastOption === '24h_holt') totalHours += 24;
-                            else if (selectedForecastOption === '48h_holt') totalHours += 48;
+                            const rangeHours = (xDomain[1] - xDomain[0]) / 3600000;
 
-                            if (totalHours > 24 || timeString === '00:00') {
+                            if (rangeHours > 24 || timeString === '00:00') {
                                 return `${date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} ${timeString}`;
                             }
                             return timeString;
@@ -391,7 +468,12 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
                         textAnchor="end"
                         height={60}
                     />
-                    <YAxis stroke="#94a3b8" domain={['dataMin - 0.01', 'dataMax + 0.01']} tickFormatter={(value) => value.toFixed(2)} />
+                    <YAxis
+                        stroke="#94a3b8"
+                        domain={yDomain}
+                        allowDataOverflow={true} /* WICHTIG für sauberes Rendering */
+                        tickFormatter={(value) => value.toFixed(2)}
+                    />
                     <Tooltip content={<CustomTooltip fuelTypeName={getFuelTypeName(fuelType)} />} />
                     <Line type="stepAfter" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} fill="none" isAnimationActive={false} />
 
@@ -402,14 +484,13 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
                         <Line type="stepAfter" dataKey="aiForecastValue" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 5" dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
                     )}
 
-                    {/* Neu: Die Linie für die gespeicherte Historie (Pink) */}
                     {savedForecastData && savedForecastData.length > 0 && (
                         <Line type="stepAfter" dataKey="savedForecastValue" stroke="#ec4899" strokeWidth={2} strokeDasharray="3 3" dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
                     )}
 
                     {loadingAiForecast && (
                         <g>
-                            <foreignObject x="calc(100% - 40px - 32px)" y="5" width="32" height="32">
+                            <foreignObject x="calc(100% - 40px - 32px)" y="25" width="32" height="32">
                                 <div className="p-2 bg-slate-800/50 rounded-full flex items-center justify-center">
                                     <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />
                                 </div>
@@ -435,13 +516,11 @@ const FuelPriceDashboard: React.FC = () => {
     const [nextUpdate, setNextUpdate] = useState<number>(updateIntervalSeconds);
     const [showHelpSection, setShowHelpSection] = useState<boolean>(false);
 
-    // Neu: States für das Backtesting / Check-Modus
     const [isCheckMode, setIsCheckMode] = useState<boolean>(false);
     const [savedForecasts, setSavedForecasts] = useState<SavedForecastDto[]>([]);
     const [selectedSavedForecastId, setSelectedSavedForecastId] = useState<number | ''>('');
 
     useEffect(() => {
-        // Check URL-Parameter
         const params = new URLSearchParams(window.location.search);
         setIsCheckMode(params.get('check') === 'true');
 
@@ -480,13 +559,12 @@ const FuelPriceDashboard: React.FC = () => {
         };
     }, []);
 
-    // Erweitert: Lade auch gespeicherte Prognosen, falls Check-Modus aktiv
     const openModal = async (fuelPrice: FuelPrice, fuelType: string, stationName: string) => {
         setModalFuelPrice({ fuelPrice, fuelType, stationName });
         setModalDurationHours(24);
         setSelectedForecastOption('trend_12h_holt');
         setShowHelpSection(false);
-        setSelectedSavedForecastId(''); // Reset selection
+        setSelectedSavedForecastId('');
 
         if (isCheckMode) {
             try {
@@ -494,8 +572,6 @@ const FuelPriceDashboard: React.FC = () => {
                 if (response.ok) {
                     const data: SavedForecastDto[] = await response.json();
                     setSavedForecasts(data);
-                    // Optional: Automatisch die neuste auswählen
-                    // if (data.length > 0) setSelectedSavedForecastId(data[0].id);
                 }
             } catch (e) {
                 console.error("Failed to fetch saved forecasts:", e);
@@ -604,7 +680,7 @@ const FuelPriceDashboard: React.FC = () => {
                                     Vor {formatTimeAgo(fuelPrice.lastChanged)}
                                 </p>
                                 <div className="mt-4">
-                                    <FuelPriceChart entityId={fuelPrice.entityId} fuelType={fuelType} durationHours={24} selectedForecastOption='none' />
+                                    <FuelPriceChart entityId={fuelPrice.entityId} fuelType={fuelType} durationHours={24} selectedForecastOption='none' isCheckMode={false} />
                                 </div>
                             </div>
                         ))}
@@ -666,7 +742,6 @@ const FuelPriceDashboard: React.FC = () => {
                                     ))}
                                 </div>
 
-                                {/* Neu: Dropdown für Backtesting, wenn ?check=true in der URL */}
                                 {isCheckMode && savedForecasts.length > 0 && (
                                     <div className="flex items-center gap-2 bg-slate-900 rounded-lg p-1 w-full sm:w-auto mt-2 sm:mt-0">
                                         <span className="text-pink-400 text-sm font-medium px-2">Backtest:</span>
@@ -687,7 +762,7 @@ const FuelPriceDashboard: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="shrink-0 w-full">
+                        <div className="shrink-0 w-full relative">
                             <FuelPriceChart
                                 entityId={modalFuelPrice.fuelPrice.entityId}
                                 fuelType={modalFuelPrice.fuelType}
@@ -695,6 +770,7 @@ const FuelPriceDashboard: React.FC = () => {
                                 durationHours={modalDurationHours}
                                 selectedForecastOption={selectedForecastOption}
                                 savedForecastData={savedForecasts.find(f => f.id === selectedSavedForecastId)?.dataPoints}
+                                isCheckMode={isCheckMode}
                             />
                         </div>
 
