@@ -7,12 +7,16 @@ import de.hexix.homeassistant.dto.FuelPriceDto;
 import de.hexix.homeassistant.dto.FuelPriceForecastDto;
 import de.hexix.homeassistant.dto.FuelPriceHistoryDto;
 import de.hexix.homeassistant.dto.FuelStationDto;
+import de.hexix.homeassistant.dto.SavedForecastDto;
 import de.hexix.homeassistant.dto.TemperatureBucketDTO;
 import de.hexix.homeassistant.entity.HaEntity;
+import de.hexix.homeassistant.entity.HaFuelForecast;
 import de.hexix.homeassistant.entity.HaStateHistory;
 import de.hexix.homeassistant.entity.HaTemperatureHistory;
 import de.hexix.homeassistant.service.HoltWinterForecastService;
+import de.hexix.util.DurationLogger;
 import io.quarkus.runtime.StartupEvent;
+import io.quarkus.scheduler.Scheduled;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
@@ -234,7 +238,7 @@ public class HomeAssistantService {
                     } else if (entityId.contains("super")) {
                         fuelType = "super";
                     }
-                    
+
                     // Fetch the previous price from database to calculate difference
                     Double previousPrice = null;
                     try {
@@ -482,4 +486,39 @@ public class HomeAssistantService {
         }
         return cpuProcessor;
     }
+
+    @Transactional
+    public List<SavedForecastDto> getSavedForecasts(String entityId) {
+        List<HaFuelForecast> entities = em.createNamedQuery(HaFuelForecast.FIND_BY_ENTITY_ID_ORDER_BY_CREATED_DESC, HaFuelForecast.class)
+                .setParameter("entityId", entityId)
+                .getResultList();
+
+        return entities.stream().map(f -> {
+            List<FuelPriceForecastDto> points = f.getDataPoints().stream()
+                    .map(dp -> new FuelPriceForecastDto(dp.getTargetTimestamp(), dp.getPredictedPrice()))
+                    .toList();
+
+            return new SavedForecastDto(
+                    f.getId(),
+                    f.getCreatedAt(),
+                    f.getForecastDurationMinutes(),
+                    f.getRasterMinutes(),
+                    points
+            );
+        }).toList();
+    }
+
+    @Transactional
+    public int cleanupOldForecasts(int hoursOld) {
+        ZonedDateTime threshold = ZonedDateTime.now().minusHours(hoursOld);
+
+        // Dank 'ON DELETE CASCADE' in der DB werden die verknüpften data_points automatisch gelöscht
+        int deletedCount = em.createNamedQuery(HaFuelForecast.DELETE_OLD_FORECASTS)
+                .setParameter("threshold", threshold)
+                .executeUpdate();
+
+        return deletedCount;
+    }
+
+
 }

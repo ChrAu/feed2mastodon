@@ -177,6 +177,13 @@ public class HomeAssistantResource {
     }
 
     @GET
+    @Path("/fuel-prices/forecast/saved")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<de.hexix.homeassistant.dto.SavedForecastDto> getSavedForecasts(@QueryParam("entityId") String entityId) {
+        return homeAssistantService.getSavedForecasts(entityId);
+    }
+
+    @GET
     @Path("/cpu/stream")
     @Produces(MediaType.SERVER_SENT_EVENTS)
     @RestStreamElementType(MediaType.APPLICATION_JSON)
