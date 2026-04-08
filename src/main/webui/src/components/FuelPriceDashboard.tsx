@@ -785,15 +785,31 @@ const FuelPriceDashboard: React.FC = () => {
                             </button>
                             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showHelpSection ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'}`}>
                                 <div className="text-sm text-slate-400 space-y-3 pb-4">
-                                    <p>Dieses Diagramm zeigt den historischen Preisverlauf der ausgewählten Kraftstoffart.</p>
+                                    <p>Dieses Diagramm visualisiert den historischen Preisverlauf der ausgewählten Kraftstoffart und bietet verschiedene Prognoseoptionen, um zukünftige Preisentwicklungen abzuschätzen.</p>
+
+                                    <h5 className="font-semibold text-slate-300 mt-4 mb-2">Legende der Linien:</h5>
                                     <ul className="list-disc list-inside space-y-1">
-                                        <li><span className="inline-block w-4 h-0.5 bg-[#8884d8] mr-2"></span>Aktueller Preisverlauf</li>
-                                        <li><span className="inline-block w-4 h-0.5 bg-[#82ca9d] mr-2"></span>Prognose (Trend)</li>
-                                        <li><span className="inline-block w-4 h-0.5 bg-[#f59e0b] mr-2"></span>Prognose (Holt-Winters)</li>
+                                        <li><span className="inline-block w-4 h-0.5 bg-[#8884d8] mr-2"></span><strong>Aktueller Preisverlauf:</strong> Zeigt die tatsächlich erfassten und historischen Kraftstoffpreise an. Diese Daten basieren auf den von Home Assistant bereitgestellten Informationen.</li>
+                                        <li><span className="inline-block w-4 h-0.5 bg-[#82ca9d] mr-2"></span><strong>Prognose (Trend):</strong> Eine einfache, regelbasierte Vorhersage, die auf dem historischen Trend der letzten {FORECAST_DAYS_HISTORY} Tage basiert. Sie versucht, das typische Tagesmuster zu erkennen und fortzuschreiben.</li>
+                                        <li><span className="inline-block w-4 h-0.5 bg-[#f59e0b] mr-2"></span><strong>Prognose (Holt-Winters):</strong> Eine erweiterte, KI-gestützte Prognose, die das Holt-Winters-Modell verwendet. Dieses Modell ist in der Lage, saisonale Schwankungen und Trends in den Preisdaten zu erkennen und eine präzisere Vorhersage zu liefern.</li>
                                         {isCheckMode && (
-                                            <li><span className="inline-block w-4 h-0.5 bg-[#ec4899] mr-2 border-dotted"></span>Gespeicherte Prognose (Backtesting)</li>
+                                            <li><span className="inline-block w-4 h-0.5 bg-[#ec4899] mr-2 border-dotted"></span><strong>Gespeicherte Prognose (Backtesting):</strong> Diese Linie wird nur im "Check-Modus" angezeigt und repräsentiert eine zuvor gespeicherte Prognose. Sie dient dazu, die Qualität und Genauigkeit der Prognosemodelle im Nachhinein zu überprüfen und zu bewerten (Backtesting).</li>
                                         )}
                                     </ul>
+
+                                    {isCheckMode && (
+                                        <>
+                                            <h5 className="font-semibold text-slate-300 mt-4 mb-2">Check-Modus Funktionen:</h5>
+                                            <p>Im "Check-Modus" (aktiviert über den URL-Parameter <code>?check=true</code>) stehen zusätzliche Funktionen zur Verfügung:</p>
+                                            <ul className="list-disc list-inside space-y-1">
+                                                <li><strong>Zoom- und Pan-Steuerung:</strong> Oberhalb des Diagramms erscheinen Bedienelemente (<ChevronLeft size={16} className="inline-block align-middle"/> <ZoomIn size={16} className="inline-block align-middle"/> <ZoomOut size={16} className="inline-block align-middle"/> <ChevronRight size={16} className="inline-block align-middle"/>), mit denen Sie den sichtbaren Bereich des Diagramms verschieben und vergrößern/verkleinern können. Dies ist nützlich, um Details im historischen Verlauf oder in den Prognosen genauer zu analysieren.</li>
+                                                <li><strong>Backtesting von Prognosen:</strong> Sie können über das Dropdown-Menü "Backtest" gespeicherte Prognosen auswählen, um deren Performance gegen die tatsächlichen historischen Daten zu vergleichen.</li>
+                                                <li><strong>Erweiterter Datenverlauf:</strong> Im Check-Modus werden standardmäßig mehr historische Daten geladen, um eine umfassendere Analyse zu ermöglichen, auch wenn diese außerhalb des initial sichtbaren Bereichs liegen.</li>
+                                            </ul>
+                                        </>
+                                    )}
+
+                                    <p className="mt-4">Wählen Sie oben die gewünschte Prognoseoption und den Zeitraum aus, um die Darstellung anzupassen.</p>
                                 </div>
                             </div>
                         </div>
