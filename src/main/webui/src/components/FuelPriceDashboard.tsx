@@ -141,6 +141,21 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
                     timestampMs: new Date(item.timestamp).getTime()
                 }));
 
+                const currentTimeMs = new Date().getTime();
+                if (fullHistory.length > 0) {
+                    const lastPoint = fullHistory[fullHistory.length - 1];
+
+                    // Falls der letzte Punkt in der Historie älter als 1 Minute ist,
+                    // verlängern wir die Linie künstlich bis zum exakten aktuellen Zeitpunkt.
+                    if (currentTimeMs - lastPoint.timestampMs > 60000) {
+                        fullHistory.push({
+                            timestamp: new Date(currentTimeMs).toISOString(),
+                            value: lastPoint.value, // Wir schreiben den alten Preis fort
+                            timestampMs: currentTimeMs
+                        });
+                    }
+                }
+
                 let forecastData: ChartDataPoint[] = [];
                 if (isTrendForecastActive && fullHistory.length > 0) {
                     const lastPoint = fullHistory[fullHistory.length - 1];
