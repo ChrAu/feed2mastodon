@@ -1,8 +1,13 @@
 package de.hexix.homeassistant.service;
 
 import de.hexix.homeassistant.dto.FuelPriceForecastDto;
+import de.hexix.homeassistant.entity.HaFuelForecast;
+import de.hexix.homeassistant.entity.HaFuelForecastData;
 import de.hexix.homeassistant.entity.HaStateHistory;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +23,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @ApplicationScoped
 public class HoltWinterForecastService {
+
+    @Inject
+    EntityManager em;
 
     private static final Logger LOG = LoggerFactory.getLogger(HoltWinterForecastService.class);
 
@@ -151,6 +159,8 @@ public class HoltWinterForecastService {
             previousForecastValue = forecastValue;
         }
 
+        // Vorhersage in der Datenbank speichern (jetzt neu berechnet)
+        persistForecast(entityId, now, forecastDuration, rasterMinutes, result);
         // Cache the calculated result
         forecastResultCache.put(cacheKey, result);
         return result;
@@ -308,5 +318,29 @@ public class HoltWinterForecastService {
         }
 
         return forecast;
+    }
+
+    @Transactional
+    public void persistForecast(String entityId, ZonedDateTime createdAt, Duration forecastDuration, int rasterMinutes, List<FuelPriceForecastDto> forecast) {
+        if (forecast == null || forecast.isEmpty()) {
+            return;
+        }
+
+        HaFuelForecast forecastEntity = new HaFuelForecast();
+        forecastEntity.setEntityId(entityId);
+        forecastEntity.setCreatedAt(createdAt);
+        forecastEntity.setForecastDurationMinutes((int) forecastDuration.toMinutes());
+        forecastEntity.setRasterMinutes(rasterMinutes);
+
+        for (FuelPriceForecastDto dto : forecast) {
+            HaFuelForecastData dataPoint = new HaFuelForecastData();
+            dataPoint.setTargetTimestamp(dto.timestamp());
+            dataPoint.setPredictedPrice(dto.predictedPrice());
+            forecastEntity.addDataPoint(dataPoint);
+        }
+
+        em.persist(forecastEntity);
+        LOG.info("Neue Vorhersage für {} (Dauer: {}m, Raster: {}m) in der DB gespeichert.",
+                entityId, forecastDuration.toMinutes(), rasterMinutes);
     }
 }

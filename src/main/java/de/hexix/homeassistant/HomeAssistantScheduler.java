@@ -46,4 +46,16 @@ public class HomeAssistantScheduler {
         }
     }
 
+    @Scheduled(every = "1h") // Läuft einmal pro Stunde
+    public void cleanupOldForecasts() {
+        try (DurationLogger d = new DurationLogger("HomeAssistantScheduler.cleanupOldForecasts()", Logger.getLogger(this.getClass()))) {
+            int deleted = homeAssistantService.cleanupOldForecasts(36);
+            if (deleted > 0) {
+                Logger.getLogger(this.getClass()).infof("%d alte Vorhersagen (älter als 24 Stunden) wurden gelöscht.", deleted);
+            }
+        } catch (Exception e) {
+            Logger.getLogger(this.getClass()).error("Fehler beim Löschen alter Vorhersagen", e);
+        }
+    }
+
 }
