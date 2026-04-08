@@ -493,7 +493,9 @@ public class HomeAssistantService {
                 .setParameter("entityId", entityId)
                 .getResultList();
 
-        return entities.stream().map(f -> {
+        return entities.stream()
+                .filter(haFuelForecast -> haFuelForecast.getForecastDurationMinutes() == 1440)
+                .map(f -> {
             List<FuelPriceForecastDto> points = f.getDataPoints().stream()
                     .map(dp -> new FuelPriceForecastDto(dp.getTargetTimestamp(), dp.getPredictedPrice()))
                     .toList();
