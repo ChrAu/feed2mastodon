@@ -58,4 +58,31 @@ public class HomeAssistantScheduler {
         }
     }
 
+    @Scheduled(cron = "0 0 8,18 * * ?")   // Täglich um 08:00 und 18:00 Uhr
+    @Scheduled(cron = "0 30 12 * * ?")    // Täglich um 12:30 Uhr
+    public void scheduleForecastStorage() {
+        try (DurationLogger d = new DurationLogger("HomeAssistantScheduler.scheduleForecastStorage()", Logger.getLogger(this.getClass()))) {
+
+            // Wir iterieren über alle Kraftstoff-Entitäten, die im Service definiert sind
+            for (String entityId : HomeAssistantService.FUEL_PRICE_IDS) {
+                // Wir filtern die Status-Sensoren aus, da wir nur für Preise (sensor.) Prognosen brauchen
+                if (entityId.startsWith("sensor.")) {
+                    try {
+                        // Der Aufruf triggert automatisch die Berechnung und das Speichern in der DB
+                        // Wir nutzen 30 Tage Historie und 48 Stunden Prognose im 10-Minuten-Raster
+                        homeAssistantService.getFuelPriceForecast(
+                                entityId,
+                                java.time.Duration.ofDays(365),
+                                java.time.Duration.ofHours(48),
+                                10
+                        );
+                    } catch (Exception e) {
+                        Logger.getLogger(this.getClass()).errorf("Fehler bei automatischer Prognose für %s: %s", entityId, e.getMessage());
+                    }
+                }
+            }
+
+        }
+    }
+
 }
