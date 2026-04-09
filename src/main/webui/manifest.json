@@ -1,0 +1,21 @@
+{
+  "name": "Codeheap Services",
+  "short_name": "Codeheap",
+  "description": "Übersicht der Codeheap Dienste, Statistiken und Spritpreisprognosen für deine Region.",
+  "start_url": "/tanken",
+  "display": "standalone",
+  "background_color": "#f0f2f5",
+  "theme_color": "#3f51b5",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
