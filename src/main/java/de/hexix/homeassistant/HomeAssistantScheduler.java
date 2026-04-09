@@ -59,8 +59,16 @@ public class HomeAssistantScheduler {
     }
 
     @Scheduled(cron = "0 0 8,18 * * ?")   // Täglich um 08:00 und 18:00 Uhr
+    public void scheduleForecastStorageMorningAndEvening() {
+        doScheduleForecastStorage();
+    }
+
     @Scheduled(cron = "0 30 12 * * ?")    // Täglich um 12:30 Uhr
-    public void scheduleForecastStorage() {
+    public void scheduleForecastStorageMidday() {
+        doScheduleForecastStorage();
+    }
+
+    private void doScheduleForecastStorage() {
         try (DurationLogger d = new DurationLogger("HomeAssistantScheduler.scheduleForecastStorage()", Logger.getLogger(this.getClass()))) {
 
             // Wir iterieren über alle Kraftstoff-Entitäten, die im Service definiert sind
@@ -84,5 +92,4 @@ public class HomeAssistantScheduler {
 
         }
     }
-
 }
