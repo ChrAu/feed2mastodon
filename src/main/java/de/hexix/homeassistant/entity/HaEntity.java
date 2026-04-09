@@ -19,13 +19,18 @@ import java.time.ZonedDateTime;
 @NamedQueries({
         @NamedQuery(name = "HaEntity.findAll", query = "SELECT e FROM HaEntity e ORDER BY e.entityId"),
         @NamedQuery(name = "HaEntity.findByEntityId", query = "SELECT e FROM HaEntity e WHERE e.entityId = :entityId"),
-        @NamedQuery(name = "HaEntity.findByState", query = "SELECT e FROM HaEntity e WHERE e.state = :state ORDER BY e.entityId")
+        @NamedQuery(name = "HaEntity.findByState", query = "SELECT e FROM HaEntity e WHERE e.state = :state ORDER BY e.entityId"),
+        @NamedQuery(
+                name = HaEntity.DELETE_BY_ENTITY_IDS,
+                query = "DELETE FROM HaEntity e WHERE e.entityId IN :entityIds"
+        )
 })
 public class HaEntity {
 
     public static String FIND_ALL = "HaEntity.findAll";
     public static String FIND_BY_ENTITY_ID = "HaEntity.findByEntityId";
     public static String FIND_BY_STATE = "HaEntity.findByState";
+    public static final String DELETE_BY_ENTITY_IDS = "HaEntity.deleteByEntityIds";
 
     @Id
     @Column(name = "entity_id")

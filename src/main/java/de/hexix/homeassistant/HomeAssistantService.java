@@ -13,6 +13,7 @@ import de.hexix.homeassistant.entity.HaEntity;
 import de.hexix.homeassistant.entity.HaFuelForecast;
 import de.hexix.homeassistant.entity.HaStateHistory;
 import de.hexix.homeassistant.entity.HaTemperatureHistory;
+import de.hexix.homeassistant.ignoredentity.IgnoredEntityRepository;
 import de.hexix.homeassistant.service.HoltWinterForecastService;
 import de.hexix.util.DurationLogger;
 import io.quarkus.runtime.StartupEvent;
@@ -28,7 +29,10 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+
 import org.eclipse.microprofile.rest.client.inject.RestClient;
+import org.jboss.logging.Logger;
+
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -40,12 +44,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @ApplicationScoped
 public class HomeAssistantService {
+
+    private static final Logger LOG = Logger.getLogger(HomeAssistantService.class);
 
     @ConfigProperty(name = "home-assistant.api.token")
     String apiToken;
@@ -62,6 +69,9 @@ public class HomeAssistantService {
 
     @Inject
     HoltWinterForecastService holtWinterForecastService;
+
+    @Inject
+    IgnoredEntityRepository ignoredEntityRepository;
 
     // Liste der relevanten IDs basierend auf deinem Input
     private static final List<String> PI_HOLE_IDS = List.of(
@@ -398,6 +408,8 @@ public class HomeAssistantService {
     void onStart(@Observes StartupEvent ev) {
         // Use the event parameter to avoid it being considered unused by static analysis
         Objects.requireNonNull(ev);
+        cleanupIgnoredEntitiesHistory(); // Call the new cleanup method
+
         Multi.createFrom().ticks().every(Duration.ofSeconds(30))
                 .onItem().transformToUniAndConcatenate(tick ->
                         Uni.createFrom().item(this::fetchSpecificPiHoleMetrics)
@@ -526,5 +538,42 @@ public class HomeAssistantService {
         return deletedCount;
     }
 
+    @Transactional
+    public void cleanupIgnoredEntitiesHistory() {
+        try (DurationLogger d = new DurationLogger("HomeAssistantService.cleanupIgnoredEntitiesHistory()", LOG)) {
+            Set<String> ignoredEntityIds = ignoredEntityRepository.findAllEntityIds();
+            if (ignoredEntityIds.isEmpty()) {
+                LOG.info("No ignored entities found for cleanup.");
+                return;
+            }
 
+            // Delete from HaStateHistory
+            int deletedHistoryCount = em.createNamedQuery(HaStateHistory.DELETE_BY_ENTITY_IDS)
+                    .setParameter("entityIds", ignoredEntityIds)
+                    .executeUpdate();
+            LOG.infof("Deleted %d historical entries for ignored entities.", deletedHistoryCount);
+
+            // Delete from HaEntity
+            int deletedHaEntityCount = em.createNamedQuery(HaEntity.DELETE_BY_ENTITY_IDS)
+                    .setParameter("entityIds", ignoredEntityIds)
+                    .executeUpdate();
+            LOG.infof("Deleted %d HaEntity entries for ignored entities.", deletedHaEntityCount);
+
+            // Delete from HaTemperatureHistory
+            int deletedTemperatureHistoryCount = em.createNamedQuery(HaTemperatureHistory.DELETE_BY_ENTITY_IDS)
+                    .setParameter("entityIds", ignoredEntityIds)
+                    .executeUpdate();
+            LOG.infof("Deleted %d HaTemperatureHistory entries for ignored entities.", deletedTemperatureHistoryCount);
+
+            // Delete from HaFuelForecast
+            int deletedFuelForecastCount = em.createNamedQuery(HaFuelForecast.DELETE_BY_ENTITY_IDS)
+                    .setParameter("entityIds", ignoredEntityIds)
+                    .executeUpdate();
+            LOG.infof("Deleted %d HaFuelForecast entries for ignored entities.", deletedFuelForecastCount);
+
+
+        } catch (Exception e) {
+            LOG.error("Error during cleanup of ignored entities history", e);
+        }
+    }
 }
