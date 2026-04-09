@@ -15,12 +15,18 @@ import java.util.List;
         @NamedQuery(
                 name = HaFuelForecast.FIND_BY_ENTITY_ID_ORDER_BY_CREATED_DESC,
                 query = "SELECT DISTINCT f FROM HaFuelForecast f LEFT JOIN FETCH f.dataPoints WHERE f.entityId = :entityId ORDER BY f.createdAt DESC"
+        ),
+        @NamedQuery(
+                name = HaFuelForecast.DELETE_BY_ENTITY_IDS,
+                query = "DELETE FROM HaFuelForecast ff WHERE ff.entityId IN :entityIds"
         )
 })
 public class HaFuelForecast {
 
     public static final String DELETE_OLD_FORECASTS = "HaFuelForecast.deleteOldForecasts";
     public static final String FIND_BY_ENTITY_ID_ORDER_BY_CREATED_DESC = "HaFuelForecast.findByEntityIdOrderByCreatedDesc";
+    public static final String DELETE_BY_ENTITY_IDS = "HaFuelForecast.deleteByEntityIds";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
