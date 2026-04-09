@@ -367,21 +367,25 @@ public class HomeAssistantService {
         return finalHistory;
     }
 
-    @Transactional
     public List<FuelPriceForecastDto> getFuelPriceForecast(String entityId, Duration historyDuration, Duration forecastDuration, int rasterMinutes) {
         if (!FUEL_PRICE_IDS.contains(entityId)) {
              throw new IllegalArgumentException("Entity ID " + entityId + " is not supported for fuel price forecasting.");
         }
 
+        List<HaStateHistory> historyData = getFuelPriceHistoryData(entityId, historyDuration);
+
+        return holtWinterForecastService.calculateForecast(historyData, forecastDuration, rasterMinutes);
+    }
+
+    @Transactional
+    List<HaStateHistory> getFuelPriceHistoryData(String entityId, Duration historyDuration) {
         final ZonedDateTime now = ZonedDateTime.now();
         final ZonedDateTime startDate = now.minus(historyDuration);
 
         final TypedQuery<HaStateHistory> historyQuery = em.createNamedQuery(HaStateHistory.FIND_BY_ENTITY_ID_AND_DATE_RANGE, HaStateHistory.class);
         historyQuery.setParameter("entityId", entityId);
         historyQuery.setParameter("startDate", startDate);
-        List<HaStateHistory> historyData = historyQuery.getResultList();
-
-        return holtWinterForecastService.calculateForecast(historyData, forecastDuration, rasterMinutes);
+        return historyQuery.getResultList();
     }
 
 
@@ -494,7 +498,7 @@ public class HomeAssistantService {
                 .getResultList();
 
         return entities.stream()
-                .filter(haFuelForecast -> haFuelForecast.getForecastDurationMinutes() == 1440)
+                .filter(haFuelForecast -> haFuelForecast.getForecastDurationMinutes() == 2880)
                 .map(f -> {
             List<FuelPriceForecastDto> points = f.getDataPoints().stream()
                     .map(dp -> new FuelPriceForecastDto(dp.getTargetTimestamp(), dp.getPredictedPrice()))
