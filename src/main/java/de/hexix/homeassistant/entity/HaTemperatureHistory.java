@@ -8,13 +8,23 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.NamedQueries;
+import jakarta.persistence.NamedQuery;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "ha_temperature_history")
+@NamedQueries({
+        @NamedQuery(
+                name = HaTemperatureHistory.DELETE_BY_ENTITY_IDS,
+                query = "DELETE FROM HaTemperatureHistory th WHERE th.haStateHistory.entityId IN :entityIds"
+        )
+})
 public class HaTemperatureHistory {
+
+    public static final String DELETE_BY_ENTITY_IDS = "HaTemperatureHistory.deleteByEntityIds";
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_generator")
