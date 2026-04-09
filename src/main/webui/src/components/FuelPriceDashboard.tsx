@@ -47,6 +47,13 @@ interface SavedForecastDto {
     dataPoints: FuelPriceForecastDto[];
 }
 
+interface VisibleLinesState {
+    value: boolean;
+    forecastValue: boolean;
+    aiForecastValue: boolean;
+    savedForecastValue: boolean;
+}
+
 interface FuelPriceChartProps {
     entityId: string;
     fuelType: string;
@@ -55,6 +62,7 @@ interface FuelPriceChartProps {
     selectedForecastOption?: 'none' | 'trend_12h_holt' | '24h_holt' | '48h_holt';
     savedForecastData?: FuelPriceForecastDto[];
     isCheckMode?: boolean;
+    visibleLines: VisibleLinesState; // NEU: Sichtbarkeit der Linien
 }
 
 const getFuelTypeName = (fuelType: string) => {
@@ -71,9 +79,10 @@ interface CustomTooltipProps {
     payload?: any[];
     label?: number;
     fuelTypeName: string;
+    visibleLines: VisibleLinesState; // NEU: Sichtbarkeit der Linien für Tooltip
 }
 
-const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, fuelTypeName }) => {
+const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, fuelTypeName, visibleLines }) => {
     if (active && payload && payload.length) {
         const date = new Date(label!);
         const formattedDate = date.toLocaleDateString('de-DE', {
@@ -88,6 +97,9 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, f
             <div className="bg-slate-800 p-3 rounded-md border border-slate-700 text-white text-sm z-50 shadow-xl">
                 <p className="font-bold mb-1">{formattedDate}</p>
                 {payload.map((entry, index) => {
+                    // NEU: Nur sichtbare Linien im Tooltip anzeigen
+                    if (!visibleLines[entry.dataKey as keyof VisibleLinesState]) return null;
+
                     let labelText = '';
                     if (entry.dataKey === 'value') labelText = `${fuelTypeName}: `;
                     else if (entry.dataKey === 'forecastValue') labelText = 'Prognose (Trend): ';
@@ -107,7 +119,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, f
     return null;
 };
 
-const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, height = 200, durationHours = 24, selectedForecastOption = 'none', savedForecastData, isCheckMode = false }) => {
+const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, height = 200, durationHours = 24, selectedForecastOption = 'none', savedForecastData, isCheckMode = false, visibleLines }) => {
     const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -363,17 +375,18 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
         let visibleMax = Number.MIN_VALUE;
 
         visibleData.forEach(d => {
-            if (d.value !== undefined) { visibleMin = Math.min(visibleMin, d.value); visibleMax = Math.max(visibleMax, d.value); }
-            if (d.forecastValue !== undefined) { visibleMin = Math.min(visibleMin, d.forecastValue); visibleMax = Math.max(visibleMax, d.forecastValue); }
-            if (d.aiForecastValue !== undefined) { visibleMin = Math.min(visibleMin, d.aiForecastValue); visibleMax = Math.max(visibleMax, d.aiForecastValue); }
-            if (d.savedForecastValue !== undefined) { visibleMin = Math.min(visibleMin, d.savedForecastValue); visibleMax = Math.max(visibleMax, d.savedForecastValue); }
+            // NEU: Nur Werte von sichtbaren Linien für die Y-Achsen-Berechnung berücksichtigen
+            if (visibleLines.value && d.value !== undefined) { visibleMin = Math.min(visibleMin, d.value); visibleMax = Math.max(visibleMax, d.value); }
+            if (visibleLines.forecastValue && d.forecastValue !== undefined) { visibleMin = Math.min(visibleMin, d.forecastValue); visibleMax = Math.max(visibleMax, d.forecastValue); }
+            if (visibleLines.aiForecastValue && d.aiForecastValue !== undefined) { visibleMin = Math.min(visibleMin, d.aiForecastValue); visibleMax = Math.max(visibleMax, d.aiForecastValue); }
+            if (visibleLines.savedForecastValue && d.savedForecastValue !== undefined) { visibleMin = Math.min(visibleMin, d.savedForecastValue); visibleMax = Math.max(visibleMax, d.savedForecastValue); }
         });
 
         if (visibleMin !== Number.MAX_VALUE) {
             setYDomain([visibleMin - 0.01, visibleMax + 0.01]);
         }
 
-    }, [xDomain, chartData]);
+    }, [xDomain, chartData, visibleLines]); // visibleLines als Dependency hinzugefügt
 
     // --- NEU: Button Handler für Zoom und Pan ---
     const handleZoomIn = () => {
@@ -474,17 +487,17 @@ const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, hei
                         allowDataOverflow={true} /* WICHTIG für sauberes Rendering */
                         tickFormatter={(value) => value.toFixed(2)}
                     />
-                    <Tooltip content={<CustomTooltip fuelTypeName={getFuelTypeName(fuelType)} />} />
-                    <Line type="stepAfter" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} fill="none" isAnimationActive={false} />
+                    <Tooltip content={<CustomTooltip fuelTypeName={getFuelTypeName(fuelType)} visibleLines={visibleLines} />} /> {/* NEU: visibleLines an Tooltip übergeben */}
+                    {visibleLines.value && <Line type="stepAfter" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} fill="none" isAnimationActive={false} />}
 
-                    {isTrendForecastActive && (
+                    {visibleLines.forecastValue && isTrendForecastActive && (
                         <Line type="stepAfter" dataKey="forecastValue" stroke="#82ca9d" strokeWidth={2} strokeDasharray="5 5" dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
                     )}
-                    {isHoltWintersForecastActive && (
+                    {visibleLines.aiForecastValue && isHoltWintersForecastActive && (
                         <Line type="stepAfter" dataKey="aiForecastValue" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 5" dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
                     )}
 
-                    {savedForecastData && savedForecastData.length > 0 && (
+                    {visibleLines.savedForecastValue && savedForecastData && savedForecastData.length > 0 && (
                         <Line type="stepAfter" dataKey="savedForecastValue" stroke="#ec4899" strokeWidth={2} strokeDasharray="3 3" dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
                     )}
 
@@ -519,6 +532,13 @@ const FuelPriceDashboard: React.FC = () => {
     const [isCheckMode, setIsCheckMode] = useState<boolean>(false);
     const [savedForecasts, setSavedForecasts] = useState<SavedForecastDto[]>([]);
     const [selectedSavedForecastId, setSelectedSavedForecastId] = useState<number | ''>('');
+    // NEU: State für die Sichtbarkeit der Linien
+    const [visibleLines, setVisibleLines] = useState<VisibleLinesState>({
+        value: true,
+        forecastValue: true,
+        aiForecastValue: true,
+        savedForecastValue: true,
+    });
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -565,6 +585,13 @@ const FuelPriceDashboard: React.FC = () => {
         setSelectedForecastOption('trend_12h_holt');
         setShowHelpSection(false);
         setSelectedSavedForecastId('');
+        // NEU: Linien-Sichtbarkeit beim Öffnen des Modals zurücksetzen
+        setVisibleLines({
+            value: true,
+            forecastValue: true,
+            aiForecastValue: true,
+            savedForecastValue: true,
+        });
 
         if (isCheckMode) {
             try {
@@ -584,6 +611,14 @@ const FuelPriceDashboard: React.FC = () => {
     const closeModal = () => {
         setIsModalOpen(false);
         setModalFuelPrice(null);
+    };
+
+    // NEU: Handler zum Umschalten der Liniensichtbarkeit
+    const toggleLineVisibility = (lineKey: keyof VisibleLinesState) => {
+        setVisibleLines(prev => ({
+            ...prev,
+            [lineKey]: !prev[lineKey],
+        }));
     };
 
     if (loading && fuelStations.length === 0) {
@@ -680,7 +715,7 @@ const FuelPriceDashboard: React.FC = () => {
                                     Vor {formatTimeAgo(fuelPrice.lastChanged)}
                                 </p>
                                 <div className="mt-4">
-                                    <FuelPriceChart entityId={fuelPrice.entityId} fuelType={fuelType} durationHours={24} selectedForecastOption='none' isCheckMode={false} />
+                                    <FuelPriceChart entityId={fuelPrice.entityId} fuelType={fuelType} durationHours={24} selectedForecastOption='none' isCheckMode={false} visibleLines={{value: true, forecastValue: false, aiForecastValue: false, savedForecastValue: false}} />
                                 </div>
                             </div>
                         ))}
@@ -771,8 +806,59 @@ const FuelPriceDashboard: React.FC = () => {
                                 selectedForecastOption={selectedForecastOption}
                                 savedForecastData={savedForecasts.find(f => f.id === selectedSavedForecastId)?.dataPoints}
                                 isCheckMode={isCheckMode}
+                                visibleLines={visibleLines} // NEU: visibleLines an FuelPriceChart übergeben
                             />
                         </div>
+
+                        {/* NEU: Buttons für Liniensichtbarkeit unterhalb des Diagramms */}
+                        <div className="mt-4 border-t border-slate-700 pt-4">
+                            <h5 className="font-semibold text-slate-300 mb-2">Sichtbarkeit der Linien:</h5>
+                            <div className="flex flex-wrap gap-2 text-sm">
+                                <button
+                                    onClick={() => toggleLineVisibility('value')}
+                                    className={`px-3 py-2 font-medium rounded-md transition-colors whitespace-nowrap border ${
+                                        visibleLines.value
+                                            ? 'bg-slate-700 text-[#8884d8] border-[#8884d8]'
+                                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700 border-slate-700'
+                                    }`}
+                                >
+                                    <span className="inline-block w-4 h-0.5 bg-[#8884d8] mr-2"></span>Aktueller Preisverlauf
+                                </button>
+                                <button
+                                    onClick={() => toggleLineVisibility('forecastValue')}
+                                    className={`px-3 py-2 font-medium rounded-md transition-colors whitespace-nowrap border ${
+                                        visibleLines.forecastValue
+                                            ? 'bg-slate-700 text-[#82ca9d] border-[#82ca9d]'
+                                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700 border-slate-700'
+                                    }`}
+                                >
+                                    <span className="inline-block w-4 h-0.5 bg-[#82ca9d] mr-2"></span>Prognose (Trend)
+                                </button>
+                                <button
+                                    onClick={() => toggleLineVisibility('aiForecastValue')}
+                                    className={`px-3 py-2 font-medium rounded-md transition-colors whitespace-nowrap border ${
+                                        visibleLines.aiForecastValue
+                                            ? 'bg-slate-700 text-[#f59e0b] border-[#f59e0b]'
+                                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700 border-slate-700'
+                                    }`}
+                                >
+                                    <span className="inline-block w-4 h-0.5 bg-[#f59e0b] mr-2"></span>Prognose (Holt-Winters)
+                                </button>
+                                {isCheckMode && (
+                                    <button
+                                        onClick={() => toggleLineVisibility('savedForecastValue')}
+                                        className={`px-3 py-2 font-medium rounded-md transition-colors whitespace-nowrap border ${
+                                            visibleLines.savedForecastValue
+                                                ? 'bg-slate-700 text-[#ec4899] border-[#ec4899]'
+                                                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700 border-slate-700'
+                                        }`}
+                                    >
+                                        <span className="inline-block w-4 h-0.5 bg-[#ec4899] mr-2 border-dotted"></span>Gespeicherte Prognose
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
 
                         <div className="mt-8 border-t border-slate-700 pt-4">
                             <button
