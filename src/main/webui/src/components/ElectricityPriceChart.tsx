@@ -2,9 +2,6 @@ import React, {useEffect, useState} from 'react';
 import {CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 import {RefreshCw, ZoomIn, ZoomOut, ChevronLeft, ChevronRight} from 'lucide-react';
 
-const FORECAST_DAYS_HISTORY = 7;
-const FORECAST_WEIGHT_BASE = 2;
-
 export interface ElectricityPriceHistory {
     timestamp: string;
     value: number;
@@ -14,9 +11,8 @@ export interface ElectricityPriceHistory {
 export interface ChartDataPoint {
     timestampMs: number;
     value?: number;
-    forecastValue?: number;
     aiForecastValue?: number;
-    savedForecastValue?: number;
+    // Removed savedForecastValue
 }
 
 export interface ElectricityPriceForecastDto {
@@ -26,9 +22,8 @@ export interface ElectricityPriceForecastDto {
 
 export interface VisibleLinesState {
     value: boolean;
-    forecastValue: boolean;
     aiForecastValue: boolean;
-    savedForecastValue: boolean;
+    // Removed savedForecastValue
 }
 
 export interface ElectricityPriceChartProps {
@@ -37,8 +32,8 @@ export interface ElectricityPriceChartProps {
     durationHours?: number;
     customStartDate?: string;
     customEndDate?: string;
-    selectedForecastOption?: 'none' | 'trend_12h_holt' | '24h_holt' | '48h_holt';
-    savedForecastData?: ElectricityPriceForecastDto[];
+    // Removed selectedForecastOption prop
+    // Removed savedForecastData prop
     isCheckMode?: boolean;
     visibleLines: VisibleLinesState;
 }
@@ -65,13 +60,15 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, v
             <div className="bg-slate-800 p-3 rounded-md border border-slate-700 text-white text-sm z-50 shadow-xl">
                 <p className="font-bold mb-1">{formattedDate}</p>
                 {payload.map((entry, index) => {
-                    if (!visibleLines[entry.dataKey as keyof VisibleLinesState]) return null;
+                    // Check if the line is visible before rendering its tooltip entry
+                    if (entry.dataKey === 'value' && !visibleLines.value) return null;
+                    if (entry.dataKey === 'aiForecastValue' && !visibleLines.aiForecastValue) return null;
+                    // Removed savedForecastValue check
 
                     let labelText = '';
                     if (entry.dataKey === 'value') labelText = 'Strompreis: ';
-                    else if (entry.dataKey === 'forecastValue') labelText = 'Prognose (Trend): ';
                     else if (entry.dataKey === 'aiForecastValue') labelText = 'Prognose (Holt-Winters): ';
-                    else if (entry.dataKey === 'savedForecastValue') labelText = 'Gespeicherte Prognose: ';
+                    // Removed savedForecastValue labelText
 
                     return (
                         <p key={index} style={{ color: entry.color }}>
@@ -86,7 +83,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, v
     return null;
 };
 
-export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ entityId, height = 200, durationHours = 24, customStartDate, customEndDate, selectedForecastOption = 'none', savedForecastData, isCheckMode = false, visibleLines }) => {
+export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ entityId, height = 200, durationHours = 24, customStartDate, customEndDate, isCheckMode = false, visibleLines }) => {
     const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -96,16 +93,16 @@ export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ en
     const [yDomain, setYDomain] = useState<any[]>(['dataMin - 0.01', 'dataMax + 0.01']);
     const [xTicks, setXTicks] = useState<number[]>([]);
 
+    // Hardcode selectedForecastOption internally as it's no longer a prop
+    const selectedForecastOption: '24h_holt' = '24h_holt';
+
     useEffect(() => {
         let isMounted = true;
         const fetchHistory = async () => {
             setLoading(true);
             setError(null);
             try {
-                const isTrendForecastActive = selectedForecastOption === 'trend_12h_holt';
-                const isHoltWintersForecastActive = selectedForecastOption === 'trend_12h_holt' || selectedForecastOption === '24h_holt' || selectedForecastOption === '48h_holt';
-
-                const requiredHistoryForTrend = FORECAST_DAYS_HISTORY * 24;
+                const isHoltWintersForecastActive = selectedForecastOption === '24h_holt' || selectedForecastOption === '48h_holt';
 
                 let fetchDuration = durationHours;
                 
@@ -121,7 +118,7 @@ export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ en
                 
                 fetchDuration = isCheckMode
                     ? Math.max(fetchDuration, 168)
-                    : (isTrendForecastActive ? Math.max(fetchDuration, requiredHistoryForTrend) : fetchDuration);
+                    : fetchDuration;
 
                 const historyResponse = await fetch(`/api/homeassistant/electricity-price/history?entityId=${entityId}&durationHours=${fetchDuration}`);
 
@@ -149,55 +146,6 @@ export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ en
                     }
                 }
 
-                let forecastData: ChartDataPoint[] = [];
-                if (isTrendForecastActive && fullHistory.length > 0) {
-                    const lastPoint = fullHistory[fullHistory.length - 1];
-                    const lastTimestampMs = lastPoint.timestampMs;
-                    let previousForecastValue = lastPoint.value;
-                    const berlinTimeFormatter = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', hour: 'numeric' });
-
-                    const intervals = (12 * 60) / 5;
-                    for (let i = 1; i <= intervals; i++) {
-                        const futureMs = lastTimestampMs + i * 5 * 60 * 1000;
-                        let weightedSum = 0;
-                        let totalWeight = 0;
-
-                        for (let daysAgo = 1; daysAgo <= FORECAST_DAYS_HISTORY; daysAgo++) {
-                            const targetMs = futureMs - daysAgo * 24 * 60 * 60 * 1000;
-                            let lastKnownPoint = null;
-                            for (let j = fullHistory.length - 1; j >= 0; j--) {
-                                if (fullHistory[j].timestampMs <= targetMs) {
-                                    lastKnownPoint = fullHistory[j];
-                                    break;
-                                }
-                            }
-
-                            if (!lastKnownPoint && fullHistory.length > 0) lastKnownPoint = fullHistory[0];
-
-                            if (lastKnownPoint) {
-                                const weight = Math.pow(FORECAST_WEIGHT_BASE, FORECAST_DAYS_HISTORY - daysAgo);
-                                weightedSum += lastKnownPoint.value * weight;
-                                totalWeight += weight;
-                            }
-                        }
-
-                        if (totalWeight > 0) {
-                            const rawForecastValue = weightedSum / totalWeight;
-                            let forecastValue = rawForecastValue;
-                            const hourString = berlinTimeFormatter.format(new Date(futureMs));
-                            const berlinHour = parseInt(hourString, 10);
-                            const is12OClock = berlinHour === 12;
-
-                            if (!is12OClock && rawForecastValue > previousForecastValue) {
-                                forecastValue = previousForecastValue;
-                            }
-
-                            forecastData.push({ timestampMs: futureMs, forecastValue: forecastValue });
-                            previousForecastValue = forecastValue;
-                        }
-                    }
-                }
-
                 const now = new Date().getTime();
                 let minDisplayMs = isCheckMode ? 0 : now - durationHours * 60 * 60 * 1000;
                 
@@ -219,42 +167,30 @@ export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ en
                     };
 
                     displayHistory.forEach(pt => addPoint(pt.timestampMs, { value: pt.value }));
-                    forecastData.forEach(pt => addPoint(pt.timestampMs, { forecastValue: pt.forecastValue }));
                     aiForecastData.forEach(pt => addPoint(pt.timestampMs, { aiForecastValue: pt.aiForecastValue }));
 
-                    if (savedForecastData) {
-                        savedForecastData.forEach(pt => {
-                            const ts = new Date(pt.timestamp).getTime();
-                            addPoint(ts, { savedForecastValue: pt.predictedPrice });
-                        });
-                    }
+                    // Removed savedForecastData processing
 
                     if (displayHistory.length > 0) {
                         const lastHistoryVal = displayHistory[displayHistory.length - 1].value;
                         const lastHistoryTs = displayHistory[displayHistory.length - 1].timestampMs;
-                        if (forecastData.length > 0) addPoint(lastHistoryTs, { forecastValue: lastHistoryVal });
                         if (aiForecastData.length > 0) addPoint(lastHistoryTs, { aiForecastValue: lastHistoryVal });
                     }
 
                     const finalChartData = Array.from(pointMap.values()).sort((a, b) => a.timestampMs - b.timestampMs);
 
                     let currentValue: number | undefined = undefined;
-                    let currentForecast: number | undefined = undefined;
                     let currentAiForecast: number | undefined = undefined;
-                    let currentSavedForecast: number | undefined = undefined;
+                    // Removed currentSavedForecast
 
                     finalChartData.forEach(pt => {
                         if (pt.value !== undefined) currentValue = pt.value;
                         else if (currentValue !== undefined && pt.timestampMs <= currentTimeMs) pt.value = currentValue;
 
-                        if (pt.forecastValue !== undefined) currentForecast = pt.forecastValue;
-                        else if (currentForecast !== undefined && pt.timestampMs >= (forecastData[0]?.timestampMs || 0)) pt.forecastValue = currentForecast;
-
                         if (pt.aiForecastValue !== undefined) currentAiForecast = pt.aiForecastValue;
                         else if (currentAiForecast !== undefined && pt.timestampMs >= (aiForecastData[0]?.timestampMs || 0)) pt.aiForecastValue = currentAiForecast;
 
-                        if (pt.savedForecastValue !== undefined) currentSavedForecast = pt.savedForecastValue;
-                        else if (currentSavedForecast !== undefined && savedForecastData && pt.timestampMs >= new Date(savedForecastData[0].timestamp).getTime()) pt.savedForecastValue = currentSavedForecast;
+                        // Removed savedForecastValue logic
                     });
 
                     return finalChartData;
@@ -265,8 +201,7 @@ export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ en
 
                 if (initialChartData.length > 0) {
                     let expectedForecastHours = 0;
-                    if (selectedForecastOption === 'trend_12h_holt') expectedForecastHours = 12;
-                    else if (selectedForecastOption === '24h_holt') expectedForecastHours = 24;
+                    if (selectedForecastOption === '24h_holt') expectedForecastHours = 24;
                     else if (selectedForecastOption === '48h_holt') expectedForecastHours = 48;
 
                     let initialMinTs = now - (durationHours * 60 * 60 * 1000);
@@ -283,8 +218,7 @@ export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ en
                 if (isHoltWintersForecastActive) {
                     setLoadingAiForecast(true);
                     let holtWintersForecastHours = 0;
-                    if (selectedForecastOption === 'trend_12h_holt') holtWintersForecastHours = 12;
-                    else if (selectedForecastOption === '24h_holt') holtWintersForecastHours = 24;
+                    if (selectedForecastOption === '24h_holt') holtWintersForecastHours = 24;
                     else if (selectedForecastOption === '48h_holt') holtWintersForecastHours = 48;
 
                     if (holtWintersForecastHours > 0) {
@@ -322,7 +256,7 @@ export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ en
         fetchHistory().catch(console.error);
 
         return () => { isMounted = false; };
-    }, [entityId, durationHours, customStartDate, customEndDate, selectedForecastOption, savedForecastData, isCheckMode]);
+    }, [entityId, durationHours, customStartDate, customEndDate, isCheckMode]); // Removed savedForecastData from dependencies
 
 
     useEffect(() => {
@@ -360,9 +294,8 @@ export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ en
 
         visibleData.forEach(d => {
             if (visibleLines.value && d.value !== undefined) { visibleMin = Math.min(visibleMin, d.value); visibleMax = Math.max(visibleMax, d.value); }
-            if (visibleLines.forecastValue && d.forecastValue !== undefined) { visibleMin = Math.min(visibleMin, d.forecastValue); visibleMax = Math.max(visibleMax, d.forecastValue); }
             if (visibleLines.aiForecastValue && d.aiForecastValue !== undefined) { visibleMin = Math.min(visibleMin, d.aiForecastValue); visibleMax = Math.max(visibleMax, d.aiForecastValue); }
-            if (visibleLines.savedForecastValue && d.savedForecastValue !== undefined) { visibleMin = Math.min(visibleMin, d.savedForecastValue); visibleMax = Math.max(visibleMax, d.savedForecastValue); }
+            // Removed savedForecastValue check
         });
 
         if (visibleMin !== Number.MAX_VALUE) {
@@ -410,8 +343,7 @@ export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ en
     if (error) return <div className="text-red-400 text-center text-sm py-2 h-full flex items-center justify-center min-h-25">Fehler: {error}</div>;
     if (chartData.length === 0) return <div className="text-slate-500 text-center text-sm py-2 h-full flex items-center justify-center min-h-25">Keine Verlaufsdaten verfügbar.</div>;
 
-    const isTrendForecastActive = selectedForecastOption === 'trend_12h_holt';
-    const isHoltWintersForecastActive = selectedForecastOption === 'trend_12h_holt' || selectedForecastOption === '24h_holt' || selectedForecastOption === '48h_holt';
+    const isHoltWintersForecastActive = selectedForecastOption === '24h_holt' || selectedForecastOption === '48h_holt';
 
     return (
         <div className="relative w-full" style={{ height: height }}>
@@ -471,16 +403,11 @@ export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ en
                     <Tooltip content={<CustomTooltip visibleLines={visibleLines} />} />
                     {visibleLines.value && <Line type="stepAfter" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} fill="none" isAnimationActive={false} />}
 
-                    {visibleLines.forecastValue && isTrendForecastActive && (
-                        <Line type="stepAfter" dataKey="forecastValue" stroke="#82ca9d" strokeWidth={2} strokeDasharray="5 5" dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
-                    )}
                     {visibleLines.aiForecastValue && isHoltWintersForecastActive && (
                         <Line type="stepAfter" dataKey="aiForecastValue" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 5" dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
                     )}
 
-                    {visibleLines.savedForecastValue && savedForecastData && savedForecastData.length > 0 && (
-                        <Line type="stepAfter" dataKey="savedForecastValue" stroke="#ec4899" strokeWidth={2} strokeDasharray="3 3" dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
-                    )}
+                    {/* Removed Line for savedForecastValue */}
 
                     {loadingAiForecast && (
                         <g>
