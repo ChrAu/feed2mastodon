@@ -46,7 +46,8 @@ public class HoltWinterForecastService {
     private record ForecastCacheKey(String entityId, ZonedDateTime lastHistoryTimestamp, Duration forecastDuration, int rasterMinutes) {}
 
     private final Map<String, CachedParams> paramCache = new ConcurrentHashMap<>();
-    private final Map<ForecastCacheKey, List<FuelPriceForecastDto>> forecastResultCache = new ConcurrentHashMap<>();
+    private final Map<ForecastCacheKey, List<FuelPriceForecastDto>> fuelForecastResultCache = new ConcurrentHashMap<>();
+
 
     public static class PricePoint {
         public ZonedDateTime timestamp;
@@ -68,9 +69,9 @@ public class HoltWinterForecastService {
         ForecastCacheKey cacheKey = new ForecastCacheKey(entityId, lastHistoryTimestamp, forecastDuration, rasterMinutes);
 
         // Check if the forecast result is already in the cache
-        if (forecastResultCache.containsKey(cacheKey)) {
-            LOG.info("Returning cached forecast for entityId: {} with lastHistoryTimestamp: {}, forecastDuration: {}, rasterMinutes: {}", entityId, lastHistoryTimestamp, forecastDuration, rasterMinutes);
-            return forecastResultCache.get(cacheKey);
+        if (fuelForecastResultCache.containsKey(cacheKey)) {
+            LOG.info("Returning cached fuel forecast for entityId: {} with lastHistoryTimestamp: {}, forecastDuration: {}, rasterMinutes: {}", entityId, lastHistoryTimestamp, forecastDuration, rasterMinutes);
+            return fuelForecastResultCache.get(cacheKey);
         }
 
         List<PricePoint> rawData = new ArrayList<>();
@@ -161,10 +162,10 @@ public class HoltWinterForecastService {
 
         // Vorhersage in der Datenbank speichern (jetzt neu berechnet)
         if (persist) {
-            persistForecast(entityId, now, forecastDuration, rasterMinutes, result);
+            persistFuelForecast(entityId, now, forecastDuration, rasterMinutes, result);
         }
         // Cache the calculated result
-        forecastResultCache.put(cacheKey, result);
+        fuelForecastResultCache.put(cacheKey, result);
         return result;
     }
 
@@ -301,7 +302,7 @@ public class HoltWinterForecastService {
             initialTrend += (data[i + period] - data[i]) / period;
         }
         initialTrend /= period;
-        T[period - 1] = initialTrend;
+            T[period - 1] = initialTrend;
 
         for (int i = 0; i < period; i++) {
             S[i] = data[i] - initialLevel;
@@ -323,7 +324,7 @@ public class HoltWinterForecastService {
     }
 
     @Transactional
-    public void persistForecast(String entityId, ZonedDateTime createdAt, Duration forecastDuration, int rasterMinutes, List<FuelPriceForecastDto> forecast) {
+    public void persistFuelForecast(String entityId, ZonedDateTime createdAt, Duration forecastDuration, int rasterMinutes, List<FuelPriceForecastDto> forecast) {
         if (forecast == null || forecast.isEmpty()) {
             return;
         }
@@ -342,7 +343,7 @@ public class HoltWinterForecastService {
         }
 
         em.persist(forecastEntity);
-        LOG.info("Neue Vorhersage für {} (Dauer: {}m, Raster: {}m) in der DB gespeichert.",
+        LOG.info("Neue Tankpreis-Vorhersage für {} (Dauer: {}m, Raster: {}m) in der DB gespeichert.",
                 entityId, forecastDuration.toMinutes(), rasterMinutes);
     }
 }

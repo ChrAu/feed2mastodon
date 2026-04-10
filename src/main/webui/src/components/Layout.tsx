@@ -57,6 +57,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <div className="bg-slate-800/90 backdrop-blur-md border border-slate-700 rounded-md shadow-lg">
                   <Link to="/" className="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">Home</Link>
                   <Link to="/tanken" className="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">Tanken</Link>
+                  <Link to="/strompreis" className="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">Strompreis</Link> {/* New link */}
                   <Link to="/server-status" className="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">Server Status</Link>
                   <Link to="/mail-test" className="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">Mail Test</Link>
                 </div>
