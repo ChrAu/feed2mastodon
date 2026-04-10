@@ -17,7 +17,7 @@ import java.util.StringJoiner;
 public class JsoupTest {
 
     final Logger LOG = Logger.getLogger(this.getClass());
-    private final static String WIKIPEDIA_CSS_QUERY = "#mw-content-text .mw-parser-output > p:not(:has(> b)):not(:has(> span.geo.noexcerpt))";
+    private final static String WIKIPEDIA_CSS_QUERY = "#mw-content-text .mw-parser-output ";
     private final static String TAGESSCHAU_CSS_QUERY ="#content article > *:not(div.meldungsfooter)";
 
     @Test
