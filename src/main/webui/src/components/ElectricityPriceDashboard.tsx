@@ -1,7 +1,7 @@
 import { RefreshCw } from 'lucide-react';
 import React, { useEffect, useState, useCallback } from 'react';
-import ElectricityPriceCardSkeleton from './ElectricityPriceCardSkeleton';
 import { ElectricityPriceChart, VisibleLinesState } from './ElectricityPriceChart'; // Removed ElectricityPriceForecastDto
+import ElectricityPriceChartSkeleton from './ElectricityPriceChartSkeleton';
 
 interface PriceDetail {
     entityId: string;
@@ -113,7 +113,7 @@ const ElectricityPriceDashboard: React.FC = () => {
                 <div className="flex justify-end mb-4">
                     <div className="h-8 bg-slate-800/80 rounded-full w-48 animate-pulse border border-slate-700"></div>
                 </div>
-                <ElectricityPriceCardSkeleton />
+                <ElectricityPriceChartSkeleton />
             </div>
         );
     }
