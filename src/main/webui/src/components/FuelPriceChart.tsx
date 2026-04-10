@@ -36,6 +36,8 @@ export interface FuelPriceChartProps {
     fuelType: string;
     height?: number;
     durationHours?: number;
+    customStartDate?: string;
+    customEndDate?: string;
     selectedForecastOption?: 'none' | 'trend_12h_holt' | '24h_holt' | '48h_holt';
     savedForecastData?: FuelPriceForecastDto[];
     isCheckMode?: boolean;
@@ -95,7 +97,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, f
     return null;
 };
 
-export const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, height = 200, durationHours = 24, selectedForecastOption = 'none', savedForecastData, isCheckMode = false, visibleLines }) => {
+export const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelType, height = 200, durationHours = 24, customStartDate, customEndDate, selectedForecastOption = 'none', savedForecastData, isCheckMode = false, visibleLines }) => {
     const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -116,9 +118,21 @@ export const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelTy
 
                 const requiredHistoryForTrend = FORECAST_DAYS_HISTORY * 24;
 
-                const fetchDuration = isCheckMode
-                    ? Math.max(durationHours, 168)
-                    : (isTrendForecastActive ? Math.max(durationHours, requiredHistoryForTrend) : durationHours);
+                let fetchDuration = durationHours;
+                
+                // If custom dates are provided, fetch data that covers the range
+                if (customStartDate && customEndDate) {
+                    const startTs = new Date(customStartDate).getTime();
+                    const now = new Date().getTime();
+                    const diffHours = (now - startTs) / (1000 * 60 * 60);
+                    if (diffHours > durationHours) {
+                        fetchDuration = Math.round(diffHours);
+                    }
+                }
+                
+                fetchDuration = isCheckMode
+                    ? Math.max(fetchDuration, 168)
+                    : (isTrendForecastActive ? Math.max(fetchDuration, requiredHistoryForTrend) : fetchDuration);
 
                 const historyResponse = await fetch(`/api/homeassistant/fuel-prices/history?entityId=${entityId}&durationHours=${fetchDuration}`);
 
@@ -196,7 +210,11 @@ export const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelTy
                 }
 
                 const now = new Date().getTime();
-                const minDisplayMs = isCheckMode ? 0 : now - durationHours * 60 * 60 * 1000;
+                let minDisplayMs = isCheckMode ? 0 : now - durationHours * 60 * 60 * 1000;
+                
+                if (customStartDate && customEndDate) {
+                    minDisplayMs = new Date(customStartDate).getTime();
+                }
 
                 let displayHistory: ChartDataPoint[] = fullHistory
                     .filter(pt => pt.timestampMs >= minDisplayMs)
@@ -262,8 +280,14 @@ export const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelTy
                     else if (selectedForecastOption === '24h_holt') expectedForecastHours = 24;
                     else if (selectedForecastOption === '48h_holt') expectedForecastHours = 48;
 
-                    const maxTimestamp = now + (expectedForecastHours * 60 * 60 * 1000);
-                    const initialMinTs = now - (durationHours * 60 * 60 * 1000);
+                    let initialMinTs = now - (durationHours * 60 * 60 * 1000);
+                    let maxTimestamp = now + (expectedForecastHours * 60 * 60 * 1000);
+                    
+                    if (customStartDate && customEndDate) {
+                        initialMinTs = new Date(customStartDate).getTime();
+                        maxTimestamp = new Date(customEndDate).getTime();
+                    }
+                    
                     setXDomain([initialMinTs, maxTimestamp]);
                 }
 
@@ -309,7 +333,7 @@ export const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelTy
         fetchHistory().catch(console.error);
 
         return () => { isMounted = false; };
-    }, [entityId, durationHours, selectedForecastOption, savedForecastData, isCheckMode]);
+    }, [entityId, durationHours, customStartDate, customEndDate, selectedForecastOption, savedForecastData, isCheckMode]);
 
 
     useEffect(() => {
@@ -324,7 +348,9 @@ export const FuelPriceChart: React.FC<FuelPriceChartProps> = ({ entityId, fuelTy
         else if (rangeHours <= 24) tickIntervalMs = 4 * 60 * 60 * 1000;
         else if (rangeHours <= 48) tickIntervalMs = 8 * 60 * 60 * 1000;
         else if (rangeHours <= 96) tickIntervalMs = 12 * 60 * 60 * 1000;
-        else tickIntervalMs = 24 * 60 * 60 * 1000;
+        else if (rangeHours <= 24 * 7) tickIntervalMs = 24 * 60 * 60 * 1000; // 1 day
+        else if (rangeHours <= 24 * 14) tickIntervalMs = 2 * 24 * 60 * 60 * 1000; // 2 days
+        else tickIntervalMs = 3 * 24 * 60 * 60 * 1000; // 3 days
 
         const generatedGridTicks: number[] = [];
         const startDate = new Date(minTs);
