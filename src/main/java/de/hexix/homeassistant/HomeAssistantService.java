@@ -172,7 +172,7 @@ public class HomeAssistantService {
         final long seconds = duration.toSeconds();
         final ZonedDateTime zonedDateTime = ZonedDateTime.now().minusSeconds(seconds);
 
-        query.setParameter("entityId", "sensor.codeheap_cpu_auslastung_2");
+        query.setParameter("entityId", "sensor.codeheap_cpu_auslastung");
         query.setParameter("startDate", zonedDateTime);
 
         return query.getResultList();
