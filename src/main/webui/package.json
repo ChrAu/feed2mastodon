@@ -23,7 +23,6 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "postbuild": "node generate-sw.js",
     "preview": "vite preview"
   },
   "devDependencies": {
