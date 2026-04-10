@@ -72,7 +72,8 @@ public class HomeAssistantScheduler {
                                 entityId,
                                 java.time.Duration.ofDays(365),
                                 java.time.Duration.ofHours(48),
-                                10
+                                10,
+                                true // Explizit speichern
                         );
                     } catch (Exception e) {
                         Logger.getLogger(this.getClass()).errorf("Fehler bei automatischer Prognose für %s: %s", entityId, e.getMessage());
