@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 import { FuelPriceChart, FuelPriceForecastDto, VisibleLinesState } from './FuelPriceChart';
 
-interface FuelPrice {
+export interface FuelPrice {
     value: number;
     unit: string;
     lastChanged: string;
@@ -10,7 +10,7 @@ interface FuelPrice {
     previousValue?: number | null;
 }
 
-interface SavedForecastDto {
+export interface SavedForecastDto {
     id: number;
     createdAt: string;
     forecastDurationMinutes: number;
@@ -18,7 +18,7 @@ interface SavedForecastDto {
     dataPoints: FuelPriceForecastDto[];
 }
 
-interface FuelPriceDetailModalProps {
+export interface FuelPriceDetailModalProps {
     isOpen: boolean;
     onClose: () => void;
     fuelPrice: FuelPrice;
@@ -27,7 +27,7 @@ interface FuelPriceDetailModalProps {
     isCheckMode: boolean;
 }
 
-type ForecastOptionType = 'none' | 'trend_12h_holt' | '24h_holt' | '48h_holt';
+export type ForecastOptionType = 'none' | 'trend_12h_holt' | '24h_holt' | '48h_holt';
 
 const FORECAST_DAYS_HISTORY = 7; // Keep this constant here for help text
 
@@ -124,7 +124,7 @@ const FuelPriceDetailModal: React.FC<FuelPriceDetailModalProps> = ({ isOpen, onC
                         setIsLoadingForecasts(false);
                     }
                 };
-                fetchSavedForecasts();
+                void fetchSavedForecasts();
             }
         }
         
@@ -169,7 +169,7 @@ const FuelPriceDetailModal: React.FC<FuelPriceDetailModalProps> = ({ isOpen, onC
                     <div className="flex flex-col gap-4 w-full">
                         {/* Options Row */}
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                            <span className="text-slate-400 text-sm font-medium min-w-[120px]">Prognose:</span>
+                            <span className="text-slate-400 text-sm font-medium min-w-30">Prognose:</span>
                             <div className="flex flex-wrap gap-2 bg-slate-900 rounded-lg p-1 w-full sm:w-auto">
                                 {FORECAST_OPTIONS.map((option) => (
                                     <button
@@ -196,7 +196,7 @@ const FuelPriceDetailModal: React.FC<FuelPriceDetailModalProps> = ({ isOpen, onC
                                         <select
                                             value={selectedSavedForecastId}
                                             onChange={(e) => setSelectedSavedForecastId(e.target.value ? Number(e.target.value) : '')}
-                                            className="bg-slate-800 text-white text-sm rounded border border-slate-700 py-1 px-2 outline-none focus:border-pink-500 h-[32px]"
+                                            className="bg-slate-800 text-white text-sm rounded border border-slate-700 py-1 px-2 outline-none focus:border-pink-500 h-8"
                                             aria-label="Gespeicherte Prognose für Backtest auswählen"
                                         >
                                             <option value="">-- Keine --</option>
@@ -215,7 +215,7 @@ const FuelPriceDetailModal: React.FC<FuelPriceDetailModalProps> = ({ isOpen, onC
 
                         {/* Data Range Options Row */}
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                             <span className="text-slate-400 text-sm font-medium min-w-[120px]">Historie:</span>
+                             <span className="text-slate-400 text-sm font-medium min-w-30">Historie:</span>
                              <div className="flex flex-wrap gap-2 bg-slate-900 rounded-lg p-1 w-full sm:w-auto">
                                 {HISTORY_OPTIONS.map((option) => (
                                     <button
