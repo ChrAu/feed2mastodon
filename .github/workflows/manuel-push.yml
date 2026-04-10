@@ -68,7 +68,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '25'
-          distribution: 'zulu'
+          distribution: 'corretto'
 
       # Schritt 3: Node.js einrichten
       - name: Set up Node.js
