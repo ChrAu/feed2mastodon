@@ -2,6 +2,9 @@ package de.hexix.homeassistant;
 
 import de.hexix.homeassistant.dto.AttributesDto;
 import de.hexix.homeassistant.dto.CpuDto;
+import de.hexix.homeassistant.dto.ElectricityPriceDto;
+import de.hexix.homeassistant.dto.ElectricityPriceHistoryDto;
+import de.hexix.homeassistant.dto.ElectricityPriceOverviewDto; // New import
 import de.hexix.homeassistant.dto.EntityDto;
 import de.hexix.homeassistant.dto.FuelPriceDto;
 import de.hexix.homeassistant.dto.FuelPriceForecastDto;
@@ -9,8 +12,8 @@ import de.hexix.homeassistant.dto.FuelPriceHistoryDto;
 import de.hexix.homeassistant.dto.FuelStationDto;
 import de.hexix.homeassistant.dto.SavedForecastDto;
 import de.hexix.homeassistant.dto.TemperatureBucketDTO;
-import de.hexix.homeassistant.entity.HaEntity;
 import de.hexix.homeassistant.entity.HaFuelForecast;
+import de.hexix.homeassistant.entity.HaEntity;
 import de.hexix.homeassistant.entity.HaStateHistory;
 import de.hexix.homeassistant.entity.HaTemperatureHistory;
 import de.hexix.homeassistant.ignoredentity.IgnoredEntityRepository;
@@ -37,6 +40,8 @@ import org.jboss.logging.Logger;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -98,6 +103,19 @@ public class HomeAssistantService {
             "sensor.totalenergies_deggingen_super",
             "sensor.totalenergies_deggingen_super_e10"
     );
+
+    public static final List<String> ELECTRICITY_PRICE_ENTITY_IDS = List.of(
+            "sensor.strompreis_average_price",
+            "sensor.strompreis_highest_price",
+            "sensor.strompreis_lowest_price",
+            "sensor.strompreis_market_price",
+            "sensor.strompreis_median_price",
+            "sensor.strompreis_quantile",
+            "sensor.strompreis_rank",
+            "sensor.strompreis_total_price"
+    );
+    public static final String ELECTRICITY_TOTAL_PRICE_ENTITY_ID = "sensor.strompreis_total_price";
+
 
     public List<EntityDto> currentState() {
         return homeAssistantClient.getAllStates("Bearer " + apiToken);
@@ -530,6 +548,189 @@ public class HomeAssistantService {
     }
 
     @Transactional
+    public ElectricityPriceOverviewDto getElectricityPriceOverview() {
+        Map<String, ElectricityPriceDto> prices = new HashMap<>();
+        String mainEntityId = ELECTRICITY_TOTAL_PRICE_ENTITY_ID;
+
+        String overviewFriendlyName = null;
+        String overviewUnit = null;
+        ZonedDateTime overviewLastChanged = null;
+        String overviewCurrency = null;
+        String overviewProvider = null;
+        String overviewRegion = null;
+
+        for (String entityId : ELECTRICITY_PRICE_ENTITY_IDS) {
+            try {
+                EntityDto entity = homeAssistantClient.getState("Bearer " + apiToken, entityId);
+                AttributesDto attributes = entity.getAttributes();
+                ZonedDateTime lastChanged = ZonedDateTime.parse(entity.getLastChanged(), DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+
+                Double currentValue = Double.parseDouble(entity.getState());
+                String unit = (String) attributes.getAdditionalAttributes().get("unit_of_measurement");
+                String currency = (String) attributes.getAdditionalAttributes().get("currency");
+                String provider = (String) attributes.getAdditionalAttributes().get("provider");
+                String region = (String) attributes.getAdditionalAttributes().get("region");
+
+                // Fetch previous value from DB
+                Double previousValue = null;
+                try {
+                    TypedQuery<HaStateHistory> beforeQuery = em.createNamedQuery(HaStateHistory.FIND_PREVIOUS_BY_ENTITY_ID_AND_LAST_CHANGED, HaStateHistory.class);
+                    beforeQuery.setParameter("entityId", entityId);
+                    beforeQuery.setParameter("lastChanged", lastChanged);
+                    beforeQuery.setMaxResults(1);
+                    HaStateHistory beforeHistory = beforeQuery.getSingleResultOrNull();
+
+                    if (beforeHistory != null) {
+                        previousValue = Double.parseDouble(beforeHistory.getState());
+                    }
+                } catch (Exception e) {
+                    System.err.println("Failed to fetch previous electricity price for " + entityId + ": " + e.getMessage());
+                }
+
+                ElectricityPriceDto priceDto = new ElectricityPriceDto(
+                        entity.getEntityId(),
+                        attributes.getFriendlyName(),
+                        currentValue,
+                        unit,
+                        lastChanged.toLocalDateTime(),
+                        previousValue,
+                        currency,
+                        provider,
+                        region
+                );
+                // Use a shorter key for the map (e.g., "total_price" instead of "sensor.strompreis_total_price")
+                prices.put(entityId.replace("sensor.strompreis_", ""), priceDto);
+
+                // Capture overview details from the main entity
+                if (entityId.equals(mainEntityId)) {
+                    overviewFriendlyName = attributes.getFriendlyName();
+                    overviewUnit = unit;
+                    overviewLastChanged = lastChanged;
+                    overviewCurrency = currency;
+                    overviewProvider = provider;
+                    overviewRegion = region;
+                }
+
+            } catch (Exception e) {
+                LOG.error("Fehler beim Abruf des Strompreises für Entity: " + entityId, e);
+                // Continue processing other entities even if one fails
+            }
+        }
+
+        if (prices.isEmpty()) {
+            throw new RuntimeException("Could not fetch any electricity prices.");
+        }
+
+        // Ensure main entity details are set, even if it failed to fetch (unlikely if prices is not empty)
+        if (overviewFriendlyName == null) {
+            ElectricityPriceDto total_price_dto = prices.get("total_price");
+            if (total_price_dto != null) {
+                overviewFriendlyName = total_price_dto.friendlyName();
+                overviewUnit = total_price_dto.unit();
+                overviewLastChanged = ZonedDateTime.of(total_price_dto.lastChanged(), ZoneId.systemDefault()); // Convert back to ZonedDateTime
+                overviewCurrency = total_price_dto.currency();
+                overviewProvider = total_price_dto.provider();
+                overviewRegion = total_price_dto.region();
+            } else {
+                // Fallback if total_price is somehow missing or failed
+                // This case should ideally not happen if prices is not empty
+                LOG.warn("Main electricity price entity (total_price) not found in fetched prices, using first available.");
+                Map.Entry<String, ElectricityPriceDto> firstEntry = prices.entrySet().iterator().next();
+                overviewFriendlyName = firstEntry.getValue().friendlyName();
+                overviewUnit = firstEntry.getValue().unit();
+                overviewLastChanged = ZonedDateTime.of(firstEntry.getValue().lastChanged(), ZoneId.systemDefault());
+                overviewCurrency = firstEntry.getValue().currency();
+                overviewProvider = firstEntry.getValue().provider();
+                overviewRegion = firstEntry.getValue().region();
+            }
+        }
+
+        return new ElectricityPriceOverviewDto(
+                mainEntityId,
+                overviewFriendlyName,
+                overviewUnit,
+                overviewLastChanged.toLocalDateTime(),
+                overviewCurrency,
+                overviewProvider,
+                overviewRegion,
+                prices
+        );
+    }
+
+    @Transactional
+    public List<ElectricityPriceHistoryDto> getElectricityPriceHistory(String entityId, Duration duration) {
+        final ZonedDateTime now = ZonedDateTime.now();
+        final ZonedDateTime startDate = now.minus(duration);
+
+        final TypedQuery<HaStateHistory> historyQuery = em.createNamedQuery(HaStateHistory.FIND_BY_ENTITY_ID_AND_DATE_RANGE, HaStateHistory.class);
+        historyQuery.setParameter("entityId", entityId);
+        historyQuery.setParameter("startDate", startDate);
+        List<HaStateHistory> rawHistory = historyQuery.getResultList();
+
+        Double currentPrice = null;
+        try {
+            EntityDto currentEntity = homeAssistantClient.getState("Bearer " + apiToken, entityId);
+            currentPrice = Double.parseDouble(currentEntity.getState());
+        } catch (Exception e) {
+            System.err.println("Failed to get current state for entityId: " + entityId + " - " + e.getMessage());
+        }
+
+        Double priceBeforeStartDate = null;
+        TypedQuery<HaStateHistory> beforeQuery = em.createNamedQuery(HaStateHistory.FIND_PREVIOUS_BY_ENTITY_ID_AND_LAST_CHANGED, HaStateHistory.class);
+        beforeQuery.setParameter("entityId", entityId);
+        beforeQuery.setParameter("lastChanged", startDate);
+        beforeQuery.setMaxResults(1);
+        HaStateHistory beforeHistory = beforeQuery.getSingleResultOrNull();
+
+        if (beforeHistory != null) {
+            try {
+                priceBeforeStartDate = Double.parseDouble(beforeHistory.getState());
+            } catch (NumberFormatException e) {
+                System.err.println("State before startDate is not a number for entityId: " + entityId + " - " + e.getMessage());
+            }
+        }
+
+        List<ElectricityPriceHistoryDto> finalHistory = new ArrayList<>();
+
+        if (priceBeforeStartDate != null) {
+            finalHistory.add(new ElectricityPriceHistoryDto(startDate, priceBeforeStartDate));
+        } else if (!rawHistory.isEmpty()) {
+            try {
+                finalHistory.add(new ElectricityPriceHistoryDto(startDate, Double.parseDouble(rawHistory.get(0).getState())));
+            } catch (NumberFormatException e) {
+                // ignore
+            }
+        }
+
+        rawHistory.stream()
+                .filter(haStateHistory -> {
+                    try {
+                        Double.parseDouble(haStateHistory.getState());
+                        return true;
+                    } catch (NumberFormatException e) {
+                        return false;
+                    }
+                })
+                .map(haStateHistory -> new ElectricityPriceHistoryDto(
+                        haStateHistory.getLastChanged(),
+                        Double.parseDouble(haStateHistory.getState())
+                ))
+                .forEach(finalHistory::add);
+
+        if (currentPrice != null && (!finalHistory.isEmpty() || priceBeforeStartDate != null)) {
+            finalHistory.add(new ElectricityPriceHistoryDto(now, currentPrice));
+        } else if (currentPrice != null && finalHistory.isEmpty()) {
+            finalHistory.add(new ElectricityPriceHistoryDto(now, currentPrice));
+        }
+
+        return finalHistory;
+    }
+
+    // Removed getElectricityPriceForecast methods
+    // Removed getElectricityPriceHistoryData method
+    // Removed getSavedElectricityForecasts method
+
+    @Transactional
     public int cleanupOldForecasts(int hoursOld) {
         ZonedDateTime threshold = ZonedDateTime.now().minusHours(hoursOld);
 
@@ -538,8 +739,8 @@ public class HomeAssistantService {
                 .setParameter("threshold", threshold)
                 .executeUpdate();
 
+        // Removed electricity forecasts cleanup
+
         return deletedCount;
     }
-
-
 }

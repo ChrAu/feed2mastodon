@@ -2,9 +2,11 @@ package de.hexix.homeassistant;
 
 import de.hexix.homeassistant.dto.AttributesDto;
 import de.hexix.homeassistant.dto.CpuDto;
+import de.hexix.homeassistant.dto.ElectricityPriceHistoryDto;
+import de.hexix.homeassistant.dto.ElectricityPriceOverviewDto; // New import
 import de.hexix.homeassistant.dto.EntityDto;
-import de.hexix.homeassistant.dto.FuelPriceForecastDto; // Import FuelPriceForecastDto
-import de.hexix.homeassistant.dto.FuelPriceHistoryDto; // Import FuelPriceHistoryDto
+import de.hexix.homeassistant.dto.FuelPriceForecastDto;
+import de.hexix.homeassistant.dto.FuelPriceHistoryDto;
 import de.hexix.homeassistant.dto.FuelStationDto;
 import de.hexix.homeassistant.dto.TemperatureBucketDTO;
 import de.hexix.homeassistant.dto.TemperatureDeviceDto;
@@ -181,6 +183,23 @@ public class HomeAssistantResource {
     @Produces(MediaType.APPLICATION_JSON)
     public List<de.hexix.homeassistant.dto.SavedForecastDto> getSavedForecasts(@QueryParam("entityId") String entityId) {
         return homeAssistantService.getSavedForecasts(entityId);
+    }
+
+    // New Electricity Price Endpoints
+    @GET
+    @Path("/electricity-price")
+    @Produces(MediaType.APPLICATION_JSON)
+    public ElectricityPriceOverviewDto getElectricityPriceOverview() { // Changed return type and method name
+        return homeAssistantService.getElectricityPriceOverview();
+    }
+
+    @GET
+    @Path("/electricity-price/history")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<ElectricityPriceHistoryDto> getElectricityPriceHistory(
+            @QueryParam("entityId") String entityId,
+            @QueryParam("durationHours") int durationHours) {
+        return homeAssistantService.getElectricityPriceHistory(entityId, Duration.ofHours(durationHours));
     }
 
     @GET
