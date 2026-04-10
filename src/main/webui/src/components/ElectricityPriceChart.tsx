@@ -104,23 +104,22 @@ export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ en
             try {
                 const isHoltWintersForecastActive = selectedForecastOption === '24h_holt' || selectedForecastOption === '48h_holt';
 
-                let fetchDuration = durationHours;
-                
-                // If custom dates are provided, fetch data that covers the range
+                let actualFetchDuration = durationHours; // Start with the requested duration
+
+                // If custom dates are provided, calculate duration from them
                 if (customStartDate && customEndDate) {
                     const startTs = new Date(customStartDate).getTime();
-                    const now = new Date().getTime();
-                    const diffHours = (now - startTs) / (1000 * 60 * 60);
-                    if (diffHours > durationHours) {
-                        fetchDuration = Math.round(diffHours);
-                    }
+                    const endTs = new Date(customEndDate).getTime();
+                    const diffHours = (endTs - startTs) / (1000 * 60 * 60);
+                    actualFetchDuration = Math.round(diffHours);
                 }
-                
-                fetchDuration = isCheckMode
-                    ? Math.max(fetchDuration, 168)
-                    : fetchDuration;
 
-                const historyResponse = await fetch(`/api/homeassistant/electricity-price/history?entityId=${entityId}&durationHours=${fetchDuration}`);
+                // If in check mode, ensure we fetch at least 7 days of data for exploration
+                if (isCheckMode) {
+                    actualFetchDuration = Math.max(actualFetchDuration, 168);
+                }
+
+                const historyResponse = await fetch(`/api/homeassistant/electricity-price/history?entityId=${entityId}&durationHours=${actualFetchDuration}`);
 
                 if (!historyResponse.ok) {
                     throw new Error(`HTTP error! status: ${historyResponse.status}`);
@@ -146,16 +145,17 @@ export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ en
                     }
                 }
 
-                const now = new Date().getTime();
-                let minDisplayMs = isCheckMode ? 0 : now - durationHours * 60 * 60 * 1000;
-                
-                if (customStartDate && customEndDate) {
-                    minDisplayMs = new Date(customStartDate).getTime();
-                }
+                // Determine the initial display range for xDomain
+                let initialMinDisplayMs;
+                let initialMaxDisplayMs;
 
-                let displayHistory: ChartDataPoint[] = fullHistory
-                    .filter(pt => pt.timestampMs >= minDisplayMs)
-                    .map(pt => ({ timestampMs: pt.timestampMs, value: pt.value }));
+                if (customStartDate && customEndDate) {
+                    initialMinDisplayMs = new Date(customStartDate).getTime();
+                    initialMaxDisplayMs = new Date(customEndDate).getTime();
+                } else {
+                    initialMaxDisplayMs = currentTimeMs;
+                    initialMinDisplayMs = currentTimeMs - durationHours * 60 * 60 * 1000;
+                }
 
                 const updateChartData = (aiForecastData: ChartDataPoint[] = []) => {
                     const pointMap = new Map<number, ChartDataPoint>();
@@ -166,14 +166,13 @@ export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ en
                         Object.assign(pointMap.get(roundedTs)!, data);
                     };
 
-                    displayHistory.forEach(pt => addPoint(pt.timestampMs, { value: pt.value }));
+                    // Use fullHistory here to ensure all fetched data is available for potential zoom/pan
+                    fullHistory.forEach(pt => addPoint(pt.timestampMs, { value: pt.value }));
                     aiForecastData.forEach(pt => addPoint(pt.timestampMs, { aiForecastValue: pt.aiForecastValue }));
 
-                    // Removed savedForecastData processing
-
-                    if (displayHistory.length > 0) {
-                        const lastHistoryVal = displayHistory[displayHistory.length - 1].value;
-                        const lastHistoryTs = displayHistory[displayHistory.length - 1].timestampMs;
+                    if (fullHistory.length > 0) {
+                        const lastHistoryVal = fullHistory[fullHistory.length - 1].value;
+                        const lastHistoryTs = fullHistory[fullHistory.length - 1].timestampMs;
                         if (aiForecastData.length > 0) addPoint(lastHistoryTs, { aiForecastValue: lastHistoryVal });
                     }
 
@@ -181,7 +180,6 @@ export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ en
 
                     let currentValue: number | undefined = undefined;
                     let currentAiForecast: number | undefined = undefined;
-                    // Removed currentSavedForecast
 
                     finalChartData.forEach(pt => {
                         if (pt.value !== undefined) currentValue = pt.value;
@@ -189,8 +187,6 @@ export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ en
 
                         if (pt.aiForecastValue !== undefined) currentAiForecast = pt.aiForecastValue;
                         else if (currentAiForecast !== undefined && pt.timestampMs >= (aiForecastData[0]?.timestampMs || 0)) pt.aiForecastValue = currentAiForecast;
-
-                        // Removed savedForecastValue logic
                     });
 
                     return finalChartData;
@@ -199,21 +195,12 @@ export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ en
                 const initialChartData = updateChartData([]);
                 setChartData(initialChartData);
 
-                if (initialChartData.length > 0) {
-                    let expectedForecastHours = 0;
-                    if (selectedForecastOption === '24h_holt') expectedForecastHours = 24;
-                    else if (selectedForecastOption === '48h_holt') expectedForecastHours = 48;
+                // Set the initial xDomain based on the requested display period
+                const initialXDomainMin = initialMinDisplayMs;
+                const initialXDomainMax = initialMaxDisplayMs; // Removed forecast duration from max
 
-                    let initialMinTs = now - (durationHours * 60 * 60 * 1000);
-                    let maxTimestamp = now + (expectedForecastHours * 60 * 60 * 1000);
-                    
-                    if (customStartDate && customEndDate) {
-                        initialMinTs = new Date(customStartDate).getTime();
-                        maxTimestamp = new Date(customEndDate).getTime();
-                    }
-                    
-                    setXDomain([initialMinTs, maxTimestamp]);
-                }
+                setXDomain([initialXDomainMin, initialXDomainMax]);
+
 
                 if (isHoltWintersForecastActive) {
                     setLoadingAiForecast(true);
@@ -256,7 +243,7 @@ export const ElectricityPriceChart: React.FC<ElectricityPriceChartProps> = ({ en
         fetchHistory().catch(console.error);
 
         return () => { isMounted = false; };
-    }, [entityId, durationHours, customStartDate, customEndDate, isCheckMode]); // Removed savedForecastData from dependencies
+    }, [entityId, durationHours, customStartDate, customEndDate, isCheckMode]);
 
 
     useEffect(() => {
