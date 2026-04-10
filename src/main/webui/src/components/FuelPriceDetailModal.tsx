@@ -50,10 +50,6 @@ const FuelPriceDetailModal: React.FC<FuelPriceDetailModalProps> = ({ isOpen, onC
         aiForecastValue: true,
         savedForecastValue: true,
     });
-    
-    const [isCustomRange, setIsCustomRange] = useState<boolean>(false);
-    const [customStartDate, setCustomStartDate] = useState<string>('');
-    const [customEndDate, setCustomEndDate] = useState<string>('');
 
     useEffect(() => {
         if (isOpen) {
@@ -67,10 +63,6 @@ const FuelPriceDetailModal: React.FC<FuelPriceDetailModalProps> = ({ isOpen, onC
                 aiForecastValue: true,
                 savedForecastValue: true,
             });
-            
-            setIsCustomRange(false);
-            setCustomStartDate('');
-            setCustomEndDate('');
 
             if (isCheckMode) {
                 const fetchSavedForecasts = async () => {
@@ -96,18 +88,6 @@ const FuelPriceDetailModal: React.FC<FuelPriceDetailModalProps> = ({ isOpen, onC
         }));
     };
 
-    const handleApplyCustomDateRange = () => {
-        if (customStartDate && customEndDate) {
-            const start = new Date(customStartDate).getTime();
-            const end = new Date(customEndDate).getTime();
-            
-            if (end > start) {
-                const diffHours = (end - start) / (1000 * 60 * 60);
-                setModalDurationHours(Math.round(diffHours));
-            }
-        }
-    };
-
     if (!isOpen) return null;
 
     return (
@@ -122,107 +102,73 @@ const FuelPriceDetailModal: React.FC<FuelPriceDetailModalProps> = ({ isOpen, onC
                         {stationName} - {getFuelTypeName(fuelType)}
                     </h3>
 
-                    <div className="flex flex-col xl:flex-row items-start gap-4 w-full">
-                        <div className="flex flex-wrap gap-2 bg-slate-900 rounded-lg p-1 w-full xl:w-auto">
-                            {[
-                                { label: 'Keine Prognose', value: 'none' },
-                                { label: 'Trend + 12h HW', value: 'trend_12h_holt' },
-                                { label: '24h HW', value: '24h_holt' },
-                                { label: '48h HW', value: '48h_holt' }
-                            ].map((option) => (
-                                <button
-                                    key={option.value}
-                                    onClick={() => setSelectedForecastOption(option.value as any)}
-                                    className={`flex-1 sm:flex-none px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
-                                        selectedForecastOption === option.value
-                                            ? 'bg-blue-600 text-white'
-                                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                                    }`}
-                                >
-                                    {option.label}
-                                </button>
-                            ))}
+                    <div className="flex flex-col gap-4 w-full">
+                        {/* Forecast Options Row */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                            <span className="text-slate-400 text-sm font-medium min-w-[120px]">Prognose:</span>
+                            <div className="flex flex-wrap gap-2 bg-slate-900 rounded-lg p-1 w-full sm:w-auto">
+                                {[
+                                    { label: 'Keine', value: 'none' },
+                                    { label: 'Trend + 12h HW', value: 'trend_12h_holt' },
+                                    { label: '24h HW', value: '24h_holt' },
+                                    { label: '48h HW', value: '48h_holt' }
+                                ].map((option) => (
+                                    <button
+                                        key={option.value}
+                                        onClick={() => setSelectedForecastOption(option.value as any)}
+                                        className={`flex-1 sm:flex-none px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+                                            selectedForecastOption === option.value
+                                                ? 'bg-blue-600 text-white'
+                                                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                                        }`}
+                                    >
+                                        {option.label}
+                                    </button>
+                                ))}
+                            </div>
+                            {isCheckMode && savedForecasts.length > 0 && (
+                                <div className="flex items-center gap-2 bg-slate-900 rounded-lg p-1 w-full sm:w-auto mt-2 sm:mt-0">
+                                    <span className="text-pink-400 text-sm font-medium px-2">Backtest:</span>
+                                    <select
+                                        value={selectedSavedForecastId}
+                                        onChange={(e) => setSelectedSavedForecastId(e.target.value ? Number(e.target.value) : '')}
+                                        className="bg-slate-800 text-white text-sm rounded border border-slate-700 py-1 px-2 outline-none focus:border-pink-500 h-[32px]"
+                                    >
+                                        <option value="">-- Keine --</option>
+                                        {savedForecasts.map(f => {
+                                            const date = new Date(f.createdAt);
+                                            const label = `${date.toLocaleDateString('de-DE')} ${date.toLocaleTimeString('de-DE', {hour: '2-digit', minute:'2-digit'})} (${f.forecastDurationMinutes / 60}h)`;
+                                            return <option key={f.id} value={f.id}>{label}</option>;
+                                        })}
+                                    </select>
+                                </div>
+                            )}
                         </div>
 
-                        <div className="flex flex-wrap gap-2 bg-slate-900 rounded-lg p-1 w-full xl:w-auto">
-                            {[
-                                { label: '24h', value: 24 },
-                                { label: '3 Tage', value: 72 },
-                                { label: '7 Tage', value: 168 },
-                                { label: '30 Tage', value: 720 }
-                            ].map((option) => (
-                                <button
-                                    key={option.value}
-                                    onClick={() => {
-                                        setModalDurationHours(option.value);
-                                        setIsCustomRange(false);
-                                        setCustomStartDate('');
-                                        setCustomEndDate('');
-                                    }}
-                                    className={`flex-1 sm:flex-none px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
-                                        modalDurationHours === option.value && !isCustomRange
-                                            ? 'bg-blue-600 text-white'
-                                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                                    }`}
-                                >
-                                    {option.label}
-                                </button>
-                            ))}
-                             <button
-                                onClick={() => setIsCustomRange(true)}
-                                className={`flex-1 sm:flex-none px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
-                                    isCustomRange
-                                        ? 'bg-blue-600 text-white'
-                                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                                }`}
-                            >
-                                Benutzerdef.
-                            </button>
+                        {/* Data Range Options Row */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                             <span className="text-slate-400 text-sm font-medium min-w-[120px]">Historie:</span>
+                             <div className="flex flex-wrap gap-2 bg-slate-900 rounded-lg p-1 w-full sm:w-auto">
+                                {[
+                                    { label: '24h', value: 24 },
+                                    { label: '3 Tage', value: 72 },
+                                    { label: '7 Tage', value: 168 },
+                                    { label: '30 Tage', value: 720 }
+                                ].map((option) => (
+                                    <button
+                                        key={option.value}
+                                        onClick={() => setModalDurationHours(option.value)}
+                                        className={`flex-1 sm:flex-none px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+                                            modalDurationHours === option.value
+                                                ? 'bg-blue-600 text-white'
+                                                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                                        }`}
+                                    >
+                                        {option.label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                        
-                        {isCustomRange && (
-                            <div className="flex flex-wrap items-center gap-2 bg-slate-900 rounded-lg p-1 w-full xl:w-auto">
-                                <span className="text-slate-400 text-sm pl-2">Zeitraum:</span>
-                                <input 
-                                    type="datetime-local" 
-                                    value={customStartDate} 
-                                    onChange={(e) => setCustomStartDate(e.target.value)}
-                                    className="bg-slate-800 text-white text-sm rounded border border-slate-700 py-1.5 px-2 outline-none focus:border-blue-500 flex-1 min-w-[130px]" 
-                                />
-                                <span className="text-slate-400 text-sm">-</span>
-                                <input 
-                                    type="datetime-local" 
-                                    value={customEndDate} 
-                                    onChange={(e) => setCustomEndDate(e.target.value)}
-                                    className="bg-slate-800 text-white text-sm rounded border border-slate-700 py-1.5 px-2 outline-none focus:border-blue-500 flex-1 min-w-[130px]" 
-                                />
-                                <button 
-                                    onClick={handleApplyCustomDateRange}
-                                    disabled={!customStartDate || !customEndDate}
-                                    className="px-3 py-1.5 text-sm font-medium rounded-md bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
-                                >
-                                    Anwenden
-                                </button>
-                            </div>
-                        )}
-
-                        {isCheckMode && savedForecasts.length > 0 && (
-                            <div className="flex items-center gap-2 bg-slate-900 rounded-lg p-1 w-full sm:w-auto mt-2 sm:mt-0">
-                                <span className="text-pink-400 text-sm font-medium px-2">Backtest:</span>
-                                <select
-                                    value={selectedSavedForecastId}
-                                    onChange={(e) => setSelectedSavedForecastId(e.target.value ? Number(e.target.value) : '')}
-                                    className="bg-slate-800 text-white text-sm rounded border border-slate-700 py-1.5 px-2 outline-none focus:border-pink-500"
-                                >
-                                    <option value="">-- Keine gewählt --</option>
-                                    {savedForecasts.map(f => {
-                                        const date = new Date(f.createdAt);
-                                        const label = `${date.toLocaleDateString('de-DE')} ${date.toLocaleTimeString('de-DE', {hour: '2-digit', minute:'2-digit'})} (${f.forecastDurationMinutes / 60}h)`;
-                                        return <option key={f.id} value={f.id}>{label}</option>;
-                                    })}
-                                </select>
-                            </div>
-                        )}
                     </div>
                 </div>
 
@@ -232,8 +178,6 @@ const FuelPriceDetailModal: React.FC<FuelPriceDetailModalProps> = ({ isOpen, onC
                         fuelType={fuelType}
                         height={400}
                         durationHours={modalDurationHours}
-                        customStartDate={isCustomRange ? customStartDate : ''}
-                        customEndDate={isCustomRange ? customEndDate : ''}
                         selectedForecastOption={selectedForecastOption}
                         savedForecastData={savedForecasts.find(f => f.id === selectedSavedForecastId)?.dataPoints}
                         isCheckMode={isCheckMode}
