@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 import { FuelPriceChart, FuelPriceForecastDto, VisibleLinesState } from './FuelPriceChart';
 
@@ -27,7 +27,23 @@ interface FuelPriceDetailModalProps {
     isCheckMode: boolean;
 }
 
+type ForecastOptionType = 'none' | 'trend_12h_holt' | '24h_holt' | '48h_holt';
+
 const FORECAST_DAYS_HISTORY = 7; // Keep this constant here for help text
+
+const FORECAST_OPTIONS: { label: string; value: ForecastOptionType }[] = [
+    { label: 'Keine', value: 'none' },
+    { label: 'Trend + 12h HW', value: 'trend_12h_holt' },
+    { label: '24h HW', value: '24h_holt' },
+    { label: '48h HW', value: '48h_holt' }
+];
+
+const HISTORY_OPTIONS: { label: string; value: number }[] = [
+    { label: '24h', value: 24 },
+    { label: '3 Tage', value: 72 },
+    { label: '7 Tage', value: 168 },
+    { label: '30 Tage', value: 720 }
+];
 
 const getFuelTypeName = (fuelType: string) => {
     switch (fuelType) {
@@ -40,10 +56,12 @@ const getFuelTypeName = (fuelType: string) => {
 
 const FuelPriceDetailModal: React.FC<FuelPriceDetailModalProps> = ({ isOpen, onClose, fuelPrice, fuelType, stationName, isCheckMode }) => {
     const [modalDurationHours, setModalDurationHours] = useState<number>(24);
-    const [selectedForecastOption, setSelectedForecastOption] = useState<'none' | 'trend_12h_holt' | '24h_holt' | '48h_holt'>('trend_12h_holt');
+    const [selectedForecastOption, setSelectedForecastOption] = useState<ForecastOptionType>('trend_12h_holt');
     const [showHelpSection, setShowHelpSection] = useState<boolean>(false);
     const [savedForecasts, setSavedForecasts] = useState<SavedForecastDto[]>([]);
     const [selectedSavedForecastId, setSelectedSavedForecastId] = useState<number | ''>('');
+    const [isLoadingForecasts, setIsLoadingForecasts] = useState<boolean>(false);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [visibleLines, setVisibleLines] = useState<VisibleLinesState>({
         value: true,
         forecastValue: true,
@@ -51,8 +69,24 @@ const FuelPriceDetailModal: React.FC<FuelPriceDetailModalProps> = ({ isOpen, onC
         savedForecastValue: true,
     });
 
+    // Handle Escape key to close modal
     useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
         if (isOpen) {
+            window.addEventListener('keydown', handleKeyDown);
+        }
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, onClose]);
+
+    useEffect(() => {
+        let abortController: AbortController | null = null;
+
+        if (isOpen) {
+            // Reset states on open
             setModalDurationHours(24);
             setSelectedForecastOption('trend_12h_holt');
             setShowHelpSection(false);
@@ -63,59 +97,84 @@ const FuelPriceDetailModal: React.FC<FuelPriceDetailModalProps> = ({ isOpen, onC
                 aiForecastValue: true,
                 savedForecastValue: true,
             });
+            setIsLoadingForecasts(false);
+            setFetchError(null);
 
             if (isCheckMode) {
+                abortController = new AbortController();
                 const fetchSavedForecasts = async () => {
+                    setIsLoadingForecasts(true);
+                    setFetchError(null);
                     try {
-                        const response = await fetch(`/api/homeassistant/fuel-prices/forecast/saved?entityId=${fuelPrice.entityId}`);
+                        const response = await fetch(`/api/homeassistant/fuel-prices/forecast/saved?entityId=${fuelPrice.entityId}`, {
+                            signal: abortController?.signal
+                        });
                         if (response.ok) {
                             const data: SavedForecastDto[] = await response.json();
                             setSavedForecasts(data);
+                        } else {
+                            setFetchError('Fehler beim Laden der Prognosen.');
                         }
-                    } catch (e) {
-                        console.error("Failed to fetch saved forecasts:", e);
+                    } catch (e: any) {
+                        if (e.name !== 'AbortError') {
+                            console.error("Failed to fetch saved forecasts:", e);
+                            setFetchError('Fehler beim Laden der Prognosen.');
+                        }
+                    } finally {
+                        setIsLoadingForecasts(false);
                     }
                 };
                 fetchSavedForecasts();
             }
         }
+        
+        return () => {
+            if (abortController) {
+                abortController.abort();
+            }
+        };
     }, [isOpen, isCheckMode, fuelPrice.entityId]);
 
-    const toggleLineVisibility = (lineKey: keyof VisibleLinesState) => {
+    const toggleLineVisibility = useCallback((lineKey: keyof VisibleLinesState) => {
         setVisibleLines(prev => ({
             ...prev,
             [lineKey]: !prev[lineKey],
         }));
-    };
+    }, []);
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-start justify-center z-50 p-4 sm:p-6 pt-16 sm:pt-24" onClick={onClose}>
+        <div 
+            className="fixed inset-0 bg-black bg-opacity-75 flex items-start justify-center z-50 p-4 sm:p-6 pt-16 sm:pt-24" 
+            onClick={onClose}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-title"
+        >
             <div className="bg-slate-800 p-4 sm:p-6 rounded-xl border border-slate-700 shadow-lg w-full max-w-4xl relative flex flex-col max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                <button onClick={onClose} className="absolute top-2 right-2 sm:top-4 sm:right-4 text-slate-400 hover:text-white z-10 p-2 bg-slate-800/50 rounded-full">
+                <button 
+                    onClick={onClose} 
+                    className="absolute top-2 right-2 sm:top-4 sm:right-4 text-slate-400 hover:text-white z-10 p-2 bg-slate-800/50 rounded-full"
+                    aria-label="Schließen"
+                >
                     <X size={24} />
                 </button>
 
                 <div className="flex flex-col mb-4 sm:mb-6 pr-8">
-                    <h3 className="text-xl sm:text-2xl font-bold text-white mb-4">
+                    <h3 id="modal-title" className="text-xl sm:text-2xl font-bold text-white mb-4">
                         {stationName} - {getFuelTypeName(fuelType)}
                     </h3>
 
                     <div className="flex flex-col gap-4 w-full">
-                        {/* Forecast Options Row */}
+                        {/* Options Row */}
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                             <span className="text-slate-400 text-sm font-medium min-w-[120px]">Prognose:</span>
                             <div className="flex flex-wrap gap-2 bg-slate-900 rounded-lg p-1 w-full sm:w-auto">
-                                {[
-                                    { label: 'Keine', value: 'none' },
-                                    { label: 'Trend + 12h HW', value: 'trend_12h_holt' },
-                                    { label: '24h HW', value: '24h_holt' },
-                                    { label: '48h HW', value: '48h_holt' }
-                                ].map((option) => (
+                                {FORECAST_OPTIONS.map((option) => (
                                     <button
                                         key={option.value}
-                                        onClick={() => setSelectedForecastOption(option.value as any)}
+                                        onClick={() => setSelectedForecastOption(option.value)}
                                         className={`flex-1 sm:flex-none px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
                                             selectedForecastOption === option.value
                                                 ? 'bg-blue-600 text-white'
@@ -126,21 +185,30 @@ const FuelPriceDetailModal: React.FC<FuelPriceDetailModalProps> = ({ isOpen, onC
                                     </button>
                                 ))}
                             </div>
-                            {isCheckMode && savedForecasts.length > 0 && (
+                            {isCheckMode && (
                                 <div className="flex items-center gap-2 bg-slate-900 rounded-lg p-1 w-full sm:w-auto mt-2 sm:mt-0">
                                     <span className="text-pink-400 text-sm font-medium px-2">Backtest:</span>
-                                    <select
-                                        value={selectedSavedForecastId}
-                                        onChange={(e) => setSelectedSavedForecastId(e.target.value ? Number(e.target.value) : '')}
-                                        className="bg-slate-800 text-white text-sm rounded border border-slate-700 py-1 px-2 outline-none focus:border-pink-500 h-[32px]"
-                                    >
-                                        <option value="">-- Keine --</option>
-                                        {savedForecasts.map(f => {
-                                            const date = new Date(f.createdAt);
-                                            const label = `${date.toLocaleDateString('de-DE')} ${date.toLocaleTimeString('de-DE', {hour: '2-digit', minute:'2-digit'})} (${f.forecastDurationMinutes / 60}h)`;
-                                            return <option key={f.id} value={f.id}>{label}</option>;
-                                        })}
-                                    </select>
+                                    {isLoadingForecasts ? (
+                                        <span className="text-sm text-slate-400 px-2 py-1">Lädt...</span>
+                                    ) : fetchError ? (
+                                        <span className="text-sm text-red-400 px-2 py-1" title={fetchError}>Fehler</span>
+                                    ) : savedForecasts.length > 0 ? (
+                                        <select
+                                            value={selectedSavedForecastId}
+                                            onChange={(e) => setSelectedSavedForecastId(e.target.value ? Number(e.target.value) : '')}
+                                            className="bg-slate-800 text-white text-sm rounded border border-slate-700 py-1 px-2 outline-none focus:border-pink-500 h-[32px]"
+                                            aria-label="Gespeicherte Prognose für Backtest auswählen"
+                                        >
+                                            <option value="">-- Keine --</option>
+                                            {savedForecasts.map(f => {
+                                                const date = new Date(f.createdAt);
+                                                const label = `${date.toLocaleDateString('de-DE')} ${date.toLocaleTimeString('de-DE', {hour: '2-digit', minute:'2-digit'})} (${f.forecastDurationMinutes / 60}h)`;
+                                                return <option key={f.id} value={f.id}>{label}</option>;
+                                            })}
+                                        </select>
+                                    ) : (
+                                        <span className="text-sm text-slate-400 px-2 py-1">Keine Daten</span>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -149,12 +217,7 @@ const FuelPriceDetailModal: React.FC<FuelPriceDetailModalProps> = ({ isOpen, onC
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                              <span className="text-slate-400 text-sm font-medium min-w-[120px]">Historie:</span>
                              <div className="flex flex-wrap gap-2 bg-slate-900 rounded-lg p-1 w-full sm:w-auto">
-                                {[
-                                    { label: '24h', value: 24 },
-                                    { label: '3 Tage', value: 72 },
-                                    { label: '7 Tage', value: 168 },
-                                    { label: '30 Tage', value: 720 }
-                                ].map((option) => (
+                                {HISTORY_OPTIONS.map((option) => (
                                     <button
                                         key={option.value}
                                         onClick={() => setModalDurationHours(option.value)}
@@ -239,11 +302,13 @@ const FuelPriceDetailModal: React.FC<FuelPriceDetailModalProps> = ({ isOpen, onC
                         type="button"
                         onClick={() => setShowHelpSection(!showHelpSection)}
                         className="flex items-center justify-between w-full text-slate-300 hover:text-white text-lg font-semibold py-2"
+                        aria-expanded={showHelpSection}
+                        aria-controls="help-section"
                     >
                         Hilfe & Erklärungen
                         {showHelpSection ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                     </button>
-                    <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showHelpSection ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div id="help-section" className={`overflow-hidden transition-all duration-300 ease-in-out ${showHelpSection ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'}`}>
                         <div className="text-sm text-slate-400 space-y-3 pb-4">
                             <p>Dieses Diagramm visualisiert den historischen Preisverlauf der ausgewählten Kraftstoffart und bietet verschiedene Prognoseoptionen, um zukünftige Preisentwicklungen abzuschätzen.</p>
 
