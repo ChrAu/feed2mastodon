@@ -1,6 +1,5 @@
-import { RefreshCw, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import React, { useEffect, useState, useCallback } from 'react';
-import ElectricityPriceCard from './ElectricityPriceCard';
 import ElectricityPriceCardSkeleton from './ElectricityPriceCardSkeleton';
 import { ElectricityPriceChart, VisibleLinesState } from './ElectricityPriceChart'; // Removed ElectricityPriceForecastDto
 
@@ -55,8 +54,6 @@ const ElectricityPriceDashboard: React.FC = () => {
     const [nextUpdate, setNextUpdate] = useState<number>(updateIntervalSeconds);
 
     const [modalDurationHours, setModalDurationHours] = useState<number>(24);
-    const [showHelpSection, setShowHelpSection] = useState<boolean>(false);
-    // Removed savedForecasts, selectedSavedForecastId, isLoadingForecasts, fetchError states
     const [visibleLines, setVisibleLines] = useState<VisibleLinesState>({
         value: true,
         aiForecastValue: true,
@@ -97,14 +94,12 @@ const ElectricityPriceDashboard: React.FC = () => {
     }, []);
 
     // Removed useEffect for fetching saved forecasts
-
-    const toggleLineVisibility = useCallback((lineKey: keyof VisibleLinesState) => {
+    useCallback((lineKey: keyof VisibleLinesState) => {
         setVisibleLines(prev => ({
             ...prev,
             [lineKey]: !prev[lineKey],
         }));
     }, []);
-
     const formatCountdown = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
