@@ -58,7 +58,7 @@ public class HoltWinterForecastService {
         }
     }
 
-    public List<FuelPriceForecastDto> calculateForecast(List<HaStateHistory> historyData, Duration forecastDuration, int rasterMinutes) {
+    public List<FuelPriceForecastDto> calculateForecast(List<HaStateHistory> historyData, Duration forecastDuration, int rasterMinutes, boolean persist) {
         if (historyData == null || historyData.isEmpty()) {
             return List.of();
         }
@@ -160,7 +160,9 @@ public class HoltWinterForecastService {
         }
 
         // Vorhersage in der Datenbank speichern (jetzt neu berechnet)
-        persistForecast(entityId, now, forecastDuration, rasterMinutes, result);
+        if (persist) {
+            persistForecast(entityId, now, forecastDuration, rasterMinutes, result);
+        }
         // Cache the calculated result
         forecastResultCache.put(cacheKey, result);
         return result;

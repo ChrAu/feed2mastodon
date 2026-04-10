@@ -378,13 +378,17 @@ public class HomeAssistantService {
     }
 
     public List<FuelPriceForecastDto> getFuelPriceForecast(String entityId, Duration historyDuration, Duration forecastDuration, int rasterMinutes) {
+        return getFuelPriceForecast(entityId, historyDuration, forecastDuration, rasterMinutes, false);
+    }
+
+    public List<FuelPriceForecastDto> getFuelPriceForecast(String entityId, Duration historyDuration, Duration forecastDuration, int rasterMinutes, boolean persist) {
         if (!FUEL_PRICE_IDS.contains(entityId)) {
              throw new IllegalArgumentException("Entity ID " + entityId + " is not supported for fuel price forecasting.");
         }
 
         List<HaStateHistory> historyData = getFuelPriceHistoryData(entityId, historyDuration);
 
-        return holtWinterForecastService.calculateForecast(historyData, forecastDuration, rasterMinutes);
+        return holtWinterForecastService.calculateForecast(historyData, forecastDuration, rasterMinutes, persist);
     }
 
     @Transactional
