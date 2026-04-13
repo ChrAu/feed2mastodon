@@ -731,16 +731,15 @@ public class HomeAssistantService {
     // Removed getSavedElectricityForecasts method
 
     @Transactional
-    public int cleanupOldForecasts(int hoursOld) {
+    public int cleanupOldForecasts(long hoursOld) {
         ZonedDateTime threshold = ZonedDateTime.now().minusHours(hoursOld);
 
         // Dank 'ON DELETE CASCADE' in der DB werden die verknüpften data_points automatisch gelöscht
-        int deletedCount = em.createNamedQuery(HaFuelForecast.DELETE_OLD_FORECASTS)
-                .setParameter("threshold", threshold)
-                .executeUpdate();
 
         // Removed electricity forecasts cleanup
 
-        return deletedCount;
+        return em.createNamedQuery(HaFuelForecast.DELETE_OLD_FORECASTS)
+                .setParameter("threshold", threshold)
+                .executeUpdate();
     }
 }
