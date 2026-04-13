@@ -8,6 +8,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -39,7 +40,7 @@ public class HomeAssistantScheduler {
     @Scheduled(every = "1h") // Läuft einmal pro Stunde
     public void cleanupOldForecasts() {
         try (DurationLogger d = new DurationLogger("HomeAssistantScheduler.cleanupOldForecasts()", Logger.getLogger(this.getClass()))) {
-            int deleted = homeAssistantService.cleanupOldForecasts(36);
+            int deleted = homeAssistantService.cleanupOldForecasts(Duration.ofDays(7).toHours());
             if (deleted > 0) {
                 Logger.getLogger(this.getClass()).infof("%d alte Vorhersagen (älter als 24 Stunden) wurden gelöscht.", deleted);
             }
