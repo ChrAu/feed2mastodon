@@ -15,6 +15,7 @@ import de.hexix.homeassistant.dto.WeatherDto;
 import de.hexix.homeassistant.entity.HaEntity;
 import de.hexix.homeassistant.entity.HaStateHistory;
 import de.hexix.util.DurationLogger;
+import io.quarkus.security.Authenticated;
 import io.smallrye.mutiny.Multi;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.DefaultValue;
@@ -219,6 +220,7 @@ public class HomeAssistantResource {
         return homeAssistantService.getPiHoleStream();
     }
 
+    @Authenticated
     @GET
     @Path("/state-history")
     @Produces(MediaType.APPLICATION_JSON)
@@ -245,6 +247,7 @@ public class HomeAssistantResource {
         return homeAssistantService.getHaStateHistory(entityId, entityIdPrefix, duration);
     }
 
+    @Authenticated
     @GET
     @Path("/entities")
     @Produces(MediaType.APPLICATION_JSON)
