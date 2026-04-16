@@ -742,4 +742,27 @@ public class HomeAssistantService {
                 .setParameter("threshold", threshold)
                 .executeUpdate();
     }
+
+    @Transactional
+    public List<HaStateHistory> getHaStateHistory(String entityId, String entityIdPrefix, Duration duration) {
+        ZonedDateTime startDate = ZonedDateTime.now().minus(duration);
+        TypedQuery<HaStateHistory> query = em.createNamedQuery(HaStateHistory.FIND_ALL_FILTERED, HaStateHistory.class);
+        query.setParameter("entityId", entityId);
+        query.setParameter("entityIdPrefix", entityIdPrefix != null ? entityIdPrefix + "%" : null);
+        query.setParameter("startDate", startDate);
+        return query.getResultList();
+    }
+
+    @Transactional
+    public List<HaEntity> getHaEntities(String entityId, String entityIdPrefix) {
+        // Since we don't have a duration filter for entities in the same way, we can just use a default or very old date to show all, or define a new query
+        // Actually, for entities, it's just the current state, so let's adjust the query
+        TypedQuery<HaEntity> query = em.createNamedQuery(HaEntity.FIND_ALL_FILTERED, HaEntity.class);
+        query.setParameter("entityId", entityId);
+        query.setParameter("entityIdPrefix", entityIdPrefix != null ? entityIdPrefix + "%" : null);
+        // HaEntity usually represents the latest state. We can just use a very old date if we want all, or create a specific query without date filter.
+        // Let's modify HaEntity to have a query without date filter, or just use a very old date for now to keep it simple.
+        query.setParameter("startDate", ZonedDateTime.now().minusYears(1)); // Essentially all time
+        return query.getResultList();
+    }
 }

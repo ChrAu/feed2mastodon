@@ -23,6 +23,14 @@ import java.time.ZonedDateTime;
         @NamedQuery(
                 name = HaEntity.DELETE_BY_ENTITY_IDS,
                 query = "DELETE FROM HaEntity e WHERE e.entityId IN :entityIds"
+        ),
+        @NamedQuery(
+                name = HaEntity.FIND_ALL_FILTERED,
+                query = "SELECT e FROM HaEntity e WHERE " +
+                        "(:entityId IS NULL OR e.entityId = :entityId) AND " +
+                        "(:entityIdPrefix IS NULL OR e.entityId LIKE :entityIdPrefix) AND " +
+                        "(e.lastChanged >= :startDate) " +
+                        "ORDER BY e.lastChanged DESC"
         )
 })
 public class HaEntity {
@@ -31,6 +39,7 @@ public class HaEntity {
     public static String FIND_BY_ENTITY_ID = "HaEntity.findByEntityId";
     public static String FIND_BY_STATE = "HaEntity.findByState";
     public static final String DELETE_BY_ENTITY_IDS = "HaEntity.deleteByEntityIds";
+    public static final String FIND_ALL_FILTERED = "HaEntity.findAllFiltered";
 
     @Id
     @Column(name = "entity_id")

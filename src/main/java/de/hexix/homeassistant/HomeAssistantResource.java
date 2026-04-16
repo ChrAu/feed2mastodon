@@ -12,6 +12,7 @@ import de.hexix.homeassistant.dto.TemperatureBucketDTO;
 import de.hexix.homeassistant.dto.TemperatureDeviceDto;
 import de.hexix.homeassistant.dto.TemperatureDto;
 import de.hexix.homeassistant.dto.WeatherDto;
+import de.hexix.homeassistant.entity.HaEntity;
 import de.hexix.homeassistant.entity.HaStateHistory;
 import de.hexix.util.DurationLogger;
 import io.smallrye.mutiny.Multi;
@@ -216,5 +217,40 @@ public class HomeAssistantResource {
     @RestStreamElementType(MediaType.APPLICATION_JSON)
     public Multi<List<EntityDto>> streamPiHoleData() {
         return homeAssistantService.getPiHoleStream();
+    }
+
+    @GET
+    @Path("/state-history")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<HaStateHistory> getHaStateHistory(
+            @QueryParam("entityId") String entityId,
+            @QueryParam("entityIdPrefix") String entityIdPrefix,
+            @QueryParam("days") Long days,
+            @QueryParam("duration") String durationString) { // durationString to parse into Duration
+        Duration duration = null;
+        if (durationString != null) {
+            try {
+                duration = Duration.parse(durationString);
+            } catch (Exception e) {
+                LOG.warn("Invalid duration string: " + durationString + ". Using default (1 year).", e);
+            }
+        }
+        if (duration == null && days != null) {
+            duration = Duration.ofDays(days);
+        }
+        if (duration == null) {
+            duration = Duration.ofDays(365); // Default to 1 year
+        }
+
+        return homeAssistantService.getHaStateHistory(entityId, entityIdPrefix, duration);
+    }
+
+    @GET
+    @Path("/entities")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<HaEntity> getHaEntities(
+            @QueryParam("entityId") String entityId,
+            @QueryParam("entityIdPrefix") String entityIdPrefix) {
+        return homeAssistantService.getHaEntities(entityId, entityIdPrefix);
     }
 }
