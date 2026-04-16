@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import StatusIndicator from './StatusIndicator';
 import MaintenancePopup from './MaintenancePopup'; // Import the new component
+import AuthStatus from './AuthStatus'; // Import AuthStatus component
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -67,6 +68,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           <div className="hidden md:flex items-center space-x-6">
             <StatusIndicator />
+            <AuthStatus />
           </div>
         </div>
       </nav>
