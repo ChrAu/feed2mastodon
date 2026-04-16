@@ -64,6 +64,14 @@ import java.time.ZonedDateTime;
         @NamedQuery(
                 name = HaStateHistory.DELETE_BY_ENTITY_IDS,
                 query = "DELETE FROM HaStateHistory h WHERE h.entityId IN :entityIds"
+        ),
+        @NamedQuery(
+                name = HaStateHistory.FIND_ALL_FILTERED,
+                query = "SELECT h FROM HaStateHistory h WHERE " +
+                        "(:entityId IS NULL OR h.entityId = :entityId) AND " +
+                        "(:entityIdPrefix IS NULL OR h.entityId LIKE :entityIdPrefix) AND " +
+                        "(h.lastChanged >= :startDate) " +
+                        "ORDER BY h.lastChanged DESC"
         )
 })
 
@@ -127,6 +135,7 @@ public class HaStateHistory {
     public static final String FIND_BY_ENTITY_ID_AND_DATE_RANGE = "HaStateHistory.findByEntityIdAndDateRange";
     public static final String FIND_PREVIOUS_BY_ENTITY_ID_AND_LAST_CHANGED = "HaStateHistory.findPreviousByEntityIdAndLastChanged";
     public static final String DELETE_BY_ENTITY_IDS = "HaStateHistory.deleteByEntityIds";
+    public static final String FIND_ALL_FILTERED = "HaStateHistory.findAllFiltered";
 
 
     public static final String NATIVE_FIND_AVG_TEMPERATUR_IN_BUCKETS = "HaStateHistory.findAvgTemperatureInBuckets";
