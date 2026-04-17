@@ -13,12 +13,14 @@ export interface CarChartDataPoint {
     electricRange?: number;
     batteryLevel?: number;
     externalTemperature?: number;
+    rangeAt100Percent?: number; // Neu hinzugefügt
 }
 
 export interface VisibleCarLinesState {
     electricRange?: boolean;
     batteryLevel?: boolean;
     externalTemperature?: boolean;
+    rangeAt100Percent?: boolean; // Neu hinzugefügt
 }
 
 export interface CarDataHistoryChartProps {
@@ -47,7 +49,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, v
         });
 
         // Eigene Reihenfolge für den Tooltip festlegen
-        const orderedKeys = ['electricRange', 'externalTemperature', 'batteryLevel'];
+        const orderedKeys = ['electricRange', 'rangeAt100Percent', 'externalTemperature', 'batteryLevel']; // 'rangeAt100Percent' hinzugefügt
 
         return (
             <div className="bg-slate-800 p-3 rounded-md border border-slate-700 text-white text-sm z-50 shadow-xl">
@@ -59,12 +61,14 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, v
                     if (key === 'electricRange' && !visibleLines.electricRange) return null;
                     if (key === 'batteryLevel' && !visibleLines.batteryLevel) return null;
                     if (key === 'externalTemperature' && !visibleLines.externalTemperature) return null;
+                    if (key === 'rangeAt100Percent' && !visibleLines.rangeAt100Percent) return null; // Neu hinzugefügt
 
                     let labelText = '';
                     let unit = '';
                     if (key === 'electricRange') { labelText = 'Reichweite: '; unit = ' km'; }
                     else if (key === 'batteryLevel') { labelText = 'Batterie: '; unit = ' %'; }
                     else if (key === 'externalTemperature') { labelText = 'Außentemp.: '; unit = ' °C'; }
+                    else if (key === 'rangeAt100Percent') { labelText = 'Reichw. (100%): '; unit = ' km'; } // Neu hinzugefügt
 
                     return (
                         <p key={key} style={{ color: entry.color }}>
@@ -85,6 +89,7 @@ export const CarDataHistoryChart: React.FC<CarDataHistoryChartProps> = ({ durati
         electricRange: visibleLines?.electricRange ?? true,
         batteryLevel: visibleLines?.batteryLevel ?? true,
         externalTemperature: visibleLines?.externalTemperature ?? true,
+        rangeAt100Percent: visibleLines?.rangeAt100Percent ?? true, // Neu hinzugefügt
     };
 
     const [chartData, setChartData] = useState<CarChartDataPoint[]>([]);
@@ -160,6 +165,13 @@ export const CarDataHistoryChart: React.FC<CarDataHistoryChartProps> = ({ durati
                     else pt.externalTemperature = lastExternalTemperature;
                 });
 
+                // Berechnung der Reichweite für 100% Akku
+                finalChartData.forEach(pt => {
+                    if (pt.electricRange !== undefined && pt.batteryLevel !== undefined && pt.batteryLevel > 0) {
+                        pt.rangeAt100Percent = (pt.electricRange / pt.batteryLevel) * 100;
+                    }
+                });
+
                 setChartData(finalChartData);
                 setXDomain([initialMinDisplayMs, initialMaxDisplayMs]);
 
@@ -205,26 +217,31 @@ export const CarDataHistoryChart: React.FC<CarDataHistoryChartProps> = ({ durati
         }
         setXTicks(generatedGridTicks);
 
-        // Dynamische Skalierung nur noch für die Reichweite (linke Achse)
-        let minElectricRange = Number.MAX_VALUE;
-        let maxElectricRange = Number.MIN_VALUE;
+        // Dynamische Skalierung für Reichweite und Reichweite bei 100% (linke Achse)
+        let minLeftAxisValue = Number.MAX_VALUE;
+        let maxLeftAxisValue = Number.MIN_VALUE;
 
         const visibleData = chartData.filter(d => d.timestampMs >= minTs && d.timestampMs <= maxTs);
 
         visibleData.forEach(d => {
             if (activeLines.electricRange && d.electricRange !== undefined) {
-                minElectricRange = Math.min(minElectricRange, d.electricRange);
-                maxElectricRange = Math.max(maxElectricRange, d.electricRange);
+                minLeftAxisValue = Math.min(minLeftAxisValue, d.electricRange);
+                maxLeftAxisValue = Math.max(maxLeftAxisValue, d.electricRange);
+            }
+            if (activeLines.rangeAt100Percent && d.rangeAt100Percent !== undefined) {
+                minLeftAxisValue = Math.min(minLeftAxisValue, d.rangeAt100Percent);
+                maxLeftAxisValue = Math.max(maxLeftAxisValue, d.rangeAt100Percent);
             }
         });
 
-        if (minElectricRange !== Number.MAX_VALUE) {
-            setYDomainLeft([minElectricRange - (maxElectricRange - minElectricRange) * 0.1, maxElectricRange + (maxElectricRange - minElectricRange) * 0.1]);
+        if (minLeftAxisValue !== Number.MAX_VALUE) {
+            const padding = (maxLeftAxisValue - minLeftAxisValue) * 0.1;
+            setYDomainLeft([minLeftAxisValue - padding, maxLeftAxisValue + padding]);
         } else {
-            setYDomainLeft([0, 500]);
+            setYDomainLeft([0, 500]); // Fallback, wenn keine Daten sichtbar sind
         }
 
-    }, [xDomain, chartData, activeLines.electricRange, activeLines.batteryLevel, activeLines.externalTemperature]);
+    }, [xDomain, chartData, activeLines.electricRange, activeLines.batteryLevel, activeLines.externalTemperature, activeLines.rangeAt100Percent]); // 'activeLines.rangeAt100Percent' hinzugefügt
 
     const handleZoomIn = () => {
         setXDomain(prev => {
@@ -336,7 +353,7 @@ export const CarDataHistoryChart: React.FC<CarDataHistoryChartProps> = ({ durati
                     />
 
                     {/* Linke Achse: Reichweite */}
-                    {activeLines.electricRange && (
+                    {(activeLines.electricRange || activeLines.rangeAt100Percent) && ( // Angepasst für die neue Linie
                         <YAxis
                             yAxisId="left"
                             width={80}
@@ -379,6 +396,9 @@ export const CarDataHistoryChart: React.FC<CarDataHistoryChartProps> = ({ durati
                     {/* Linien */}
                     {activeLines.electricRange && (
                         <Line yAxisId="left" type="monotone" dataKey="electricRange" stroke="#8884d8" strokeWidth={3} dot={false} fill="none" isAnimationActive={false} connectNulls={true} />
+                    )}
+                    {activeLines.rangeAt100Percent && ( // Neu hinzugefügt
+                        <Line yAxisId="left" type="monotone" dataKey="rangeAt100Percent" stroke="#ffc658" strokeWidth={2} dot={false} fill="none" isAnimationActive={false} connectNulls={true} strokeDasharray="3 3" />
                     )}
                     {activeLines.batteryLevel && (
                         <Line yAxisId="right" type="monotone" dataKey="batteryLevel" stroke="#82ca9d" strokeWidth={2} dot={false} fill="none" isAnimationActive={false} connectNulls={true} />

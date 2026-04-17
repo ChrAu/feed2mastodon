@@ -7,5 +7,6 @@ public record CarDataDto(
         Double electricRange,
         Double batteryLevel,
         Double externalTemperature,
+        Double batteryTemperature,
         LocalDateTime lastUpdate
 ) {}

@@ -121,7 +121,8 @@ public class HomeAssistantService {
             "sensor.id4_mercatis_gmbh_odometer",
             "sensor.id4_mercatis_gmbh_electric_range",
             "sensor.id4_mercatis_gmbh_battery_level",
-            "sensor.temperatur_am_standort_christopher"
+            "sensor.temperatur_am_standort_christopher",
+            "sensor.id4_mercatis_gmbh_hv_battery_min_temperature"
     );
 
 
@@ -740,6 +741,7 @@ public class HomeAssistantService {
         Double electricRange = null;
         Double batteryLevel = null;
         Double externalTemperature = null;
+        Double batteryTemperature = null;
         LocalDateTime lastUpdate = null;
 
         for (String entityId : CAR_DATA_ENTITY_IDS) {
@@ -748,14 +750,16 @@ public class HomeAssistantService {
                 double value = Double.parseDouble(entity.getState());
                 LocalDateTime currentLastUpdate = ZonedDateTime.parse(entity.getLastChanged(), DateTimeFormatter.ISO_OFFSET_DATE_TIME).toLocalDateTime();
 
-                if (entityId.equals("sensor.id4_mercatis_gmbh_odometer")) {
+                if ("sensor.id4_mercatis_gmbh_odometer".equals(entityId)) {
                     odometer = value;
-                } else if (entityId.equals("sensor.id4_mercatis_gmbh_electric_range")) {
+                } else if ("sensor.id4_mercatis_gmbh_electric_range".equals(entityId)) {
                     electricRange = value;
-                } else if (entityId.equals("sensor.id4_mercatis_gmbh_battery_level")) {
+                } else if ("sensor.id4_mercatis_gmbh_battery_level".equals(entityId)) {
                     batteryLevel = value;
-                } else if (entityId.equals("sensor.temperatur_am_standort_christopher")) {
+                } else if ("sensor.temperatur_am_standort_christopher".equals(entityId)) {
                     externalTemperature = value;
+                } else if("sensor.id4_mercatis_gmbh_hv_battery_min_temperature".equals(entityId)){
+                    batteryTemperature = value;
                 }
 
                 if (lastUpdate == null || currentLastUpdate.isAfter(lastUpdate)) {
@@ -766,7 +770,7 @@ public class HomeAssistantService {
                 LOG.error("Fehler beim Abruf der Fahrzeugdaten für Entity: " + entityId, e);
             }
         }
-        return new CarDataDto(odometer, electricRange, batteryLevel, externalTemperature, lastUpdate);
+        return new CarDataDto(odometer, electricRange, batteryLevel, externalTemperature, batteryTemperature, lastUpdate);
     }
 
     @Transactional

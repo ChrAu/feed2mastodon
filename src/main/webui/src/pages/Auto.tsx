@@ -7,6 +7,7 @@ interface CarData {
   electricRange: number | null;
   batteryLevel: number | null;
   externalTemperature: number | null;
+  batteryTemperature: number | null;
   lastUpdate: string | null;
 }
 
@@ -14,7 +15,9 @@ const HISTORY_OPTIONS: { label: string; value: number }[] = [
     { label: '24h', value: 24 },
     { label: '3 Tage', value: 72 },
     { label: '7 Tage', value: 168 },
-    { label: '30 Tage', value: 720 }
+    { label: '30 Tage', value: 720 },
+    { label: '90 Tage', value: 2160 },
+    { label: '1 Jahr', value:  8760}
 ];
 
 const Auto = () => {
@@ -24,6 +27,7 @@ const Auto = () => {
     electricRange: null,
     batteryLevel: null,
     externalTemperature: null,
+    batteryTemperature: null,
     lastUpdate: null,
   });
   const [loading, setLoading] = useState(true);
@@ -35,6 +39,7 @@ const Auto = () => {
     electricRange: true,
     batteryLevel: true,
     externalTemperature: true,
+    rangeAt100Percent: true,
   });
   const [isCheckMode, setIsCheckMode] = useState<boolean>(false);
 
@@ -56,6 +61,7 @@ const Auto = () => {
           electricRange: data.electricRange,
           batteryLevel: data.batteryLevel,
           externalTemperature: data.externalTemperature,
+          batteryTemperature: data.batteryTemperature,
           lastUpdate: data.lastUpdate,
         });
         setNextUpdate(updateIntervalSeconds);
@@ -143,9 +149,13 @@ const Auto = () => {
                 <h4 className="text-sm font-semibold text-slate-400">Außentemperatur</h4>
                 <p className="text-lg font-bold">{carData.externalTemperature !== null ? `${carData.externalTemperature} °C` : 'N/A'}</p>
               </div>
+              <div className="bg-slate-700/50 p-3 rounded-lg">
+                <h4 className="text-sm font-semibold text-slate-400">Batterietemperatur</h4>
+                <p className="text-lg font-bold">{carData.batteryTemperature !== null ? `${carData.batteryTemperature} °C` : 'N/A'}</p>
+              </div>
             </div>
             {carData.lastUpdate && (
-                <p className="text-sm text-slate-500 mt-4">Zuletzt aktualisiert: {new Date(carData.lastUpdate).toLocaleString('de-DE')}</p>
+                <p className="text-sm text-slate-500 mt-4">Zuletzt aktualisiert: {new Date(carData.lastUpdate + 'Z').toLocaleString('de-DE')}</p>
             )}
           </div>
 
@@ -201,6 +211,16 @@ const Auto = () => {
                             onChange={() => toggleLineVisibility('externalTemperature')}
                         />
                         <span className="ml-2">Außentemperatur</span>
+                    </label>
+
+                    <label className="flex items-center text-slate-300 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            className="form-checkbox h-4 w-4 text-orange-400 rounded"
+                            checked={visibleLines.rangeAt100Percent}
+                            onChange={() => toggleLineVisibility('rangeAt100Percent')}
+                        />
+                        <span className="ml-2">Reichweite (100%)</span>
                     </label>
                 </div>
             </div>
