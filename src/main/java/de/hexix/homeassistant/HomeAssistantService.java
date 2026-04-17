@@ -1,6 +1,7 @@
 package de.hexix.homeassistant;
 
 import de.hexix.homeassistant.dto.AttributesDto;
+import de.hexix.homeassistant.dto.CarDataDto; // New import
 import de.hexix.homeassistant.dto.CpuDto;
 import de.hexix.homeassistant.dto.ElectricityPriceDto;
 import de.hexix.homeassistant.dto.ElectricityPriceHistoryDto;
@@ -115,6 +116,14 @@ public class HomeAssistantService {
             "sensor.strompreis_total_price"
     );
     public static final String ELECTRICITY_TOTAL_PRICE_ENTITY_ID = "sensor.strompreis_total_price";
+
+    public static final List<String> CAR_DATA_ENTITY_IDS = List.of(
+            "sensor.id4_mercatis_gmbh_odometer",
+            "sensor.id4_mercatis_gmbh_electric_range",
+            "sensor.id4_mercatis_gmbh_battery_level",
+            "sensor.temperatur_am_standort_christopher",
+            "sensor.id4_mercatis_gmbh_hv_battery_min_temperature"
+    );
 
 
     public List<EntityDto> currentState() {
@@ -726,17 +735,117 @@ public class HomeAssistantService {
         return finalHistory;
     }
 
-    // Removed getElectricityPriceForecast methods
-    // Removed getElectricityPriceHistoryData method
-    // Removed getSavedElectricityForecasts method
+    @Transactional
+    public CarDataDto getCarData() {
+        Double odometer = null;
+        Double electricRange = null;
+        Double batteryLevel = null;
+        Double externalTemperature = null;
+        Double batteryTemperature = null;
+        LocalDateTime lastUpdate = null;
+
+        for (String entityId : CAR_DATA_ENTITY_IDS) {
+            try {
+                EntityDto entity = homeAssistantClient.getState("Bearer " + apiToken, entityId);
+                double value = Double.parseDouble(entity.getState());
+                LocalDateTime currentLastUpdate = ZonedDateTime.parse(entity.getLastChanged(), DateTimeFormatter.ISO_OFFSET_DATE_TIME).toLocalDateTime();
+
+                if ("sensor.id4_mercatis_gmbh_odometer".equals(entityId)) {
+                    odometer = value;
+                } else if ("sensor.id4_mercatis_gmbh_electric_range".equals(entityId)) {
+                    electricRange = value;
+                } else if ("sensor.id4_mercatis_gmbh_battery_level".equals(entityId)) {
+                    batteryLevel = value;
+                } else if ("sensor.temperatur_am_standort_christopher".equals(entityId)) {
+                    externalTemperature = value;
+                } else if("sensor.id4_mercatis_gmbh_hv_battery_min_temperature".equals(entityId)){
+                    batteryTemperature = value;
+                }
+
+                if (lastUpdate == null || currentLastUpdate.isAfter(lastUpdate)) {
+                    lastUpdate = currentLastUpdate;
+                }
+
+            } catch (Exception e) {
+                LOG.error("Fehler beim Abruf der Fahrzeugdaten für Entity: " + entityId, e);
+            }
+        }
+        return new CarDataDto(odometer, electricRange, batteryLevel, externalTemperature, batteryTemperature, lastUpdate);
+    }
+
+    @Transactional
+    public List<ElectricityPriceHistoryDto> getCarDataHistory(String entityId, Duration duration) {
+        final ZonedDateTime now = ZonedDateTime.now();
+        final ZonedDateTime startDate = now.minus(duration);
+
+        final TypedQuery<HaStateHistory> historyQuery = em.createNamedQuery(HaStateHistory.FIND_BY_ENTITY_ID_AND_DATE_RANGE, HaStateHistory.class);
+        historyQuery.setParameter("entityId", entityId);
+        historyQuery.setParameter("startDate", startDate);
+        List<HaStateHistory> rawHistory = historyQuery.getResultList();
+
+        Double currentValue = null;
+        try {
+            EntityDto currentEntity = homeAssistantClient.getState("Bearer " + apiToken, entityId);
+            currentValue = Double.parseDouble(currentEntity.getState());
+        } catch (Exception e) {
+            System.err.println("Failed to get current state for entityId: " + entityId + " - " + e.getMessage());
+        }
+
+        Double valueBeforeStartDate = null;
+        TypedQuery<HaStateHistory> beforeQuery = em.createNamedQuery(HaStateHistory.FIND_PREVIOUS_BY_ENTITY_ID_AND_LAST_CHANGED, HaStateHistory.class);
+        beforeQuery.setParameter("entityId", entityId);
+        beforeQuery.setParameter("lastChanged", startDate);
+        beforeQuery.setMaxResults(1);
+        HaStateHistory beforeHistory = beforeQuery.getSingleResultOrNull();
+
+        if (beforeHistory != null) {
+            try {
+                valueBeforeStartDate = Double.parseDouble(beforeHistory.getState());
+            } catch (NumberFormatException e) {
+                System.err.println("State before startDate is not a number for entityId: " + entityId + " - " + e.getMessage());
+            }
+        }
+
+        List<ElectricityPriceHistoryDto> finalHistory = new ArrayList<>();
+
+        if (valueBeforeStartDate != null) {
+            finalHistory.add(new ElectricityPriceHistoryDto(startDate, valueBeforeStartDate));
+        } else if (!rawHistory.isEmpty()) {
+            try {
+                finalHistory.add(new ElectricityPriceHistoryDto(startDate, Double.parseDouble(rawHistory.get(0).getState())));
+            } catch (NumberFormatException e) {
+                // ignore
+            }
+        }
+
+        rawHistory.stream()
+                .map(haStateHistory -> {
+                    try {
+                        return new ElectricityPriceHistoryDto(
+                                haStateHistory.getLastChanged(),
+                                Double.parseDouble(haStateHistory.getState())
+                        );
+                    } catch (NumberFormatException e) {
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .forEach(finalHistory::add);
+
+        if (currentValue != null && (!finalHistory.isEmpty() || valueBeforeStartDate != null)) {
+            finalHistory.add(new ElectricityPriceHistoryDto(now, currentValue));
+        } else if (currentValue != null && finalHistory.isEmpty()) {
+            finalHistory.add(new ElectricityPriceHistoryDto(now, currentValue));
+        }
+
+        return finalHistory;
+    }
+
 
     @Transactional
     public int cleanupOldForecasts(long hoursOld) {
         ZonedDateTime threshold = ZonedDateTime.now().minusHours(hoursOld);
 
-        // Dank 'ON DELETE CASCADE' in der DB werden die verknüpften data_points automatisch gelöscht
-
-        // Removed electricity forecasts cleanup
 
         return em.createNamedQuery(HaFuelForecast.DELETE_OLD_FORECASTS)
                 .setParameter("threshold", threshold)
