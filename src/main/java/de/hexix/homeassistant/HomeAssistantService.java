@@ -745,7 +745,7 @@ public class HomeAssistantService {
         for (String entityId : CAR_DATA_ENTITY_IDS) {
             try {
                 EntityDto entity = homeAssistantClient.getState("Bearer " + apiToken, entityId);
-                Double value = Double.parseDouble(entity.getState());
+                double value = Double.parseDouble(entity.getState());
                 LocalDateTime currentLastUpdate = ZonedDateTime.parse(entity.getLastChanged(), DateTimeFormatter.ISO_OFFSET_DATE_TIME).toLocalDateTime();
 
                 if (entityId.equals("sensor.id4_mercatis_gmbh_odometer")) {
