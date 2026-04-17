@@ -815,18 +815,17 @@ public class HomeAssistantService {
         }
 
         rawHistory.stream()
-                .filter(haStateHistory -> {
+                .map(haStateHistory -> {
                     try {
-                        Double.parseDouble(haStateHistory.getState());
-                        return true;
+                        return new ElectricityPriceHistoryDto(
+                                haStateHistory.getLastChanged(),
+                                Double.parseDouble(haStateHistory.getState())
+                        );
                     } catch (NumberFormatException e) {
-                        return false;
+                        return null;
                     }
                 })
-                .map(haStateHistory -> new ElectricityPriceHistoryDto(
-                        haStateHistory.getLastChanged(),
-                        Double.parseDouble(haStateHistory.getState())
-                ))
+                .filter(Objects::nonNull)
                 .forEach(finalHistory::add);
 
         if (currentValue != null && (!finalHistory.isEmpty() || valueBeforeStartDate != null)) {
