@@ -8,7 +8,8 @@ const Impressum = lazy(() => import('./pages/Impressum'));
 const Datenschutz = lazy(() => import('./pages/Datenschutz'));
 const MailTest = lazy(() => import('./pages/MailTest'));
 const Tanken = lazy(() => import('./pages/Tanken'));
-const Strompreis = lazy(() => import('./pages/Strompreis')); // New import
+const Strompreis = lazy(() => import('./pages/Strompreis'));
+const Auto = lazy(() => import('./pages/Auto')); // New import
 
 const App = () => {
   return (
@@ -22,7 +23,8 @@ const App = () => {
             <Route path="/datenschutz" element={<Datenschutz />} />
             <Route path="/mail-test" element={<MailTest />} />
             <Route path="/tanken" element={<Tanken />} />
-            <Route path="/strompreis" element={<Strompreis />} /> {/* New route */}
+            <Route path="/strompreis" element={<Strompreis />} />
+            <Route path="/auto" element={<Auto />} /> {/* New route */}
           </Routes>
         </Suspense>
       </Layout>
