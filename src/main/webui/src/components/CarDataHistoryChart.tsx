@@ -64,17 +64,24 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, v
                     if (key === 'rangeAt100Percent' && !visibleLines.rangeAt100Percent) return null; // Neu hinzugefügt
 
                     let unit = '';
+                    let name = '';
                     if (key === 'electricRange') {
                         unit = ' km';
+                        name = 'Reichweite';
                     } else if (key === 'batteryLevel') {
                         unit = ' %';
+                        name = 'Batterie';
                     } else if (key === 'externalTemperature') {
                         unit = ' °C';
-                    } else if (key === 'rangeAt100Percent') { unit = ' km'; } // Neu hinzugefügt
+                        name = 'Außentemperatur';
+                    } else if (key === 'rangeAt100Percent') {
+                        unit = ' km';
+                        name = 'Reichweite (100%)';
+                    }
 
                     return (
                         <p key={key} style={{ color: entry.color }}>
-                            {Number(entry.value).toFixed(1)}{unit}
+                            {name}: {Number(entry.value).toFixed(1)}{unit}
                         </p>
                     );
                 })}
@@ -184,6 +191,15 @@ export const CarDataHistoryChart: React.FC<CarDataHistoryChartProps> = ({ durati
                     }
                 });
 
+                // Store the last calculated rangeAt100Percent before averaging logic potentially clears it
+                let lastCalculatedRangeAt100Percent: number | undefined = undefined;
+                for (let i = finalChartData.length - 1; i >= 0; i--) {
+                    if (finalChartData[i].rangeAt100Percent !== undefined) {
+                        lastCalculatedRangeAt100Percent = finalChartData[i].rangeAt100Percent;
+                        break;
+                    }
+                }
+
                 // NEUE LOGIK: Mittelwertbildung und Einzelpunkt-Darstellung für rangeAt100Percent
                 const blockDurationMs = 12 * 60 * 60 * 1000; // 12 Stunden
                 const blocks = new Map<number, { values: number[], points: CarChartDataPoint[] }>();
@@ -227,6 +243,14 @@ export const CarDataHistoryChart: React.FC<CarDataHistoryChartProps> = ({ durati
                         closestPointInBlock.rangeAt100Percent = average;
                     }
                 });
+
+                // After averaging, ensure the very last point has a rangeAt100Percent if it was calculable
+                if (finalChartData.length > 0 && lastCalculatedRangeAt100Percent !== undefined) {
+                    const lastChartPoint = finalChartData[finalChartData.length - 1];
+                    if (lastChartPoint.rangeAt100Percent === undefined) {
+                        lastChartPoint.rangeAt100Percent = lastCalculatedRangeAt100Percent;
+                    }
+                }
 
                 setChartData(finalChartData);
                 setXDomain([initialMinDisplayMs, initialMaxDisplayMs]);
