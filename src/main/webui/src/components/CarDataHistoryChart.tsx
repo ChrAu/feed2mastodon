@@ -184,30 +184,48 @@ export const CarDataHistoryChart: React.FC<CarDataHistoryChartProps> = ({ durati
                     }
                 });
 
-                // Apply 6-hour block averaging to rangeAt100Percent
-                const sixHoursMs = 24 * 60 * 60 * 1000;
-                const blockAverages = new Map<number, { sum: number, count: number }>();
+                // NEUE LOGIK: Mittelwertbildung und Einzelpunkt-Darstellung für rangeAt100Percent
+                const blockDurationMs = 12 * 60 * 60 * 1000; // 12 Stunden
+                const blocks = new Map<number, { values: number[], points: CarChartDataPoint[] }>();
 
+                // Group valid rangeAt100Percent values and their original points into blocks
                 finalChartData.forEach(point => {
                     if (point.rangeAt100Percent !== undefined) {
-                        const blockStartMs = Math.floor(point.timestampMs / sixHoursMs) * sixHoursMs;
-                        const current = blockAverages.get(blockStartMs) || { sum: 0, count: 0 };
-                        current.sum += point.rangeAt100Percent;
-                        current.count++;
-                        blockAverages.set(blockStartMs, current);
+                        const blockStartMs = Math.floor(point.timestampMs / blockDurationMs) * blockDurationMs;
+                        let currentBlock = blocks.get(blockStartMs);
+                        if (!currentBlock) {
+                            currentBlock = { values: [], points: [] };
+                            blocks.set(blockStartMs, currentBlock);
+                        }
+                        currentBlock.values.push(point.rangeAt100Percent);
+                        currentBlock.points.push(point); // Store reference to the original point
                     }
                 });
 
-                finalChartData = finalChartData.map(point => {
-                    const newPoint = { ...point }; // Create a copy to avoid direct mutation
-                    if (newPoint.rangeAt100Percent !== undefined) {
-                        const blockStartMs = Math.floor(newPoint.timestampMs / sixHoursMs) * sixHoursMs;
-                        const averageInfo = blockAverages.get(blockStartMs);
-                        if (averageInfo && averageInfo.count > 0) {
-                            newPoint.rangeAt100Percent = averageInfo.sum / averageInfo.count;
+                // Clear all existing rangeAt100Percent values in finalChartData first
+                finalChartData.forEach(point => {
+                    point.rangeAt100Percent = undefined;
+                });
+
+                // Calculate average for each block and assign it to the point closest to the middle of the block
+                blocks.forEach((block, blockStartMs) => {
+                    if (block.values.length > 0) { // This check ensures block.points is also not empty
+                        const average = block.values.reduce((sum, val) => sum + val, 0) / block.values.length;
+                        const blockMiddleMs = blockStartMs + blockDurationMs / 2;
+
+                        let closestPointInBlock: CarChartDataPoint = block.points[0] as CarChartDataPoint; // Explicit type assertion
+                        let minDiff = Math.abs(closestPointInBlock.timestampMs - blockMiddleMs);
+
+                        for (let i = 1; i < block.points.length; i++) {
+                            const current = block.points[i];
+                            const diff = Math.abs(current.timestampMs - blockMiddleMs);
+                            if (diff < minDiff) {
+                                minDiff = diff;
+                                closestPointInBlock = current;
+                            }
                         }
+                        closestPointInBlock.rangeAt100Percent = average;
                     }
-                    return newPoint;
                 });
 
                 setChartData(finalChartData);
