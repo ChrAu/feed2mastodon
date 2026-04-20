@@ -141,7 +141,7 @@ public class GoogleAiTest {
                     SafetySetting.builder().category(HarmCategory.Known.HARM_CATEGORY_HATE_SPEECH).threshold(HarmBlockThreshold.Known.BLOCK_MEDIUM_AND_ABOVE).build(),
                     SafetySetting.builder().category(HarmCategory.Known.HARM_CATEGORY_DANGEROUS_CONTENT).threshold(HarmBlockThreshold.Known.BLOCK_MEDIUM_AND_ABOVE).build());
 
-            GenerateContentResponse response = client.models.generateContent("gemini-2.5-flash", prompt, GenerateContentConfig.builder().responseMimeType("application/json").maxOutputTokens(256).safetySettings(safetySettings).build());
+            GenerateContentResponse response = client.models.generateContent("gemini-2.5-flash", prompt, GenerateContentConfig.builder().responseMimeType("application/json").safetySettings(safetySettings).build());
             LOG.info("Input message:" + prompt);
             LOG.info("Generated message: " + response.text());
             Assertions.assertNotNull(response.text());
