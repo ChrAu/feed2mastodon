@@ -63,12 +63,14 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, v
                     if (key === 'externalTemperature' && !visibleLines.externalTemperature) return null;
                     if (key === 'rangeAt100Percent' && !visibleLines.rangeAt100Percent) return null; // Neu hinzugefügt
 
-                    let labelText = '';
                     let unit = '';
-                    if (key === 'electricRange') { labelText = 'Reichweite: '; unit = ' km'; }
-                    else if (key === 'batteryLevel') { labelText = 'Batterie: '; unit = ' %'; }
-                    else if (key === 'externalTemperature') { labelText = 'Außentemp.: '; unit = ' °C'; }
-                    else if (key === 'rangeAt100Percent') { labelText = 'Reichw. (100%): '; unit = ' km'; } // Neu hinzugefügt
+                    if (key === 'electricRange') {
+                        unit = ' km';
+                    } else if (key === 'batteryLevel') {
+                        unit = ' %';
+                    } else if (key === 'externalTemperature') {
+                        unit = ' °C';
+                    } else if (key === 'rangeAt100Percent') { unit = ' km'; } // Neu hinzugefügt
 
                     return (
                         <p key={key} style={{ color: entry.color }}>
@@ -157,7 +159,7 @@ export const CarDataHistoryChart: React.FC<CarDataHistoryChartProps> = ({ durati
                     });
                 });
 
-                const finalChartData = Array.from(pointMap.values()).sort((a, b) => a.timestampMs - b.timestampMs);
+                let finalChartData = Array.from(pointMap.values()).sort((a, b) => a.timestampMs - b.timestampMs);
 
                 // Lücken füllen
                 let lastElectricRange: number | undefined = undefined;
@@ -180,6 +182,32 @@ export const CarDataHistoryChart: React.FC<CarDataHistoryChartProps> = ({ durati
                     if (pt.electricRange !== undefined && pt.batteryLevel !== undefined && pt.batteryLevel > 0) {
                         pt.rangeAt100Percent = (pt.electricRange / pt.batteryLevel) * 100;
                     }
+                });
+
+                // Apply 6-hour block averaging to rangeAt100Percent
+                const sixHoursMs = 24 * 60 * 60 * 1000;
+                const blockAverages = new Map<number, { sum: number, count: number }>();
+
+                finalChartData.forEach(point => {
+                    if (point.rangeAt100Percent !== undefined) {
+                        const blockStartMs = Math.floor(point.timestampMs / sixHoursMs) * sixHoursMs;
+                        const current = blockAverages.get(blockStartMs) || { sum: 0, count: 0 };
+                        current.sum += point.rangeAt100Percent;
+                        current.count++;
+                        blockAverages.set(blockStartMs, current);
+                    }
+                });
+
+                finalChartData = finalChartData.map(point => {
+                    const newPoint = { ...point }; // Create a copy to avoid direct mutation
+                    if (newPoint.rangeAt100Percent !== undefined) {
+                        const blockStartMs = Math.floor(newPoint.timestampMs / sixHoursMs) * sixHoursMs;
+                        const averageInfo = blockAverages.get(blockStartMs);
+                        if (averageInfo && averageInfo.count > 0) {
+                            newPoint.rangeAt100Percent = averageInfo.sum / averageInfo.count;
+                        }
+                    }
+                    return newPoint;
                 });
 
                 setChartData(finalChartData);
