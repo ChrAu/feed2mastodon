@@ -72,7 +72,6 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, v
 
                     return (
                         <p key={key} style={{ color: entry.color }}>
-                            {labelText}
                             {Number(entry.value).toFixed(1)}{unit}
                         </p>
                     );
@@ -111,15 +110,26 @@ export const CarDataHistoryChart: React.FC<CarDataHistoryChartProps> = ({ durati
         let isMounted = true;
         const fetchHistory = async () => {
             setLoading(true);
+            setChartData([]); // Clear previous data to show loading animation immediately
             setError(null);
             try {
                 const currentTimeMs = new Date().getTime();
                 const initialMaxDisplayMs = currentTimeMs;
                 const initialMinDisplayMs = currentTimeMs - durationHours * 60 * 60 * 1000;
 
+                // Determine aggregationMinutes based on durationHours
+                let aggregationMinutes: number;
+                if (durationHours <= 24) {
+                    aggregationMinutes = 2; // 2 minutes for up to 24 hours
+                } else if (durationHours <= 168) { // 7 days
+                    aggregationMinutes = 15; // 15 minutes for up to 7 days
+                } else {
+                    aggregationMinutes = 30; // 1 hours for longer durations
+                }
+
                 const allHistoryData: { [key: string]: CarDataHistory[] } = {};
                 const fetchPromises = Object.entries(CAR_ENTITY_IDS).map(async ([key, entityId]) => {
-                    const response = await fetch(`/api/homeassistant/car-data/history?entityId=${entityId}&durationHours=${durationHours}`);
+                    const response = await fetch(`/api/homeassistant/car-data/history?entityId=${entityId}&durationHours=${durationHours}&aggregationMinutes=${aggregationMinutes}`);
                     if (!response.ok) throw new Error(`HTTP error! status: ${response.status} for ${entityId}`);
                     const data: CarDataHistory[] = await response.json();
                     allHistoryData[key] = data.map(item => ({
