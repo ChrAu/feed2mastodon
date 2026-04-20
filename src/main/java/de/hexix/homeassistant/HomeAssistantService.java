@@ -1,11 +1,12 @@
 package de.hexix.homeassistant;
 
 import de.hexix.homeassistant.dto.AttributesDto;
-import de.hexix.homeassistant.dto.CarDataDto; // New import
+import de.hexix.homeassistant.dto.CarDataDto;
+import de.hexix.homeassistant.dto.CarHistoryItemDto; // New import
 import de.hexix.homeassistant.dto.CpuDto;
 import de.hexix.homeassistant.dto.ElectricityPriceDto;
 import de.hexix.homeassistant.dto.ElectricityPriceHistoryDto;
-import de.hexix.homeassistant.dto.ElectricityPriceOverviewDto; // New import
+import de.hexix.homeassistant.dto.ElectricityPriceOverviewDto;
 import de.hexix.homeassistant.dto.EntityDto;
 import de.hexix.homeassistant.dto.FuelPriceDto;
 import de.hexix.homeassistant.dto.FuelPriceForecastDto;
@@ -13,15 +14,13 @@ import de.hexix.homeassistant.dto.FuelPriceHistoryDto;
 import de.hexix.homeassistant.dto.FuelStationDto;
 import de.hexix.homeassistant.dto.SavedForecastDto;
 import de.hexix.homeassistant.dto.TemperatureBucketDTO;
-import de.hexix.homeassistant.entity.HaFuelForecast;
 import de.hexix.homeassistant.entity.HaEntity;
+import de.hexix.homeassistant.entity.HaFuelForecast;
 import de.hexix.homeassistant.entity.HaStateHistory;
 import de.hexix.homeassistant.entity.HaTemperatureHistory;
 import de.hexix.homeassistant.ignoredentity.IgnoredEntityRepository;
 import de.hexix.homeassistant.service.HoltWinterForecastService;
-import de.hexix.util.DurationLogger;
 import io.quarkus.runtime.StartupEvent;
-import io.quarkus.scheduler.Scheduled;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
@@ -33,10 +32,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
-
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -50,7 +47,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.StringJoiner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -774,7 +770,7 @@ public class HomeAssistantService {
     }
 
     @Transactional
-    public List<ElectricityPriceHistoryDto> getCarDataHistory(String entityId, Duration duration) {
+    public List<CarHistoryItemDto> getCarDataHistory(String entityId, Duration duration, Duration aggregationInterval) {
         final ZonedDateTime now = ZonedDateTime.now();
         final ZonedDateTime startDate = now.minus(duration);
 
@@ -806,39 +802,57 @@ public class HomeAssistantService {
             }
         }
 
-        List<ElectricityPriceHistoryDto> finalHistory = new ArrayList<>();
+        List<CarHistoryItemDto> aggregatedHistory = new ArrayList<>();
+        long aggregationSeconds = aggregationInterval.toSeconds();
 
-        if (valueBeforeStartDate != null) {
-            finalHistory.add(new ElectricityPriceHistoryDto(startDate, valueBeforeStartDate));
-        } else if (!rawHistory.isEmpty()) {
-            try {
-                finalHistory.add(new ElectricityPriceHistoryDto(startDate, Double.parseDouble(rawHistory.get(0).getState())));
-            } catch (NumberFormatException e) {
-                // ignore
+        // Initialize last known value for filling gaps
+        Double lastKnownValue = valueBeforeStartDate;
+
+        // Iterate through time buckets
+        ZonedDateTime currentBucketStart = startDate.withZoneSameInstant(ZoneId.systemDefault()); // Ensure consistent time zone
+        while (currentBucketStart.isBefore(now) || currentBucketStart.isEqual(now)) {
+            ZonedDateTime currentBucketEnd = currentBucketStart.plus(aggregationInterval);
+
+            final ZonedDateTime finalCurrentBucketStart = currentBucketStart;
+            List<Double> valuesInBucket = rawHistory.stream()
+                    .filter(h -> {
+                        ZonedDateTime historyTime = h.getLastChanged().withZoneSameInstant(ZoneId.systemDefault());
+                        return (historyTime.isAfter(finalCurrentBucketStart) || historyTime.isEqual(finalCurrentBucketStart))
+                                && historyTime.isBefore(currentBucketEnd);
+                    })
+                    .map(h -> {
+                        try {
+                            return Double.parseDouble(h.getState());
+                        } catch (NumberFormatException e) {
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
+                    .toList();
+
+            if (!valuesInBucket.isEmpty()) {
+                double averageValue = valuesInBucket.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+                aggregatedHistory.add(new CarHistoryItemDto(currentBucketStart, averageValue));
+                lastKnownValue = averageValue;
+            } else if (lastKnownValue != null) {
+                // If no data in this bucket, use the last known value to ensure continuity
+                aggregatedHistory.add(new CarHistoryItemDto(currentBucketStart, lastKnownValue));
+            }
+            // If lastKnownValue is null and no data in bucket, we skip adding a point for this bucket.
+            // This handles cases where there's no data at all or at the very beginning.
+
+            currentBucketStart = currentBucketEnd;
+        }
+
+        // Add the current value as the very last point if it's not already covered by the last bucket
+        if (currentValue != null) {
+            if (aggregatedHistory.isEmpty() || !aggregatedHistory.get(aggregatedHistory.size() - 1).timestamp().isEqual(now.withZoneSameInstant(ZoneId.systemDefault()))) {
+                aggregatedHistory.add(new CarHistoryItemDto(now, currentValue));
             }
         }
 
-        rawHistory.stream()
-                .map(haStateHistory -> {
-                    try {
-                        return new ElectricityPriceHistoryDto(
-                                haStateHistory.getLastChanged(),
-                                Double.parseDouble(haStateHistory.getState())
-                        );
-                    } catch (NumberFormatException e) {
-                        return null;
-                    }
-                })
-                .filter(Objects::nonNull)
-                .forEach(finalHistory::add);
 
-        if (currentValue != null && (!finalHistory.isEmpty() || valueBeforeStartDate != null)) {
-            finalHistory.add(new ElectricityPriceHistoryDto(now, currentValue));
-        } else if (currentValue != null && finalHistory.isEmpty()) {
-            finalHistory.add(new ElectricityPriceHistoryDto(now, currentValue));
-        }
-
-        return finalHistory;
+        return aggregatedHistory;
     }
 
 

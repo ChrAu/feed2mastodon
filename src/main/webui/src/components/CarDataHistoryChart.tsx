@@ -63,17 +63,25 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, v
                     if (key === 'externalTemperature' && !visibleLines.externalTemperature) return null;
                     if (key === 'rangeAt100Percent' && !visibleLines.rangeAt100Percent) return null; // Neu hinzugefügt
 
-                    let labelText = '';
                     let unit = '';
-                    if (key === 'electricRange') { labelText = 'Reichweite: '; unit = ' km'; }
-                    else if (key === 'batteryLevel') { labelText = 'Batterie: '; unit = ' %'; }
-                    else if (key === 'externalTemperature') { labelText = 'Außentemp.: '; unit = ' °C'; }
-                    else if (key === 'rangeAt100Percent') { labelText = 'Reichw. (100%): '; unit = ' km'; } // Neu hinzugefügt
+                    let name = '';
+                    if (key === 'electricRange') {
+                        unit = ' km';
+                        name = 'Reichweite';
+                    } else if (key === 'batteryLevel') {
+                        unit = ' %';
+                        name = 'Batterie';
+                    } else if (key === 'externalTemperature') {
+                        unit = ' °C';
+                        name = 'Außentemperatur';
+                    } else if (key === 'rangeAt100Percent') {
+                        unit = ' km';
+                        name = 'Reichweite (100%)';
+                    }
 
                     return (
                         <p key={key} style={{ color: entry.color }}>
-                            {labelText}
-                            {Number(entry.value).toFixed(1)}{unit}
+                            {name}: {Number(entry.value).toFixed(1)}{unit}
                         </p>
                     );
                 })}
@@ -111,15 +119,26 @@ export const CarDataHistoryChart: React.FC<CarDataHistoryChartProps> = ({ durati
         let isMounted = true;
         const fetchHistory = async () => {
             setLoading(true);
+            setChartData([]); // Clear previous data to show loading animation immediately
             setError(null);
             try {
                 const currentTimeMs = new Date().getTime();
                 const initialMaxDisplayMs = currentTimeMs;
                 const initialMinDisplayMs = currentTimeMs - durationHours * 60 * 60 * 1000;
 
+                // Determine aggregationMinutes based on durationHours
+                let aggregationMinutes: number;
+                if (durationHours <= 24) {
+                    aggregationMinutes = 2; // 2 minutes for up to 24 hours
+                } else if (durationHours <= 168) { // 7 days
+                    aggregationMinutes = 15; // 15 minutes for up to 7 days
+                } else {
+                    aggregationMinutes = 30; // 1 hours for longer durations
+                }
+
                 const allHistoryData: { [key: string]: CarDataHistory[] } = {};
                 const fetchPromises = Object.entries(CAR_ENTITY_IDS).map(async ([key, entityId]) => {
-                    const response = await fetch(`/api/homeassistant/car-data/history?entityId=${entityId}&durationHours=${durationHours}`);
+                    const response = await fetch(`/api/homeassistant/car-data/history?entityId=${entityId}&durationHours=${durationHours}&aggregationMinutes=${aggregationMinutes}`);
                     if (!response.ok) throw new Error(`HTTP error! status: ${response.status} for ${entityId}`);
                     const data: CarDataHistory[] = await response.json();
                     allHistoryData[key] = data.map(item => ({
@@ -147,7 +166,7 @@ export const CarDataHistoryChart: React.FC<CarDataHistoryChartProps> = ({ durati
                     });
                 });
 
-                const finalChartData = Array.from(pointMap.values()).sort((a, b) => a.timestampMs - b.timestampMs);
+                let finalChartData = Array.from(pointMap.values()).sort((a, b) => a.timestampMs - b.timestampMs);
 
                 // Lücken füllen
                 let lastElectricRange: number | undefined = undefined;
@@ -171,6 +190,67 @@ export const CarDataHistoryChart: React.FC<CarDataHistoryChartProps> = ({ durati
                         pt.rangeAt100Percent = (pt.electricRange / pt.batteryLevel) * 100;
                     }
                 });
+
+                // Store the last calculated rangeAt100Percent before averaging logic potentially clears it
+                let lastCalculatedRangeAt100Percent: number | undefined = undefined;
+                for (let i = finalChartData.length - 1; i >= 0; i--) {
+                    if (finalChartData[i].rangeAt100Percent !== undefined) {
+                        lastCalculatedRangeAt100Percent = finalChartData[i].rangeAt100Percent;
+                        break;
+                    }
+                }
+
+                // NEUE LOGIK: Mittelwertbildung und Einzelpunkt-Darstellung für rangeAt100Percent
+                const blockDurationMs = 12 * 60 * 60 * 1000; // 12 Stunden
+                const blocks = new Map<number, { values: number[], points: CarChartDataPoint[] }>();
+
+                // Group valid rangeAt100Percent values and their original points into blocks
+                finalChartData.forEach(point => {
+                    if (point.rangeAt100Percent !== undefined) {
+                        const blockStartMs = Math.floor(point.timestampMs / blockDurationMs) * blockDurationMs;
+                        let currentBlock = blocks.get(blockStartMs);
+                        if (!currentBlock) {
+                            currentBlock = { values: [], points: [] };
+                            blocks.set(blockStartMs, currentBlock);
+                        }
+                        currentBlock.values.push(point.rangeAt100Percent);
+                        currentBlock.points.push(point); // Store reference to the original point
+                    }
+                });
+
+                // Clear all existing rangeAt100Percent values in finalChartData first
+                finalChartData.forEach(point => {
+                    point.rangeAt100Percent = undefined;
+                });
+
+                // Calculate average for each block and assign it to the point closest to the middle of the block
+                blocks.forEach((block, blockStartMs) => {
+                    if (block.values.length > 0) { // This check ensures block.points is also not empty
+                        const average = block.values.reduce((sum, val) => sum + val, 0) / block.values.length;
+                        const blockMiddleMs = blockStartMs + blockDurationMs / 2;
+
+                        let closestPointInBlock: CarChartDataPoint = block.points[0] as CarChartDataPoint; // Explicit type assertion
+                        let minDiff = Math.abs(closestPointInBlock.timestampMs - blockMiddleMs);
+
+                        for (let i = 1; i < block.points.length; i++) {
+                            const current = block.points[i];
+                            const diff = Math.abs(current.timestampMs - blockMiddleMs);
+                            if (diff < minDiff) {
+                                minDiff = diff;
+                                closestPointInBlock = current;
+                            }
+                        }
+                        closestPointInBlock.rangeAt100Percent = average;
+                    }
+                });
+
+                // After averaging, ensure the very last point has a rangeAt100Percent if it was calculable
+                if (finalChartData.length > 0 && lastCalculatedRangeAt100Percent !== undefined) {
+                    const lastChartPoint = finalChartData[finalChartData.length - 1];
+                    if (lastChartPoint.rangeAt100Percent === undefined) {
+                        lastChartPoint.rangeAt100Percent = lastCalculatedRangeAt100Percent;
+                    }
+                }
 
                 setChartData(finalChartData);
                 setXDomain([initialMinDisplayMs, initialMaxDisplayMs]);
