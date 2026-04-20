@@ -2,6 +2,7 @@ package de.hexix.homeassistant;
 
 import de.hexix.homeassistant.dto.AttributesDto;
 import de.hexix.homeassistant.dto.CarDataDto;
+import de.hexix.homeassistant.dto.CarHistoryItemDto; // Added import
 import de.hexix.homeassistant.dto.CpuDto;
 import de.hexix.homeassistant.dto.ElectricityPriceHistoryDto;
 import de.hexix.homeassistant.dto.ElectricityPriceOverviewDto;
@@ -215,10 +216,11 @@ public class HomeAssistantResource {
     @GET
     @Path("/car-data/history")
     @Produces(MediaType.APPLICATION_JSON)
-    public List<ElectricityPriceHistoryDto> getCarDataHistory(
+    public List<CarHistoryItemDto> getCarDataHistory( // Changed return type
             @QueryParam("entityId") String entityId,
-            @QueryParam("durationHours") int durationHours) {
-        return homeAssistantService.getCarDataHistory(entityId, Duration.ofHours(durationHours));
+            @QueryParam("durationHours") int durationHours,
+            @QueryParam("aggregationMinutes") @DefaultValue("60") int aggregationMinutes) { // Added aggregationMinutes
+        return homeAssistantService.getCarDataHistory(entityId, Duration.ofHours(durationHours), Duration.ofMinutes(aggregationMinutes)); // Passed aggregationMinutes
     }
 
     @GET
