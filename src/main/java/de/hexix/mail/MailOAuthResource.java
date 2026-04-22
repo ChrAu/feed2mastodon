@@ -24,6 +24,18 @@ public class MailOAuthResource {
         return input.replace('\n', ' ').replace('\r', ' ');
     }
 
+    private static String escapeForHtml(String input) {
+        if (input == null) {
+            return null;
+        }
+        return input
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#x27;");
+    }
+
     @Inject
     MailboxAccountService mailboxAccountService;
 
@@ -75,7 +87,7 @@ public class MailOAuthResource {
         if (error != null) {
             LOG.warning("OAuth callback received an error: " + sanitizeForLog(error) + " - " + sanitizeForLog(errorDescription));
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("OAuth error: " + error + (errorDescription != null ? " (" + errorDescription + ")" : "")).build();
+                    .entity("OAuth error: " + escapeForHtml(error) + (errorDescription != null ? " (" + escapeForHtml(errorDescription) + ")" : "")).build();
         }
 
         if (code == null || email == null) {
@@ -86,7 +98,7 @@ public class MailOAuthResource {
         MailboxAccount account = mailboxAccountService.getMailboxAccountByEmail(email);
         if (account == null) {
             LOG.warning("Mailbox account not found for email: " + email + " during OAuth callback.");
-            return Response.status(Response.Status.NOT_FOUND).entity("Mailbox account not found for email: " + email).build();
+            return Response.status(Response.Status.NOT_FOUND).entity("Mailbox account not found for email: " + escapeForHtml(email)).build();
         }
 
         // Find the right provider based on the account configuration
@@ -94,17 +106,17 @@ public class MailOAuthResource {
         if (provider == null) {
             LOG.severe("No suitable OAuthProvider found for account: " + email + " during OAuth callback.");
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("No suitable OAuthProvider found for account: " + email).build();
+                    .entity("No suitable OAuthProvider found for account: " + escapeForHtml(email)).build();
         }
 
         try {
             provider.processCallback(account, code);
             mailboxAccountService.updateMailboxAccount(account);
             LOG.info("OAuth2 token successfully received and stored for " + email);
-            return Response.ok("OAuth2 token successfully received and stored for " + email).build();
+            return Response.ok("OAuth2 token successfully received and stored for " + escapeForHtml(email)).build();
         } catch (Exception e) {
             LOG.severe("Error during OAuth callback for " + email + ": " + e.getMessage());
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Error processing callback: " + e.getMessage()).build();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Error processing callback: " + escapeForHtml(e.getMessage())).build();
         }
     }
 }
