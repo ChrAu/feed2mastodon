@@ -115,8 +115,8 @@ public class MailOAuthResource {
             LOG.info("OAuth2 token successfully received and stored for " + email);
             return Response.ok("OAuth2 token successfully received and stored.").build();
         } catch (Exception e) {
-            LOG.severe("Error during OAuth callback for " + email + ": " + e.getMessage());
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Error processing callback: " + escapeForHtml(e.getMessage())).build();
+            LOG.log(java.util.logging.Level.SEVERE, "Error during OAuth callback for " + email, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Error processing callback.").build();
         }
     }
 }
