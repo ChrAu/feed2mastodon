@@ -92,7 +92,7 @@ public class MailOAuthResource {
         if (error != null) {
             LOG.warning("OAuth callback received an error: " + safeError + " - " + safeErrorDescription);
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("OAuth error: " + escapeForHtml(error) + (errorDescription != null ? " (" + escapeForHtml(errorDescription) + ")" : "")).build();
+                    .entity("OAuth error returned by provider.").build();
         }
 
         if (code == null || email == null) {
