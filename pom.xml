@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>de.hexix</groupId>
     <artifactId>feed2mastodon</artifactId>
-    <version>0.8.33</version>
+    <version>0.8.34</version>
 
     <properties>
         <compiler-plugin.version>3.15.0</compiler-plugin.version>
