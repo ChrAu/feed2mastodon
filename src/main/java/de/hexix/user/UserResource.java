@@ -15,11 +15,19 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
 
 import java.net.URI;
 import java.security.Principal;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 @Path("/api/user")
 public class UserResource {
+
+    private static final Set<String> ALLOWED_REDIRECT_PATHS = Collections.unmodifiableSet(Set.of(
+            "/",
+            "/profile",
+            "/dashboard"
+    ));
 
     @Inject
     SecurityIdentity securityIdentity;
@@ -58,8 +66,8 @@ public class UserResource {
     @Path("/login")
     @Authenticated // Das hier triggert den Redirect zu Keycloak
     public Response login(@QueryParam("redirect") String redirect) {
-        // Validierung: Nur interne Pfade erlauben (Open Redirect Protection!)
-        String target = (redirect != null && redirect.startsWith("/")) ? redirect : "/";
+        // Validierung: Nur explizit freigegebene interne Pfade erlauben (Open Redirect Protection!)
+        String target = (redirect != null && ALLOWED_REDIRECT_PATHS.contains(redirect)) ? redirect : "/";
         return Response.seeOther(URI.create(target)).build();
     }
 }
