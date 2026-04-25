@@ -449,7 +449,7 @@ public class HomeAssistantService {
                             this.lastPiHoleData = data;
                             piHoleProcessor.onNext(data);
                         },
-                        err -> Log.error("Fehler beim Pi-Hole Live-Update: " + err.getMessage(), e)
+                        err -> Log.error("Fehler beim Pi-Hole Live-Update: " + err.getMessage(), err)
                 );
 
         Multi.createFrom().ticks().every(Duration.ofSeconds(60))
@@ -463,7 +463,7 @@ public class HomeAssistantService {
                             this.lastCpuData = data;
                             cpuProcessor.onNext(data);
                         },
-                        err -> Log.error("Fehler beim CPU Live-Update: " + err.getMessage(), e)
+                        err -> Log.error("Fehler beim CPU Live-Update: " + err.getMessage(), err)
                 );
     }
 
