@@ -15,10 +15,10 @@ import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Random;
 
 @QuarkusTest
 public class GoogleAiTest {
@@ -319,7 +319,7 @@ public class GoogleAiTest {
 
     @Test
     public void testCreateVector(){
-        final Random random = new Random();
+        final SecureRandom random = new SecureRandom();
 
         List<double[]> vectors = new LinkedList<>();
 

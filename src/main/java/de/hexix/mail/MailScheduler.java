@@ -5,16 +5,17 @@ import de.hexix.mail.model.MailboxAccount; // Import für MailboxAccount
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List; // Nur noch List, kein Arrays.asList mehr
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Logger;
 
 @ApplicationScoped
 public class MailScheduler {
 
     private static final Logger LOG = Logger.getLogger(MailScheduler.class.getName());
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Inject
     MailService mailService;
@@ -37,7 +38,7 @@ public class MailScheduler {
     @Scheduled(cron = "0 0 0,6,12,18 * * ?") // Zurück zum ursprünglichen Cron-Ausdruck
     void sendScheduledTestEmails() {
         LOG.info("Starting scheduled email sending...");
-        String uniqueMailId = String.format("%07d", ThreadLocalRandom.current().nextInt(10000000));
+        String uniqueMailId = String.format("%07d", SECURE_RANDOM.nextInt(10000000));
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         LocalDateTime sentTime = LocalDateTime.now();
 
