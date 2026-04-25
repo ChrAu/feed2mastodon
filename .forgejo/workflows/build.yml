@@ -56,7 +56,7 @@ jobs:
           QUARKUS_DATASOURCE_USERNAME: quarkus_test
           QUARKUS_DATASOURCE_PASSWORD: quarkus_test
           # HIER IST DIE ÄNDERUNG: Host ist nun 'postgres' und Port der interne Port '5432'
-          QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/quarkus_test
+          QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://localhost:5432/quarkus_test
           GEMINIE_ACCESS_TOKEN: ${{ secrets.GEMINIE_ACCESS_TOKEN }}
           MASTODON_PRIVATE_ACCESS_TOKEN: ${{ secrets.MASTODON_PRIVATE_ACCESS_TOKEN }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
