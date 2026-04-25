@@ -1,5 +1,7 @@
 # feed2mastodon | RSS to Mastodon Bot
 
+[![Quality Gate Status](https://sonar.codeheap.dev/api/project_badges/measure?project=hexix%3Afeed2mastodon&metric=alert_status&token=sqb_b92506ceb2676f651573a0cc278b2f26f6b2f69d)](https://sonar.codeheap.dev/dashboard?id=hexix%3Afeed2mastodon)
+
 Dieses Projekt ist ein in Java mit Quarkus entwickelter Bot, der automatisch neue Einträge aus einem RSS/Atom-Feed liest und sie auf einem Mastodon-Konto veröffentlicht. Er nutzt eine Datenbank, um den Überblick über bereits geteilte Beiträge zu behalten und Duplikate zu vermeiden.
 
 ## Hauptfunktionen
