@@ -13,24 +13,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: pgvector/pgvector:pg17
-        env:
-          POSTGRES_DB: quarkus_test
-          POSTGRES_USER: quarkus_test
-          POSTGRES_PASSWORD: quarkus_test
-        # Das Port-Mapping (ports) kann hier theoretisch sogar komplett weggelassen werden,
-        # da die Container im selben Netzwerk intern alle Ports offen haben.
-        # Ich lasse es aber drin, falls du es für andere Zwecke brauchst.
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
