@@ -20,7 +20,7 @@ jobs:
         # da die Container im selben Netzwerk intern alle Ports offen haben.
         # Ich lasse es aber drin, falls du es für andere Zwecke brauchst.
         ports:
-          - 5439:5432
+          - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -38,9 +38,9 @@ jobs:
           distribution: 'corretto'
           # 'cache: maven' entfernt, da es in Forgejo oft zu API-Kompatibilitätsproblemen führt
 
-      # Explizites Caching ist unter Forgejo robuster
+      # Explizites Caching ist unter Forgejo robuster (Wir nutzen v3 für bessere Forgejo-Kompatibilität)
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
