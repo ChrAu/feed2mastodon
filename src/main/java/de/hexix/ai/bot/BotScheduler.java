@@ -11,16 +11,17 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.jboss.logging.Logger;
 
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ThreadLocalRandom;
 
 @ApplicationScoped
 public class BotScheduler {
 
     private static final Logger LOG = Logger.getLogger(BotScheduler.class);
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Inject
     VikiAiService vikiAiService;
@@ -47,7 +48,12 @@ public class BotScheduler {
             return;
         }
 
-        long randomDelayInSeconds = ThreadLocalRandom.current().nextLong(7200);
+        long randomDelayInSeconds = SECURE_RANDOM.nextLong(7200);
+        // Ensure delay is positive
+        if (randomDelayInSeconds < 0) {
+            randomDelayInSeconds = -randomDelayInSeconds;
+        }
+        
         LocalDateTime executionTime = LocalDateTime.now().plusSeconds(randomDelayInSeconds);
 
         ExecutionJob job = new ExecutionJob();
@@ -103,7 +109,7 @@ public class BotScheduler {
             LOG.info("No new posts found for Viki to comment on. Will try again later.");
             return;
         }
-        final int nextIndex = ThreadLocalRandom.current().nextInt(list.size());
+        final int nextIndex = SECURE_RANDOM.nextInt(list.size());
         final ThemenEntity themenEntity = list.get(nextIndex);
 
         LOG.infof("Found a post to comment on with ID: %s", themenEntity.getThema());

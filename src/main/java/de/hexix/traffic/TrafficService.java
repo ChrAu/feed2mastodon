@@ -1,6 +1,7 @@
 package de.hexix.traffic;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.quarkus.logging.Log;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
@@ -44,7 +45,7 @@ public class TrafficService {
                         lastMetrics = metrics; // Update the cache
                     } catch (Exception e) {
                         // Falls der Client noch nicht bereit ist oder Proxmox zickt
-                        System.err.println("Fehler beim Abruf: " + e.getMessage());
+                        Log.error("Fehler beim Abruf: " + e.getMessage(), e);
                     }
                 });
     }
