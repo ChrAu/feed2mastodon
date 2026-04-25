@@ -56,6 +56,7 @@ import java.util.regex.Pattern;
 public class HomeAssistantService {
 
     private static final Logger LOG = Logger.getLogger(HomeAssistantService.class);
+    private static final String FAILED_TO_GET_CURRENT_STATE_MSG = "Failed to get current state for entityId: ";
 
     @ConfigProperty(name = "home-assistant.api.token")
     String apiToken;
@@ -334,7 +335,7 @@ public class HomeAssistantService {
             EntityDto currentEntity = homeAssistantClient.getState("Bearer " + apiToken, entityId);
             currentPrice = Double.parseDouble(currentEntity.getState());
         } catch (Exception e) {
-            Log.error("Failed to get current state for entityId: " + entityId + " - " + e.getMessage(),e);
+            Log.error(FAILED_TO_GET_CURRENT_STATE_MSG + entityId + " - " + e.getMessage(),e);
             // If current price cannot be fetched, we might not be able to draw the end point
         }
 
@@ -677,7 +678,7 @@ public class HomeAssistantService {
             EntityDto currentEntity = homeAssistantClient.getState("Bearer " + apiToken, entityId);
             currentPrice = Double.parseDouble(currentEntity.getState());
         } catch (Exception e) {
-            Log.error("Failed to get current state for entityId: " + entityId + " - " + e.getMessage(), e);
+            Log.error(FAILED_TO_GET_CURRENT_STATE_MSG + entityId + " - " + e.getMessage(), e);
         }
 
         Double priceBeforeStartDate = null;
@@ -784,7 +785,7 @@ public class HomeAssistantService {
             EntityDto currentEntity = homeAssistantClient.getState("Bearer " + apiToken, entityId);
             currentValue = Double.parseDouble(currentEntity.getState());
         } catch (Exception e) {
-            Log.error("Failed to get current state for entityId: " + entityId + " - " + e.getMessage(), e);
+            Log.error(FAILED_TO_GET_CURRENT_STATE_MSG + entityId + " - " + e.getMessage(), e);
         }
 
         Double valueBeforeStartDate = null;
