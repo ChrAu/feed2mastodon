@@ -1,0 +1,40 @@
+name: SonarQube Analysis
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  sonarqube:
+    name: SonarQube Scan
+    runs-on: docker
+
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+        with:
+          # Erforderlich, damit SonarQube Autoren und geänderte Zeilen erkennt
+          fetch-depth: 0
+
+      - name: Cache SonarQube Pakete
+        uses: actions/cache@v3
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: SonarQube Scan ausführen
+        # Nutzt den offiziellen Scanner
+        uses: sonarsource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          # Optionale zusätzliche Parameter
+          args: >
+            -Dsonar.projectKey=mein-forgejo-projekt
+            -Dsonar.sources=.
+            -Dsonar.verbose=true
