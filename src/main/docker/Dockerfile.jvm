@@ -8,10 +8,10 @@ ENV LANGUAGE='de_DE:de'
 WORKDIR /deployments
 
 # 4. Applikationsdaten kopieren (wie im Original)
-COPY --chown=185 target/quarkus-app/lib/ /deployments/lib/
-COPY --chown=185 target/quarkus-app/*.jar /deployments/
-COPY --chown=185 target/quarkus-app/app/ /deployments/app/
-COPY --chown=185 target/quarkus-app/quarkus/ /deployments/quarkus/
+COPY --chown=root:root --chmod=755 target/quarkus-app/lib/ /deployments/lib/
+COPY --chown=root:root --chmod=755 target/quarkus-app/*.jar /deployments/
+COPY --chown=root:root --chmod=755 target/quarkus-app/app/ /deployments/app/
+COPY --chown=root:root --chmod=755 target/quarkus-app/quarkus/ /deployments/quarkus/
 
 # 5. Ports und Benutzer definieren
 EXPOSE 8080
