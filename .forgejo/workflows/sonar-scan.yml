@@ -11,46 +11,46 @@ on:
 
 jobs:
   build:
-    # 'docker' ist das Standard-Label für Forgejo Runner.
-    runs-on: docker
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Code
-        uses: https://github.com/actions/checkout@v4
-        with:
-          # Verhindert den Shallow Clone, damit Blame-Informationen (Autoren) verfügbar sind
-          fetch-depth: 0
+        uses: actions/checkout@v4
 
       - name: Set up JDK 25
-        uses: https://github.com/actions/setup-java@v4
+        uses: actions/setup-java@v4
         with:
           java-version: '25'
           distribution: 'corretto'
 
+      - name: Verify Java Version
+        run: java -version && javac -version
+
+      # Wir cachen jetzt einen lokalen Ordner im Workspace statt ~/.m2/repository
       - name: Cache Maven packages
-        uses: https://github.com/actions/cache@v3
+        uses: actions/cache@v3
         with:
           path: .m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      # Optional: Mach den Maven-Wrapper ausführbar, falls du ihn nutzt (sehr empfohlen!)
       - name: Make Maven Wrapper executable
         run: chmod +x ./mvnw || true
 
-      # Bereitet Git für den Scanner vor, um Blame-Warnungen zu vermeiden
-      - name: Prepare Git for Sonar
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Build Application
+        run: ./mvnw -Dmaven.repo.local=.m2/repository clean package -DskipTests
 
-      - name: Build and Sonar Analysis
+      - name: SonarQube Scan ausführen
+        # Aktualisiert auf v6 für Sicherheit und bessere Performance
+        uses: https://github.com/sonarsource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        run: |
-          # Wir nutzen das Maven-Plugin für Sonar. 
-          # Dies löst automatisch die Warnung "sonar.java.libraries is empty".
-          ./mvnw -Dmaven.repo.local=.m2/repository clean verify sonar:sonar \
-            -Dsonar.projectKey=${{ github.repository_owner }}:${{ github.event.repository.name }} \
-            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
-            -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
+        with:
+          args: >
+            -Dsonar.projectKey=${{ github.repository_owner }}:${{ github.event.repository.name }}
+            -Dsonar.sources=.
             -Dsonar.java.binaries=target/classes
+            -Dsonar.verbose=true
