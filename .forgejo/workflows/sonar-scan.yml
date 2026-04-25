@@ -50,7 +50,7 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           args: >
-            -Dsonar.projectKey=${{ github.repository }}
+            -Dsonar.projectKey=${{ github.repository_owner }}:${{ github.event.repository.name }}
             -Dsonar.sources=.
             -Dsonar.java.binaries=target/classes
             -Dsonar.verbose=true
