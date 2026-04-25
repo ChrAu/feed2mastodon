@@ -1,37 +1,60 @@
-name: SonarQube Analysis
+name: Build and Package
 
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [ '**' ]
   pull_request:
-    types: [opened, synchronize, reopened]
-  workflow_dispatch:
 
 jobs:
-  sonarqube:
-    name: SonarQube Scan
-    runs-on: docker
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: quarkus_test
+          POSTGRES_USER: quarkus_test
+          POSTGRES_PASSWORD: quarkus_test
+        # Das Port-Mapping (ports) kann hier theoretisch sogar komplett weggelassen werden,
+        # da die Container im selben Netzwerk intern alle Ports offen haben.
+        # Ich lasse es aber drin, falls du es für andere Zwecke brauchst.
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
-      - name: Code auschecken
-        uses: https://github.com/actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Java einrichten
-        uses: https://github.com/actions/setup-java@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: 'maven'
+          java-version: '25'
+          distribution: 'corretto'
 
-      - name: Projekt kompilieren
-        # Sonar benötigt die .class Dateien für die Java-Analyse
-        run: |
-          chmod +x mvnw
-          ./mvnw compile -DskipTests
+      - name: Verify Java Version
+        run: java -version && javac -version
+
+      # Wir cachen jetzt einen lokalen Ordner im Workspace statt ~/.m2/repository
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: .m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # Optional: Mach den Maven-Wrapper ausführbar, falls du ihn nutzt (sehr empfohlen!)
+      - name: Make Maven Wrapper executable
+        run: chmod +x ./mvnw || true
+
+      - name: Build Application
+        run: ./mvnw -Dmaven.repo.local=.m2/repository clean package -DskipTests
 
       - name: SonarQube Scan ausführen
         # Aktualisiert auf v6 für Sicherheit und bessere Performance
