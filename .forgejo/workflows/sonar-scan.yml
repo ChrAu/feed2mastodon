@@ -2,8 +2,12 @@ name: Build and Package
 
 on:
   push:
-    branches: [ '**' ]
+    branches:
+      - main
+      - master
   pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 jobs:
   build:
