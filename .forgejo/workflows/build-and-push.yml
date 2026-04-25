@@ -75,6 +75,8 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          # Hier ist die Änderung: Expliziter Pfad zum Dockerfile
+          file: ./src/main/docker/Dockerfile.jvm
           push: true
           # Den Namen habe ich korrigiert (feed2mastodon) und Variablen genutzt
           tags: forgejo.codeheap.dev/${{ github.repository_owner }}/feed2mastodon:latest
