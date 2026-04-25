@@ -60,6 +60,7 @@ class VikiAiServiceTest {
             Assertions.assertNotNull(response.hashTags(), "The hashtags list should not be null.");
             Assertions.assertFalse(response.hashTags().isEmpty(), "The hashtags list should not be empty.");
         }catch (Exception e){
+            System.out.println(e.getMessage());
             Assertions.assertTrue(e.getMessage().contains("The model is overloaded"), "Google KI ist gerade überlastet.");
             if(!(e instanceof ServerException)){
                 throw new RuntimeException("Fehler beim Test", e);
