@@ -1,6 +1,7 @@
 package de.hexix.traffic;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.quarkus.logging.Log;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
