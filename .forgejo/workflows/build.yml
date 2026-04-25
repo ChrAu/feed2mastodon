@@ -38,11 +38,11 @@ jobs:
           distribution: 'corretto'
           # 'cache: maven' entfernt, da es in Forgejo oft zu API-Kompatibilitätsproblemen führt
 
-      # Explizites Caching ist unter Forgejo robuster (Wir nutzen v3 für bessere Forgejo-Kompatibilität)
+      # Wir cachen jetzt einen lokalen Ordner im Workspace statt ~/.m2/repository
       - name: Cache Maven packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
-          path: ~/.m2/repository
+          path: .m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
@@ -63,5 +63,5 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           HOMEASSISTANT_API_TOKEN: ${{ secrets.HOMEASSISTANT_API_TOKEN }}
         # Nutze ./mvnw (Wrapper), falls vorhanden. Er lädt Maven selbstständig herunter, falls es fehlt.
-        # Falls dein Projekt keinen Wrapper hat, ersetze "./mvnw" einfach durch "mvn".
-        run: ./mvnw clean package
+        # Maven nutzt nun den Workspace-Ordner ".m2/repository" anstelle des Home-Verzeichnisses.
+        run: ./mvnw -Dmaven.repo.local=.m2/repository clean package
