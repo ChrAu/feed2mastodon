@@ -57,6 +57,7 @@ public class HomeAssistantService {
 
     private static final Logger LOG = Logger.getLogger(HomeAssistantService.class);
     private static final String FAILED_TO_GET_CURRENT_STATE_MSG = "Failed to get current state for entityId: ";
+    public static final String STATE_BEFORE_START_DATE_IS_NOT_A_NUMBER_FOR_ENTITY_ID = "State before startDate is not a number for entityId: ";
 
     @ConfigProperty(name = "home-assistant.api.token")
     String apiToken;
@@ -351,7 +352,7 @@ public class HomeAssistantService {
             try {
                 priceBeforeStartDate = Double.parseDouble(beforeHistory.getState());
             } catch (NumberFormatException e) {
-                Log.error("State before startDate is not a number for entityId: " + entityId + " - " + e.getMessage(), e);
+                Log.error(STATE_BEFORE_START_DATE_IS_NOT_A_NUMBER_FOR_ENTITY_ID + entityId + " - " + e.getMessage(), e);
             }
         }
 
@@ -692,7 +693,7 @@ public class HomeAssistantService {
             try {
                 priceBeforeStartDate = Double.parseDouble(beforeHistory.getState());
             } catch (NumberFormatException e) {
-                Log.error("State before startDate is not a number for entityId: " + entityId + " - " + e.getMessage(), e);
+                Log.error(STATE_BEFORE_START_DATE_IS_NOT_A_NUMBER_FOR_ENTITY_ID + entityId + " - " + e.getMessage(), e);
             }
         }
 
@@ -799,7 +800,7 @@ public class HomeAssistantService {
             try {
                 valueBeforeStartDate = Double.parseDouble(beforeHistory.getState());
             } catch (NumberFormatException e) {
-                Log.error("State before startDate is not a number for entityId: " + entityId + " - " + e.getMessage(), e);
+                Log.error(STATE_BEFORE_START_DATE_IS_NOT_A_NUMBER_FOR_ENTITY_ID + entityId + " - " + e.getMessage(), e);
             }
         }
 
