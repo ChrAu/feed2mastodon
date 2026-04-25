@@ -16,27 +16,32 @@ jobs:
 
     steps:
       - name: Code auschecken
-        uses: actions/checkout@v4
+        uses: https://github.com/actions/checkout@v4
         with:
-          # Erforderlich, damit SonarQube Autoren und geänderte Zeilen erkennt
           fetch-depth: 0
 
-      - name: Cache SonarQube Pakete
-        uses: actions/cache@v3
+      - name: Java einrichten
+        uses: https://github.com/actions/setup-java@v4
         with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Projekt kompilieren
+        # Sonar benötigt die .class Dateien für die Java-Analyse
+        run: |
+          chmod +x mvnw
+          ./mvnw compile -DskipTests
 
       - name: SonarQube Scan ausführen
-        # Hier nutzen wir die volle URL zu GitHub, da die Action auf der Forgejo-Instanz nicht lokal vorliegt
-        uses: https://github.com/sonarsource/sonarqube-scan-action@v4
+        # Aktualisiert auf v6 für Sicherheit und bessere Performance
+        uses: https://github.com/sonarsource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
-          # Optionale zusätzliche Parameter
           args: >
             -Dsonar.projectKey=mein-forgejo-projekt
             -Dsonar.sources=.
+            -Dsonar.java.binaries=target/classes
             -Dsonar.verbose=true
