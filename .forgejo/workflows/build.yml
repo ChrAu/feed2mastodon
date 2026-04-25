@@ -36,7 +36,16 @@ jobs:
         with:
           java-version: '25'
           distribution: 'corretto'
-          cache: 'maven' # Übernimmt ab sofort zuverlässig das Caching von ~/.m2/repository
+          # 'cache: maven' entfernt, da es in Forgejo oft zu API-Kompatibilitätsproblemen führt
+
+      # Explizites Caching ist unter Forgejo robuster
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
       # Optional: Mach den Maven-Wrapper ausführbar, falls du ihn nutzt (sehr empfohlen!)
       - name: Make Maven Wrapper executable
