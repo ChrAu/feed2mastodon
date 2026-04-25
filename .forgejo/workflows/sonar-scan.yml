@@ -1,4 +1,4 @@
-name: SonarQube Analysis
+name: Build and Package
 
 on:
   push:
@@ -10,33 +10,47 @@ on:
   workflow_dispatch:
 
 jobs:
-  sonarqube:
-    name: SonarQube Scan
-    runs-on: docker
+  build:
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Code auschecken
+      - name: Checkout Code
         uses: actions/checkout@v4
-        with:
-          # Erforderlich, damit SonarQube Autoren und geänderte Zeilen erkennt
-          fetch-depth: 0
 
-      - name: Cache SonarQube Pakete
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'corretto'
+
+      - name: Verify Java Version
+        run: java -version && javac -version
+
+      # Wir cachen jetzt einen lokalen Ordner im Workspace statt ~/.m2/repository
+      - name: Cache Maven packages
         uses: actions/cache@v3
         with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
+          path: .m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # Optional: Mach den Maven-Wrapper ausführbar, falls du ihn nutzt (sehr empfohlen!)
+      - name: Make Maven Wrapper executable
+        run: chmod +x ./mvnw || true
+
+      - name: Build Application
+        run: ./mvnw -Dmaven.repo.local=.m2/repository clean package -DskipTests
 
       - name: SonarQube Scan ausführen
-        # Hier nutzen wir die volle URL zu GitHub, da die Action auf der Forgejo-Instanz nicht lokal vorliegt
-        uses: https://github.com/sonarsource/sonarqube-scan-action@v4
+        # Aktualisiert auf v6 für Sicherheit und bessere Performance
+        uses: https://github.com/sonarsource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
-          # Optionale zusätzliche Parameter
           args: >
-            -Dsonar.projectKey=mein-forgejo-projekt
+            -Dsonar.projectKey=${{ github.repository }}
             -Dsonar.sources=.
+            -Dsonar.java.binaries=target/classes
             -Dsonar.verbose=true
