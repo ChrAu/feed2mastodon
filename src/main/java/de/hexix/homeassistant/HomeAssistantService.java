@@ -20,6 +20,7 @@ import de.hexix.homeassistant.entity.HaStateHistory;
 import de.hexix.homeassistant.entity.HaTemperatureHistory;
 import de.hexix.homeassistant.ignoredentity.IgnoredEntityRepository;
 import de.hexix.homeassistant.service.HoltWinterForecastService;
+import io.quarkus.logging.Log;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
@@ -285,7 +286,7 @@ public class HomeAssistantService {
                             previousPrice = Double.parseDouble(beforeHistory.getState());
                         }
                     } catch (Exception e) {
-                        System.err.println("Failed to fetch previous price for " + entityId + ": " + e.getMessage());
+                        Log.error("Failed to fetch previous price for " + entityId + ": " + e.getMessage(), e);
                     }
 
                     stationPrices.computeIfAbsent(stationKey, k -> new HashMap<>())
@@ -297,7 +298,7 @@ public class HomeAssistantService {
                 }
 
             } catch (Exception e) {
-                System.err.println("Fehler beim Abruf von Tankstellendaten für Entity: " + entityId + " - " + e.getMessage());
+                Log.error("Fehler beim Abruf von Tankstellendaten für Entity: " + entityId + " - " + e.getMessage(), e);
                 // Continue processing other entities even if one fails
             }
         }
@@ -333,7 +334,7 @@ public class HomeAssistantService {
             EntityDto currentEntity = homeAssistantClient.getState("Bearer " + apiToken, entityId);
             currentPrice = Double.parseDouble(currentEntity.getState());
         } catch (Exception e) {
-            System.err.println("Failed to get current state for entityId: " + entityId + " - " + e.getMessage());
+            Log.error("Failed to get current state for entityId: " + entityId + " - " + e.getMessage(),e);
             // If current price cannot be fetched, we might not be able to draw the end point
         }
 
@@ -349,7 +350,7 @@ public class HomeAssistantService {
             try {
                 priceBeforeStartDate = Double.parseDouble(beforeHistory.getState());
             } catch (NumberFormatException e) {
-                System.err.println("State before startDate is not a number for entityId: " + entityId + " - " + e.getMessage());
+                Log.error("State before startDate is not a number for entityId: " + entityId + " - " + e.getMessage(), e);
             }
         }
 
@@ -448,7 +449,7 @@ public class HomeAssistantService {
                             this.lastPiHoleData = data;
                             piHoleProcessor.onNext(data);
                         },
-                        err -> System.err.println("Fehler beim Pi-Hole Live-Update: " + err.getMessage())
+                        err -> Log.error("Fehler beim Pi-Hole Live-Update: " + err.getMessage(), e)
                 );
 
         Multi.createFrom().ticks().every(Duration.ofSeconds(60))
@@ -462,7 +463,7 @@ public class HomeAssistantService {
                             this.lastCpuData = data;
                             cpuProcessor.onNext(data);
                         },
-                        err -> System.err.println("Fehler beim CPU Live-Update: " + err.getMessage())
+                        err -> Log.error("Fehler beim CPU Live-Update: " + err.getMessage(), e)
                 );
     }
 
@@ -497,8 +498,7 @@ public class HomeAssistantService {
                         return homeAssistantClient.getState("Bearer " + apiToken, id);
                     } catch (Exception e) {
                         // Logge den Fehler, aber lass den Stream weiterlaufen
-                        System.err.println("Fehler beim Abruf von " + id);
-                        e.printStackTrace();
+                        Log.error("Fehler beim Abruf von " + id, e);
                         return null;
                     }
                 })
@@ -589,7 +589,7 @@ public class HomeAssistantService {
                         previousValue = Double.parseDouble(beforeHistory.getState());
                     }
                 } catch (Exception e) {
-                    System.err.println("Failed to fetch previous electricity price for " + entityId + ": " + e.getMessage());
+                    Log.error("Failed to fetch previous electricity price for " + entityId + ": " + e.getMessage(), e);
                 }
 
                 ElectricityPriceDto priceDto = new ElectricityPriceDto(
@@ -677,7 +677,7 @@ public class HomeAssistantService {
             EntityDto currentEntity = homeAssistantClient.getState("Bearer " + apiToken, entityId);
             currentPrice = Double.parseDouble(currentEntity.getState());
         } catch (Exception e) {
-            System.err.println("Failed to get current state for entityId: " + entityId + " - " + e.getMessage());
+            Log.error("Failed to get current state for entityId: " + entityId + " - " + e.getMessage(), e);
         }
 
         Double priceBeforeStartDate = null;
@@ -691,7 +691,7 @@ public class HomeAssistantService {
             try {
                 priceBeforeStartDate = Double.parseDouble(beforeHistory.getState());
             } catch (NumberFormatException e) {
-                System.err.println("State before startDate is not a number for entityId: " + entityId + " - " + e.getMessage());
+                Log.error("State before startDate is not a number for entityId: " + entityId + " - " + e.getMessage(), e);
             }
         }
 
@@ -784,7 +784,7 @@ public class HomeAssistantService {
             EntityDto currentEntity = homeAssistantClient.getState("Bearer " + apiToken, entityId);
             currentValue = Double.parseDouble(currentEntity.getState());
         } catch (Exception e) {
-            System.err.println("Failed to get current state for entityId: " + entityId + " - " + e.getMessage());
+            Log.error("Failed to get current state for entityId: " + entityId + " - " + e.getMessage(), e);
         }
 
         Double valueBeforeStartDate = null;
@@ -798,7 +798,7 @@ public class HomeAssistantService {
             try {
                 valueBeforeStartDate = Double.parseDouble(beforeHistory.getState());
             } catch (NumberFormatException e) {
-                System.err.println("State before startDate is not a number for entityId: " + entityId + " - " + e.getMessage());
+                Log.error("State before startDate is not a number for entityId: " + entityId + " - " + e.getMessage(), e);
             }
         }
 

@@ -3,6 +3,7 @@ package de.hexix.scheduler.control;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.RequestScoped;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
@@ -11,7 +12,7 @@ public class RandomDateTimeGenerator {
 
     private LocalDateTime lastGenerationDay;
     private int dailyCallCounter;
-    private final java.util.Random random = new java.util.Random();
+    private final SecureRandom random = new SecureRandom();
 
 
     /**

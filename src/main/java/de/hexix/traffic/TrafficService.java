@@ -44,7 +44,7 @@ public class TrafficService {
                         lastMetrics = metrics; // Update the cache
                     } catch (Exception e) {
                         // Falls der Client noch nicht bereit ist oder Proxmox zickt
-                        System.err.println("Fehler beim Abruf: " + e.getMessage());
+                        Log.error("Fehler beim Abruf: " + e.getMessage(), e);
                     }
                 });
     }
