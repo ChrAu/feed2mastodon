@@ -10,6 +10,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
@@ -35,11 +36,10 @@ public class VikiAiService {
         try (Client client = Client.builder().apiKey(accessToken).build()) {
             LOG.infof("Sending prompt for topic: %s", topic);
             GenerateContentResponse response = client.models.generateContent(modelName, prompt, GenerateContentConfig.builder().build());
-            String jsonResponse = response.candidates().get().get(0).content().get().parts().get().get(0).text().get();
 
-            LOG.infof("Received raw response from AI: %s", jsonResponse);
+            LOG.infof("Received raw response from AI: %s", response.text());
 
-            String cleanJson = cleanupJson(jsonResponse);
+            String cleanJson = cleanupJson(Objects.requireNonNull(response.text()));
 
             // Deserialize the initial response
             VikiResponse initialResponse = objectMapper.readValue(cleanJson, VikiResponse.class);
