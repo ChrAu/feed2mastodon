@@ -50,7 +50,7 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           args: >
-            -Dsonar.projectKey=mein-forgejo-projekt
+            -Dsonar.projectKey=${{ github.repository }}
             -Dsonar.sources=.
             -Dsonar.java.binaries=target/classes
             -Dsonar.verbose=true
