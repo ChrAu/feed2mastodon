@@ -40,7 +40,7 @@ jobs:
 
       # Wir cachen jetzt einen lokalen Ordner im Workspace statt ~/.m2/repository
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v3
         with:
           path: .m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
