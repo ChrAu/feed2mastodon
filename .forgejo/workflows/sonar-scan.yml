@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - master
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -27,8 +28,8 @@ jobs:
           restore-keys: ${{ runner.os }}-sonar
 
       - name: SonarQube Scan ausführen
-        # Nutzt den offiziellen Scanner
-        uses: sonarsource/sonarqube-scan-action@v4
+        # Hier nutzen wir die volle URL zu GitHub, da die Action auf der Forgejo-Instanz nicht lokal vorliegt
+        uses: https://github.com/sonarsource/sonarqube-scan-action@v4
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
