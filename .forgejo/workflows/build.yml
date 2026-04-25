@@ -36,7 +36,9 @@ jobs:
         with:
           java-version: '25'
           distribution: 'corretto'
-          # 'cache: maven' entfernt, da es in Forgejo oft zu API-Kompatibilitätsproblemen führt
+
+      - name: Verify Java Version
+        run: java -version && javac -version
 
       # Wir cachen jetzt einen lokalen Ordner im Workspace statt ~/.m2/repository
       - name: Cache Maven packages
