@@ -50,7 +50,7 @@ jobs:
       # NEU: Versionsprüfung und Erhöhung für Forgejo
       - name: Check and Bump Version
         # Nur bei PRs, nicht bei Push auf Main, und nicht durch Bots
-        if: github.event_name == 'pull_request' && github.actor == 'chrau'
+        if: github.event_name == 'pull_request' && !contains(github.actor, '[bot]')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
