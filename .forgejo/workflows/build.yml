@@ -39,10 +39,13 @@ jobs:
           java-version: '25'
           distribution: 'corretto'
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'latest'
+#      - name: Set up Node.js
+#        uses: actions/setup-node@v4
+#        with:
+#          node-version: 'latest'
+
+      - name: Dump Actor
+        run: echo "Der Actor ist ${{ github.actor }}"
 
       # NEU: Versionsprüfung und Erhöhung für Forgejo
       - name: Check and Bump Version
