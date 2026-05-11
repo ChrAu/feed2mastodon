@@ -44,13 +44,13 @@ jobs:
 #        with:
 #          node-version: 'latest'
 
-      - name: Dump Actor
-        run: echo "Der Actor ist ${{ github.actor }}"
+#      - name: Dump Actor
+#        run: echo "Der Actor ist ${{ github.actor }}"
 
       # NEU: Versionsprüfung und Erhöhung für Forgejo
       - name: Check and Bump Version
         # Nur bei PRs, nicht bei Push auf Main, und nicht durch Bots
-        if: github.event_name == 'pull_request' && contains(github.actor, '[bot]') == false
+        if: github.event_name == 'pull_request' && github.actor == 'chrau'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
