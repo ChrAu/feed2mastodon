@@ -16,20 +16,22 @@ jobs:
           POSTGRES_DB: quarkus_test
           POSTGRES_USER: quarkus_test
           POSTGRES_PASSWORD: quarkus_test
-        # Das Port-Mapping (ports) kann hier theoretisch sogar komplett weggelassen werden,
-        # da die Container im selben Netzwerk intern alle Ports offen haben.
-        # Ich lasse es aber drin, falls du es für andere Zwecke brauchst.
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
 
+    # Berechtigungen für Gitea/Forgejo Token
+    permissions:
+      contents: write
+      packages: write
+
     steps:
-      - name: Checkout Code
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Wichtig für den Vergleich mit dem main-branch
 
       - name: Set up JDK 25
         uses: actions/setup-java@v4
@@ -37,33 +39,61 @@ jobs:
           java-version: '25'
           distribution: 'corretto'
 
-      - name: Verify Java Version
-        run: java -version && javac -version
+#      - name: Set up Node.js
+#        uses: actions/setup-node@v4
+#        with:
+#          node-version: 'latest'
 
-      # Wir cachen jetzt einen lokalen Ordner im Workspace statt ~/.m2/repository
-      - name: Cache Maven packages
-        uses: actions/cache@v3
-        with:
-          path: .m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+#      - name: Dump Actor
+#        run: echo "Der Actor ist ${{ github.actor }}"
 
-      # Optional: Mach den Maven-Wrapper ausführbar, falls du ihn nutzt (sehr empfohlen!)
-      - name: Make Maven Wrapper executable
-        run: chmod +x ./mvnw || true
+      # NEU: Versionsprüfung und Erhöhung für Forgejo
+      - name: Check and Bump Version
+        # Nur bei PRs, nicht bei Push auf Main, und nicht durch Bots
+        if: github.event_name == 'pull_request' && !contains(github.actor, '[bot]')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x mvnw
+          
+          # Aktuelle Version im PR-Branch auslesen
+          PR_VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
+          
+          # Version im Ziel-Branch (meist main) holen
+          # In Forgejo/Gitea ist github.base_ref der Name des Ziel-Branches
+          git fetch origin ${{ github.base_ref }}
+          MAIN_VERSION=$(git show origin/${{ github.base_ref }}:pom.xml | grep -oPm1 "(?<=<version>)[^<]+" | head -n 1)
 
-      - name: Build Application
+          if [ "$PR_VERSION" == "$MAIN_VERSION" ]; then
+            echo "Versionen sind identisch ($PR_VERSION). Erhöhe Patch-Level..."
+            
+            IFS='.' read -r major minor patch <<< "$PR_VERSION"
+            NEW_VERSION="$major.$minor.$((patch + 1))"
+            
+            ./mvnw versions:set -DnewVersion=$NEW_VERSION -DgenerateBackupPoms=false
+            
+            git config --global user.name "forgejo-actions[bot]"
+            git config --global user.email "forgejo-actions[bot]@forgejo.codeheap.dev"
+            
+            git add pom.xml
+            git commit -m "chore: auto-bump version to $NEW_VERSION [skip ci]"
+            
+            # Push zurück in den Head-Branch des Pull Requests
+            git push origin HEAD:${{ github.head_ref }}
+          else
+            echo "Version wurde bereits manuell erhöht ($PR_VERSION)."
+          fi
+
+      - name: Build with Maven Wrapper
         env:
           QUARKUS_DATASOURCE_USERNAME: quarkus_test
           QUARKUS_DATASOURCE_PASSWORD: quarkus_test
-          # HIER IST DIE ÄNDERUNG: Host ist nun 'postgres' und Port der interne Port '5432'
           QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://localhost:5432/quarkus_test
           GEMINIE_ACCESS_TOKEN: ${{ secrets.GEMINIE_ACCESS_TOKEN }}
           MASTODON_PRIVATE_ACCESS_TOKEN: ${{ secrets.MASTODON_PRIVATE_ACCESS_TOKEN }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           HOMEASSISTANT_API_TOKEN: ${{ secrets.HOMEASSISTANT_API_TOKEN }}
-        # Nutze ./mvnw (Wrapper), falls vorhanden. Er lädt Maven selbstständig herunter, falls es fehlt.
-        # Maven nutzt nun den Workspace-Ordner ".m2/repository" anstelle des Home-Verzeichnisses.
-        run: ./mvnw -Dmaven.repo.local=.m2/repository clean package
+        run: |
+          chmod +x mvnw
+          ./mvnw -B package -Dquarkus.profile=prod --file pom.xml
