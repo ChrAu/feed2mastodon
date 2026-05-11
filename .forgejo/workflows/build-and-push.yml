@@ -2,7 +2,8 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [ main ]
+    branches: [ '**' ]
+    tags: [ '**' ]
   workflow_dispatch:
 
 jobs:
@@ -11,20 +12,16 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up JDK 25
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: 'corretto'
 
-      - name: Verify Java Version
-        run: java -version && javac -version
-
-      # Analog zur build.yml: Lokales Caching mit v3 für Forgejo
       - name: Cache Maven packages
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
           path: .m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -35,7 +32,7 @@ jobs:
         run: chmod +x ./mvnw || true
 
       - name: Build Application with Maven
-        env:
+       	env:
           QUARKUS_DATASOURCE_USERNAME: quarkus_test
           QUARKUS_DATASOURCE_PASSWORD: quarkus_test
           # HIER IST DIE ÄNDERUNG: Host ist nun 'postgres' und Port der interne Port '5432'
@@ -47,7 +44,6 @@ jobs:
           HOMEASSISTANT_API_TOKEN: ${{ secrets.HOMEASSISTANT_API_TOKEN }}
         # Wir überspringen die Tests (-DskipTests), da wir hier keine Datenbank laufen haben.
         # Die Tests werden ohnehin durch die build.yml abgedeckt.
-
         run: ./mvnw -Dmaven.repo.local=.m2/repository clean package -DskipTests
 
       - name: Install Docker CLI
@@ -62,22 +58,40 @@ jobs:
           apt-get install -y docker-ce-cli
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to Forgejo Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: forgejo.codeheap.dev
           username: ${{ github.repository_owner }}
           password: ${{ secrets.CODEHEAP_TOKEN }}
 
+      - name: Generate Docker Tags
+        id: meta
+        run: |
+          IMAGE="forgejo.codeheap.dev/${{ github.repository_owner }}/feed2mastodon"
+          REF_NAME="${{ github.ref_name }}"
+          REF_TYPE="${{ github.ref_type }}"
+          
+          # Sanitize name for docker tag (replace / with -)
+          SAFE_NAME=$(echo "${REF_NAME}" | tr '/' '-')
+          
+          TAGS="${IMAGE}:${SAFE_NAME}"
+          
+          # Add latest tag only for the main branch
+          if [ "$REF_TYPE" = "branch" ] && [ "$REF_NAME" = "main" ]; then
+            TAGS="${TAGS},${IMAGE}:latest"
+          fi
+          
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+
       - name: Build and Push Docker Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
-          # Hier ist die Änderung: Expliziter Pfad zum Dockerfile
           file: ./src/main/docker/Dockerfile.jvm
           push: true
           # Den Namen habe ich korrigiert (feed2mastodon) und Variablen genutzt
-          tags: forgejo.codeheap.dev/${{ github.repository_owner }}/feed2mastodon:latest
+          tags: ${{ steps.meta.outputs.tags }}
           platforms: linux/amd64
