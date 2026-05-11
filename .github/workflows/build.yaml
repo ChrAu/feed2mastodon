@@ -54,41 +54,41 @@ jobs:
         with:
           node-version: 'latest'
 
-
-      # NEU: Schritt zur Versionsprüfung und Erhöhung
-      - name: Check and Bump Version
-        # Führe dies nur bei Pull Requests aus und nicht, wenn Dependabot der Auslöser ist
-        if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          chmod +x mvnw
-          # Aktuelle Version im PR-Branch auslesen
-          PR_VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
-          
-          # Version im Ziel-Branch (main) holen
-          git fetch origin main
-          MAIN_VERSION=$(git show origin/main:pom.xml | grep -oPm1 "(?<=<version>)[^<]+" | head -n 1)
-
-          if [ "$PR_VERSION" == "$MAIN_VERSION" ]; then
-            echo "Versionen sind identisch ($PR_VERSION). Erhöhe Patch-Level..."
-          
-            # Trenne Version in Major.Minor.Patch
-            IFS='.' read -r major minor patch <<< "$PR_VERSION"
-            NEW_VERSION="$major.$minor.$((patch + 1))"
-          
-            # Neue Version in pom.xml setzen
-            ./mvnw versions:set -DnewVersion=$NEW_VERSION -DgenerateBackupPoms=false
-          
-            # Änderungen committen und in den PR-Branch pushen
-            git config --global user.name "github-actions[bot]"
-            git config --global user.email "github-actions[bot]@users.noreply.github.com"
-            git add pom.xml
-            git commit -m "chore: auto-bump version to $NEW_VERSION [skip ci]"
-            git push origin HEAD:refs/heads/${{ github.head_ref }}
-          else
-            echo "Version wurde bereits manuell erhöht ($PR_VERSION)."
-          fi
+#
+#      # NEU: Schritt zur Versionsprüfung und Erhöhung
+#      - name: Check and Bump Version
+#        # Führe dies nur bei Pull Requests aus und nicht, wenn Dependabot der Auslöser ist
+#        if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        run: |
+#          chmod +x mvnw
+#          # Aktuelle Version im PR-Branch auslesen
+#          PR_VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
+#          
+#          # Version im Ziel-Branch (main) holen
+#          git fetch origin main
+#          MAIN_VERSION=$(git show origin/main:pom.xml | grep -oPm1 "(?<=<version>)[^<]+" | head -n 1)
+#
+#          if [ "$PR_VERSION" == "$MAIN_VERSION" ]; then
+#            echo "Versionen sind identisch ($PR_VERSION). Erhöhe Patch-Level..."
+#          
+#            # Trenne Version in Major.Minor.Patch
+#            IFS='.' read -r major minor patch <<< "$PR_VERSION"
+#            NEW_VERSION="$major.$minor.$((patch + 1))"
+#          
+#            # Neue Version in pom.xml setzen
+#            ./mvnw versions:set -DnewVersion=$NEW_VERSION -DgenerateBackupPoms=false
+#          
+#            # Änderungen committen und in den PR-Branch pushen
+#            git config --global user.name "github-actions[bot]"
+#            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+#            git add pom.xml
+#            git commit -m "chore: auto-bump version to $NEW_VERSION [skip ci]"
+#            git push origin HEAD:refs/heads/${{ github.head_ref }}
+#          else
+#            echo "Version wurde bereits manuell erhöht ($PR_VERSION)."
+#          fi
 
       - name: Build with Maven Wrapper
         env:
