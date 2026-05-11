@@ -32,7 +32,7 @@ jobs:
         run: chmod +x ./mvnw || true
 
       - name: Build Application with Maven
-       	env:
+        env:
           QUARKUS_DATASOURCE_USERNAME: quarkus_test
           QUARKUS_DATASOURCE_PASSWORD: quarkus_test
           # HIER IST DIE ÄNDERUNG: Host ist nun 'postgres' und Port der interne Port '5432'
@@ -44,6 +44,7 @@ jobs:
           HOMEASSISTANT_API_TOKEN: ${{ secrets.HOMEASSISTANT_API_TOKEN }}
         # Wir überspringen die Tests (-DskipTests), da wir hier keine Datenbank laufen haben.
         # Die Tests werden ohnehin durch die build.yml abgedeckt.
+
         run: ./mvnw -Dmaven.repo.local=.m2/repository clean package -DskipTests
 
       - name: Install Docker CLI
