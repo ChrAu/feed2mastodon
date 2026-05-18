@@ -10,9 +10,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  cleanup:
     runs-on: ubuntu-latest
-
     steps:
       - name: Docker Cleanup
         run: |
@@ -24,6 +23,11 @@ jobs:
             echo "Docker not found, skipping cleanup."
           fi
 
+  build:
+    needs: cleanup
+    runs-on: ubuntu-latest
+
+    steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 

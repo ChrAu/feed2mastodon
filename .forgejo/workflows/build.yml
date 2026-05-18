@@ -6,7 +6,21 @@ on:
   pull_request:
 
 jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Docker Cleanup
+        run: |
+          if command -v docker >/dev/null 2>&1; then
+            echo "Stopping and removing all Docker containers..."
+            docker stop $(docker ps -aq) || true
+            docker rm $(docker ps -aq) || true
+          else
+            echo "Docker not found, skipping cleanup."
+          fi
+
   build:
+    needs: cleanup
     runs-on: ubuntu-latest
 
     services:
@@ -28,12 +42,6 @@ jobs:
       packages: write
 
     steps:
-      - name: Cleanup Docker
-        run: |
-          docker stop $(docker ps -aq) 2>/dev/null || true
-          docker rm -f $(docker ps -aq) 2>/dev/null || true
-          docker system prune -af --volumes || true
-
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -61,10 +69,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           chmod +x mvnw
-          
+
           # Aktuelle Version im PR-Branch auslesen
           PR_VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
-          
+
           # Version im Ziel-Branch (meist main) holen
           # In Forgejo/Gitea ist github.base_ref der Name des Ziel-Branches
           git fetch origin ${{ github.base_ref }}
@@ -72,18 +80,18 @@ jobs:
 
           if [ "$PR_VERSION" == "$MAIN_VERSION" ]; then
             echo "Versionen sind identisch ($PR_VERSION). Erhöhe Patch-Level..."
-            
+
             IFS='.' read -r major minor patch <<< "$PR_VERSION"
             NEW_VERSION="$major.$minor.$((patch + 1))"
-            
+
             ./mvnw versions:set -DnewVersion=$NEW_VERSION -DgenerateBackupPoms=false
-            
+
             git config --global user.name "forgejo-actions[bot]"
             git config --global user.email "forgejo-actions[bot]@forgejo.codeheap.dev"
-            
+
             git add pom.xml
             git commit -m "chore: auto-bump version to $NEW_VERSION [skip ci]"
-            
+
             # Push zurück in den Head-Branch des Pull Requests
             git push origin HEAD:${{ github.head_ref }}
           else
