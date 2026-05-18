@@ -28,6 +28,12 @@ jobs:
       packages: write
 
     steps:
+      - name: Cleanup Docker
+        run: |
+          docker stop $(docker ps -aq) 2>/dev/null || true
+          docker rm -f $(docker ps -aq) 2>/dev/null || true
+          docker system prune -af --volumes || true
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
