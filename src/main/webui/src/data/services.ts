@@ -7,7 +7,8 @@ import {
   Lock,
   RefreshCw,
   Utensils,
-  MapPin
+  MapPin,
+  ListTodo
 } from 'lucide-react';
 
 export interface Service {
@@ -71,6 +72,20 @@ export const SERVICES: Service[] = [
     url: 'https://mail.codeheap.dev',
     monitorId: 26,
     glowColor: 'bg-cyan-400/20'
+  },
+  {
+    id: 'taskmind',
+    name: 'Taskmind',
+    shortDescription: 'Notizen & Einkaufslisten',
+    longDescription: 'Hier können Sie Ihre Notizen verwalten. Die Anwendung wird noch weiterentwickelt und bietet aktuell unter anderem eine praktische Erweiterung für Einkaufslisten.',
+    icon: ListTodo,
+    color: 'border-indigo-500',
+    glow: 'group-hover:shadow-indigo-500/50',
+    bg: 'bg-indigo-500/10',
+    text: 'text-indigo-400',
+    url: 'https://taskmind.codeheap.dev/',
+    monitorId: 74,
+    glowColor: 'bg-indigo-400/20'
   },
   {
     id: 'vaultwarden',
