@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>de.hexix</groupId>
     <artifactId>feed2mastodon</artifactId>
-    <version>0.9.14</version>
+    <version>0.9.15</version>
 
     <properties>
         <compiler-plugin.version>3.15.0</compiler-plugin.version>
@@ -124,7 +124,7 @@
         <dependency>
             <groupId>com.google.genai</groupId>
             <artifactId>google-genai</artifactId>
-            <version>1.54.0</version>
+            <version>1.55.0</version>
         </dependency>
 
         <dependency>
