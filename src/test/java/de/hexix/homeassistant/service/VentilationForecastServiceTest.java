@@ -130,6 +130,170 @@ class VentilationForecastServiceTest {
         assertNotNull(attrs.get("next_open_time"));
     }
 
+    @Test
+    void testCalculateAndPushForecast_NoTargetTimeFallback() {
+        // Current indoor conditions: Temp = 21.0, Abs Hum = 10.0 (Average of Wohn/Schlaf)
+        mockState("sensor.wohnzimmer_thermometer_temperatur", "21.0");
+        mockState("sensor.schlafzimmer_thermometer_temperatur", "21.0");
+        mockState("sensor.wohnzimmer_absolute_luftfeuchtigkeit", "10.0");
+        mockState("sensor.schlafzimmer_absolute_luftfeuchtigkeit", "10.0");
+        mockState("input_boolean.lueftung_fenster_offen", "off");
+        mockState("sensor.balkon_thermometer_temperatur", "30.0");
+        mockState("sensor.thermal_comfort_absolute_luftfeuchtigkeit", "15.0");
+
+        // Mock outdoor history
+        List<HaStateHistory> mockTempHistory = List.of(new HaStateHistory());
+        List<HaStateHistory> mockHumHistory = List.of(new HaStateHistory());
+        when(homeAssistantService.getHaStateHistory(eq("sensor.balkon_thermometer_temperatur"), any(), any(Duration.class)))
+                .thenReturn(mockTempHistory);
+        when(homeAssistantService.getHaStateHistory(eq("sensor.thermal_comfort_absolute_luftfeuchtigkeit"), any(), any(Duration.class)))
+                .thenReturn(mockHumHistory);
+
+        // Mock indoor history
+        List<HaStateHistory> mockWohnTempHist = List.of(new HaStateHistory());
+        List<HaStateHistory> mockSchlafTempHist = List.of(new HaStateHistory());
+        List<HaStateHistory> mockWohnHumHist = List.of(new HaStateHistory());
+        List<HaStateHistory> mockSchlafHumHist = List.of(new HaStateHistory());
+
+        when(homeAssistantService.getHaStateHistory(eq("sensor.wohnzimmer_thermometer_temperatur"), any(), any(Duration.class)))
+                .thenReturn(mockWohnTempHist);
+        when(homeAssistantService.getHaStateHistory(eq("sensor.schlafzimmer_thermometer_temperatur"), any(), any(Duration.class)))
+                .thenReturn(mockSchlafTempHist);
+        when(homeAssistantService.getHaStateHistory(eq("sensor.wohnzimmer_absolute_luftfeuchtigkeit"), any(), any(Duration.class)))
+                .thenReturn(mockWohnHumHist);
+        when(homeAssistantService.getHaStateHistory(eq("sensor.schlafzimmer_absolute_luftfeuchtigkeit"), any(), any(Duration.class)))
+                .thenReturn(mockSchlafHumHist);
+
+        // Mock forecasting:
+        // Outdoor temperature is always 30.0 (too hot to open window, kuehlUndTrocken is never true)
+        ZonedDateTime now = ZonedDateTime.now();
+        ZonedDateTime ts1 = now.plusMinutes(10);
+        ZonedDateTime ts2 = now.plusMinutes(20);
+
+        List<GenericForecastPoint> tempForecast = List.of(
+                new GenericForecastPoint(ts1, 30.0),
+                new GenericForecastPoint(ts2, 30.0)
+        );
+        List<GenericForecastPoint> humForecast = List.of(
+                new GenericForecastPoint(ts1, 15.0),
+                new GenericForecastPoint(ts2, 15.0)
+        );
+
+        List<GenericForecastPoint> wohnTempForecast = List.of(new GenericForecastPoint(ts1, 21.0), new GenericForecastPoint(ts2, 21.0));
+        List<GenericForecastPoint> schlafTempForecast = List.of(new GenericForecastPoint(ts1, 21.0), new GenericForecastPoint(ts2, 21.0));
+        List<GenericForecastPoint> wohnHumForecast = List.of(new GenericForecastPoint(ts1, 10.0), new GenericForecastPoint(ts2, 10.0));
+        List<GenericForecastPoint> schlafHumForecast = List.of(new GenericForecastPoint(ts1, 10.0), new GenericForecastPoint(ts2, 10.0));
+
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockTempHistory), any(Duration.class), eq(10)))
+                .thenReturn(tempForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockHumHistory), any(Duration.class), eq(10)))
+                .thenReturn(humForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockWohnTempHist), any(Duration.class), eq(10)))
+                .thenReturn(wohnTempForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockSchlafTempHist), any(Duration.class), eq(10)))
+                .thenReturn(schlafTempForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockWohnHumHist), any(Duration.class), eq(10)))
+                .thenReturn(wohnHumForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockSchlafHumHist), any(Duration.class), eq(10)))
+                .thenReturn(schlafHumForecast);
+
+        // Action
+        ventilationForecastService.calculateAndPushVentilationForecast();
+
+        // Capture verification
+        ArgumentCaptor<EntityStateUpdateRequest> requestCaptor = ArgumentCaptor.forClass(EntityStateUpdateRequest.class);
+        verify(homeAssistantClient).postState(eq("Bearer test-token"), eq("sensor.lueftung_vorhersage"), requestCaptor.capture());
+
+        EntityStateUpdateRequest request = requestCaptor.getValue();
+        // Since no open time is found, state should fall back to the last forecast timestamp (ts2)
+        assertNotNull(request.state());
+        ZonedDateTime stateTime = ZonedDateTime.parse(request.state(), java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+        assertEquals(ts2.toEpochSecond() / 60, stateTime.toEpochSecond() / 60);
+
+        Map<String, Object> attrs = request.attributes();
+        assertEquals("öffnen", attrs.get("next_action"));
+        assertNull(attrs.get("next_open_time")); // attributes next_open_time should remain null to reflect reality
+    }
+
+    @Test
+    void testCalculateAndPushForecast_WinterCold() {
+        // Current indoor conditions: Temp = 21.0, Abs Hum = 10.0 (Average of Wohn/Schlaf)
+        mockState("sensor.wohnzimmer_thermometer_temperatur", "21.0");
+        mockState("sensor.schlafzimmer_thermometer_temperatur", "21.0");
+        mockState("sensor.wohnzimmer_absolute_luftfeuchtigkeit", "10.0");
+        mockState("sensor.schlafzimmer_absolute_luftfeuchtigkeit", "10.0");
+        mockState("input_boolean.lueftung_fenster_offen", "on"); // window is open!
+        mockState("sensor.balkon_thermometer_temperatur", "15.0");
+        mockState("sensor.thermal_comfort_absolute_luftfeuchtigkeit", "8.0");
+
+        // Mock outdoor history
+        List<HaStateHistory> mockTempHistory = List.of(new HaStateHistory());
+        List<HaStateHistory> mockHumHistory = List.of(new HaStateHistory());
+        when(homeAssistantService.getHaStateHistory(eq("sensor.balkon_thermometer_temperatur"), any(), any(Duration.class)))
+                .thenReturn(mockTempHistory);
+        when(homeAssistantService.getHaStateHistory(eq("sensor.thermal_comfort_absolute_luftfeuchtigkeit"), any(), any(Duration.class)))
+                .thenReturn(mockHumHistory);
+
+        // Mock indoor history
+        List<HaStateHistory> mockWohnTempHist = List.of(new HaStateHistory());
+        List<HaStateHistory> mockSchlafTempHist = List.of(new HaStateHistory());
+        List<HaStateHistory> mockWohnHumHist = List.of(new HaStateHistory());
+        List<HaStateHistory> mockSchlafHumHist = List.of(new HaStateHistory());
+
+        when(homeAssistantService.getHaStateHistory(eq("sensor.wohnzimmer_thermometer_temperatur"), any(), any(Duration.class)))
+                .thenReturn(mockWohnTempHist);
+        when(homeAssistantService.getHaStateHistory(eq("sensor.schlafzimmer_thermometer_temperatur"), any(), any(Duration.class)))
+                .thenReturn(mockSchlafTempHist);
+        when(homeAssistantService.getHaStateHistory(eq("sensor.wohnzimmer_absolute_luftfeuchtigkeit"), any(), any(Duration.class)))
+                .thenReturn(mockWohnHumHist);
+        when(homeAssistantService.getHaStateHistory(eq("sensor.schlafzimmer_absolute_luftfeuchtigkeit"), any(), any(Duration.class)))
+                .thenReturn(mockSchlafHumHist);
+
+        // Mock forecasting:
+        // ts1: t_aussen = 13.0 => too cold (<= 13.5), should trigger closing the window!
+        ZonedDateTime now = ZonedDateTime.now();
+        ZonedDateTime ts1 = now.plusMinutes(10);
+
+        List<GenericForecastPoint> tempForecast = List.of(new GenericForecastPoint(ts1, 13.0));
+        List<GenericForecastPoint> humForecast = List.of(new GenericForecastPoint(ts1, 5.0));
+
+        List<GenericForecastPoint> wohnTempForecast = List.of(new GenericForecastPoint(ts1, 21.0));
+        List<GenericForecastPoint> schlafTempForecast = List.of(new GenericForecastPoint(ts1, 21.0));
+        List<GenericForecastPoint> wohnHumForecast = List.of(new GenericForecastPoint(ts1, 10.0));
+        List<GenericForecastPoint> schlafHumForecast = List.of(new GenericForecastPoint(ts1, 10.0));
+
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockTempHistory), any(Duration.class), eq(10)))
+                .thenReturn(tempForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockHumHistory), any(Duration.class), eq(10)))
+                .thenReturn(humForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockWohnTempHist), any(Duration.class), eq(10)))
+                .thenReturn(wohnTempForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockSchlafTempHist), any(Duration.class), eq(10)))
+                .thenReturn(schlafTempForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockWohnHumHist), any(Duration.class), eq(10)))
+                .thenReturn(wohnHumForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockSchlafHumHist), any(Duration.class), eq(10)))
+                .thenReturn(schlafHumForecast);
+
+        // Action
+        ventilationForecastService.calculateAndPushVentilationForecast();
+
+        // Capture verification
+        ArgumentCaptor<EntityStateUpdateRequest> requestCaptor = ArgumentCaptor.forClass(EntityStateUpdateRequest.class);
+        verify(homeAssistantClient).postState(eq("Bearer test-token"), eq("sensor.lueftung_vorhersage"), requestCaptor.capture());
+
+        EntityStateUpdateRequest request = requestCaptor.getValue();
+        // Since window is open and it gets too cold (13.0 <= 13.5), state should be nextCloseTime (ts1)
+        assertNotNull(request.state());
+        ZonedDateTime stateTime = ZonedDateTime.parse(request.state(), java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+        assertEquals(ts1.toEpochSecond() / 60, stateTime.toEpochSecond() / 60);
+
+        Map<String, Object> attrs = request.attributes();
+        assertEquals("schließen", attrs.get("next_action"));
+        assertEquals("open", attrs.get("current_window_state"));
+        assertNotNull(attrs.get("next_close_time"));
+    }
+
     private void mockState(String entityId, String state) {
         EntityDto dto = new EntityDto();
         dto.setEntityId(entityId);
