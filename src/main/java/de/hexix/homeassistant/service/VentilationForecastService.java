@@ -176,7 +176,12 @@ public class VentilationForecastService {
             // 4. Construct response body
             String nextAction = windowOpen ? "schließen" : "öffnen";
             ZonedDateTime primaryTargetTime = windowOpen ? nextCloseTime : nextOpenTime;
+            if (primaryTargetTime == null && !tempForecast.isEmpty()) {
+                primaryTargetTime = tempForecast.get(tempForecast.size() - 1).timestamp();
+                Log.infof("No matching time found for action '%s'. Falling back to the end of the forecast period: %s", nextAction, primaryTargetTime);
+            }
             String stateStr = (primaryTargetTime != null) ? DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(primaryTargetTime) : "unknown";
+
 
             Map<String, Object> attrs = new HashMap<>();
             attrs.put("device_class", "timestamp");
