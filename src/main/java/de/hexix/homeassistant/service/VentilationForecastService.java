@@ -112,6 +112,26 @@ public class VentilationForecastService {
                 return;
             }
 
+            // 2.1 Fetch indoor temperature forecasts
+            List<HaStateHistory> wohnTempHistory = homeAssistantService.getHaStateHistory(ENTITY_INDOOR_WOHN_TEMP, null, Duration.ofDays(7));
+            List<HaStateHistory> schlafTempHistory = homeAssistantService.getHaStateHistory(ENTITY_INDOOR_SCHLAF_TEMP, null, Duration.ofDays(7));
+            List<HoltWinterForecastService.GenericForecastPoint> wohnTempForecast = 
+                    holtWinterForecastService.calculateGenericForecast(wohnTempHistory, Duration.ofHours(48), 10);
+            List<HoltWinterForecastService.GenericForecastPoint> schlafTempForecast = 
+                    holtWinterForecastService.calculateGenericForecast(schlafTempHistory, Duration.ofHours(48), 10);
+            
+            Map<ZonedDateTime, Double> indoorTempForecastMap = averageForecasts(wohnTempForecast, schlafTempForecast, tInnenSchnitt);
+
+            // 2.2 Fetch indoor humidity forecasts
+            List<HaStateHistory> wohnHumHistory = homeAssistantService.getHaStateHistory(ENTITY_INDOOR_WOHN_ABS_HUM, null, Duration.ofDays(7));
+            List<HaStateHistory> schlafHumHistory = homeAssistantService.getHaStateHistory(ENTITY_INDOOR_SCHLAF_ABS_HUM, null, Duration.ofDays(7));
+            List<HoltWinterForecastService.GenericForecastPoint> wohnHumForecast = 
+                    holtWinterForecastService.calculateGenericForecast(wohnHumHistory, Duration.ofHours(48), 10);
+            List<HoltWinterForecastService.GenericForecastPoint> schlafHumForecast = 
+                    holtWinterForecastService.calculateGenericForecast(schlafHumHistory, Duration.ofHours(48), 10);
+
+            Map<ZonedDateTime, Double> indoorHumForecastMap = averageForecasts(wohnHumForecast, schlafHumForecast, absFInnenSchnitt);
+
             Map<ZonedDateTime, Double> humMap = humForecast.stream()
                     .collect(Collectors.toMap(p -> p.timestamp(), p -> p.value(), (a, b) -> a));
 
@@ -126,17 +146,19 @@ public class VentilationForecastService {
                 }
 
                 double tAussen = tPoint.value();
+                double tInnen = indoorTempForecastMap.getOrDefault(ts, tInnenSchnitt);
+                double absFInnen = indoorHumForecastMap.getOrDefault(ts, absFInnenSchnitt);
 
                 // Logic from automation:
-                // kuehl_und_trocken: t_aussen < (t_innen_schnitt - 0.5) and t_aussen < 26 and abs_f_aussen < (abs_f_innen_schnitt - 0.5)
-                boolean kuehlUndTrocken = tAussen < (tInnenSchnitt - 0.5)
+                // kuehl_und_trocken: t_aussen < (t_innen - 0.5) and t_aussen < 26 and abs_f_aussen < (abs_f_innen - 0.5)
+                boolean kuehlUndTrocken = tAussen < (tInnen - 0.5)
                         && tAussen < 26.0
-                        && absFAussen < (absFInnenSchnitt - 0.5);
+                        && absFAussen < (absFInnen - 0.5);
 
-                // zu_warm_oder_schwuelfucht: t_aussen >= (t_innen_schnitt + 0.5) or t_aussen >= 28 or abs_f_aussen >= abs_f_innen_schnitt
-                boolean zuWarmOderSchwuelfucht = tAussen >= (tInnenSchnitt + 0.5)
+                // zu_warm_oder_schwuelfucht: t_aussen >= (t_innen + 0.5) or t_aussen >= 28 or abs_f_aussen >= abs_f_innen
+                boolean zuWarmOderSchwuelfucht = tAussen >= (tInnen + 0.5)
                         || tAussen >= 28.0
-                        || absFAussen >= absFInnenSchnitt;
+                        || absFAussen >= absFInnen;
 
                 if (kuehlUndTrocken && nextOpenTime == null) {
                     nextOpenTime = ts;
@@ -313,5 +335,43 @@ public class VentilationForecastService {
         double vaporPressure = (relativeHumidity / 100.0) * 6.112 * Math.exp((17.67 * temp) / (temp + 243.5));
         double absHum = (216.7 * vaporPressure) / (273.15 + temp);
         return absHum;
+    }
+
+    private Map<ZonedDateTime, Double> averageForecasts(
+        List<HoltWinterForecastService.GenericForecastPoint> forecast1,
+        List<HoltWinterForecastService.GenericForecastPoint> forecast2,
+        double fallbackValue
+    ) {
+        if (forecast1.isEmpty() && forecast2.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<ZonedDateTime, Double> f2Map = forecast2.stream()
+                .collect(Collectors.toMap(p -> p.timestamp(), p -> p.value(), (a, b) -> a));
+
+        Map<ZonedDateTime, Double> resultMap = new HashMap<>();
+
+        if (forecast1.isEmpty()) {
+            for (var p : forecast2) {
+                resultMap.put(p.timestamp(), p.value());
+            }
+            return resultMap;
+        }
+
+        if (forecast2.isEmpty()) {
+            for (var p : forecast1) {
+                resultMap.put(p.timestamp(), p.value());
+            }
+            return resultMap;
+        }
+
+        for (var p1 : forecast1) {
+            ZonedDateTime ts = p1.timestamp();
+            Double v2 = f2Map.get(ts);
+            if (v2 != null) {
+                resultMap.put(ts, round((p1.value() + v2) / 2.0, 2));
+            }
+        }
+        return resultMap;
     }
 }

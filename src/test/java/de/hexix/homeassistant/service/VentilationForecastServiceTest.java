@@ -59,6 +59,21 @@ class VentilationForecastServiceTest {
         when(homeAssistantService.getHaStateHistory(eq("sensor.thermal_comfort_absolute_luftfeuchtigkeit"), any(), any(Duration.class)))
                 .thenReturn(mockHumHistory);
 
+        // Mock indoor history
+        List<HaStateHistory> mockWohnTempHist = List.of(new HaStateHistory());
+        List<HaStateHistory> mockSchlafTempHist = List.of(new HaStateHistory());
+        List<HaStateHistory> mockWohnHumHist = List.of(new HaStateHistory());
+        List<HaStateHistory> mockSchlafHumHist = List.of(new HaStateHistory());
+
+        when(homeAssistantService.getHaStateHistory(eq("sensor.wohnzimmer_thermometer_temperatur"), any(), any(Duration.class)))
+                .thenReturn(mockWohnTempHist);
+        when(homeAssistantService.getHaStateHistory(eq("sensor.schlafzimmer_thermometer_temperatur"), any(), any(Duration.class)))
+                .thenReturn(mockSchlafTempHist);
+        when(homeAssistantService.getHaStateHistory(eq("sensor.wohnzimmer_absolute_luftfeuchtigkeit"), any(), any(Duration.class)))
+                .thenReturn(mockWohnHumHist);
+        when(homeAssistantService.getHaStateHistory(eq("sensor.schlafzimmer_absolute_luftfeuchtigkeit"), any(), any(Duration.class)))
+                .thenReturn(mockSchlafHumHist);
+
         // Mock forecasting:
         // We predict 2 timesteps:
         // ts1: t_aussen = 22.0, abs_hum = 10.5 => kuehlUndTrocken = false (t_aussen > t_innenSchnitt - 0.5)
@@ -76,10 +91,23 @@ class VentilationForecastServiceTest {
                 new GenericForecastPoint(ts2, 9.0)
         );
 
+        List<GenericForecastPoint> wohnTempForecast = List.of(new GenericForecastPoint(ts1, 21.0), new GenericForecastPoint(ts2, 21.0));
+        List<GenericForecastPoint> schlafTempForecast = List.of(new GenericForecastPoint(ts1, 21.0), new GenericForecastPoint(ts2, 21.0));
+        List<GenericForecastPoint> wohnHumForecast = List.of(new GenericForecastPoint(ts1, 10.0), new GenericForecastPoint(ts2, 10.0));
+        List<GenericForecastPoint> schlafHumForecast = List.of(new GenericForecastPoint(ts1, 10.0), new GenericForecastPoint(ts2, 10.0));
+
         when(holtWinterForecastService.calculateGenericForecast(eq(mockTempHistory), any(Duration.class), eq(10)))
                 .thenReturn(tempForecast);
         when(holtWinterForecastService.calculateGenericForecast(eq(mockHumHistory), any(Duration.class), eq(10)))
                 .thenReturn(humForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockWohnTempHist), any(Duration.class), eq(10)))
+                .thenReturn(wohnTempForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockSchlafTempHist), any(Duration.class), eq(10)))
+                .thenReturn(schlafTempForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockWohnHumHist), any(Duration.class), eq(10)))
+                .thenReturn(wohnHumForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockSchlafHumHist), any(Duration.class), eq(10)))
+                .thenReturn(schlafHumForecast);
 
         // Action
         ventilationForecastService.calculateAndPushVentilationForecast();

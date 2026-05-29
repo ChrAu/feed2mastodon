@@ -163,6 +163,34 @@ public class InitialDataSetup {
                     hHistory.setLastChanged(ts);
                     hHistory.setAttributes("{\"friendly_name\": \"Balkon absolute Luftfeuchtigkeit\", \"unit_of_measurement\": \"g/m³\"}");
                     em.persist(hHistory);
+
+                    de.hexix.homeassistant.entity.HaStateHistory wtHistory = new de.hexix.homeassistant.entity.HaStateHistory();
+                    wtHistory.setEntityId("sensor.wohnzimmer_thermometer_temperatur");
+                    wtHistory.setState(String.format(java.util.Locale.US, "%.1f", 21.5 + (Math.random() - 0.5) * 0.2));
+                    wtHistory.setLastChanged(ts);
+                    wtHistory.setAttributes("{\"friendly_name\": \"Wohnzimmer Thermometer Temperatur\", \"unit_of_measurement\": \"°C\"}");
+                    em.persist(wtHistory);
+
+                    de.hexix.homeassistant.entity.HaStateHistory stHistory = new de.hexix.homeassistant.entity.HaStateHistory();
+                    stHistory.setEntityId("sensor.schlafzimmer_thermometer_temperatur");
+                    stHistory.setState(String.format(java.util.Locale.US, "%.1f", 20.0 + (Math.random() - 0.5) * 0.2));
+                    stHistory.setLastChanged(ts);
+                    stHistory.setAttributes("{\"friendly_name\": \"Schlafzimmer Thermometer Temperatur\", \"unit_of_measurement\": \"°C\"}");
+                    em.persist(stHistory);
+
+                    de.hexix.homeassistant.entity.HaStateHistory whHistory = new de.hexix.homeassistant.entity.HaStateHistory();
+                    whHistory.setEntityId("sensor.wohnzimmer_absolute_luftfeuchtigkeit");
+                    whHistory.setState(String.format(java.util.Locale.US, "%.1f", 10.5 + (Math.random() - 0.5) * 0.1));
+                    whHistory.setLastChanged(ts);
+                    whHistory.setAttributes("{\"friendly_name\": \"Wohnzimmer absolute Luftfeuchtigkeit\", \"unit_of_measurement\": \"g/m³\"}");
+                    em.persist(whHistory);
+
+                    de.hexix.homeassistant.entity.HaStateHistory shHistory = new de.hexix.homeassistant.entity.HaStateHistory();
+                    shHistory.setEntityId("sensor.schlafzimmer_absolute_luftfeuchtigkeit");
+                    shHistory.setState(String.format(java.util.Locale.US, "%.1f", 9.8 + (Math.random() - 0.5) * 0.1));
+                    shHistory.setLastChanged(ts);
+                    shHistory.setAttributes("{\"friendly_name\": \"Schlafzimmer absolute Luftfeuchtigkeit\", \"unit_of_measurement\": \"g/m³\"}");
+                    em.persist(shHistory);
                 }
                 LOG.info("Generierung der Demo-Historienwerte abgeschlossen.");
             }
