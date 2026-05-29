@@ -109,9 +109,7 @@ public class GoogleAiTest {
                       "hashTags": ["string", "string", "string"]
                     }
                     """;
-
-
-            GenerateContentResponse response = client.models.generateContent(geminiModel, prompt, GenerateContentConfig.builder().maxOutputTokens(256).safetySettings(safetySettings).build());
+            GenerateContentResponse response = client.models.generateContent(geminiModel, prompt, GenerateContentConfig.builder().maxOutputTokens(256).responseMimeType("application/json").safetySettings(safetySettings).build());
             LOG.info("Input message:" + prompt);
             LOG.info("Generated message: " + response.text());
             Assertions.assertNotNull(response.text());
