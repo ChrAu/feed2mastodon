@@ -16,12 +16,14 @@ import de.hexix.homeassistant.dto.TemperatureDto;
 import de.hexix.homeassistant.dto.WeatherDto;
 import de.hexix.homeassistant.entity.HaEntity;
 import de.hexix.homeassistant.entity.HaStateHistory;
+import de.hexix.homeassistant.service.VentilationForecastService;
 import de.hexix.util.DurationLogger;
 import io.quarkus.security.Authenticated;
 import io.smallrye.mutiny.Multi;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
@@ -47,6 +49,10 @@ public class HomeAssistantResource {
 
     @Inject
     WeatherMapper weatherMapper;
+
+    @Inject
+    VentilationForecastService ventilationForecastService;
+
 
 
     @GET
@@ -275,4 +281,31 @@ public class HomeAssistantResource {
             @QueryParam("entityIdPrefix") String entityIdPrefix) {
         return homeAssistantService.getHaEntities(entityId, entityIdPrefix);
     }
+
+    @POST
+    @Path("/lueftung/calculate")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Map<String, String> calculateVentilationForecast() {
+        ventilationForecastService.calculateAndPushVentilationForecast();
+        return Map.of("status", "triggered");
+    }
+
+    @POST
+    @Path("/lueftung/demo-data")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Map<String, String> generateDemoData() {
+        ventilationForecastService.generateDemoData();
+        return Map.of("status", "demo data generated");
+    }
+
+    @GET
+    @Path("/lueftung/forecast")
+    @Produces(MediaType.APPLICATION_JSON)
+    public HaEntity getLueftungForecast() {
+        return homeAssistantService.getHaEntities("sensor.lueftung_vorhersage", null)
+                .stream().findFirst().orElse(null);
+    }
 }
+
+
+
