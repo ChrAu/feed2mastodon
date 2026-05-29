@@ -14,6 +14,7 @@ import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 import java.util.List;
+import java.util.Map;
 
 @Path("/api/")
 @RegisterRestClient(baseUri = "https://homeassistant.codeheap.dev")
@@ -65,5 +66,11 @@ public interface HomeAssistantClient {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     EntityDto postState(@HeaderParam("Authorization") String token, @PathParam("entity_id") String entityId, EntityStateUpdateRequest body);
+
+    @POST
+    @Path("/services/weather/get_forecasts")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    Map<String, Object> getWeatherForecasts(@HeaderParam("Authorization") String token, Map<String, Object> body);
 }
 

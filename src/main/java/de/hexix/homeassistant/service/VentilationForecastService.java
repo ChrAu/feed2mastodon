@@ -79,23 +79,36 @@ public class VentilationForecastService {
             double tAussenCurrent = parseDoubleState(outdoorTempDto, 15.0);
             double absFAussenCurrent = parseDoubleState(outdoorAbsHumDto, 8.0);
 
-            // 2. Fetch history (7 days) for outdoor values
-            List<HaStateHistory> tempHistory = homeAssistantService.getHaStateHistory(ENTITY_OUTDOOR_TEMP, null, Duration.ofDays(7));
-            List<HaStateHistory> humHistory = homeAssistantService.getHaStateHistory(ENTITY_OUTDOOR_ABS_HUM, null, Duration.ofDays(7));
-
-            if (tempHistory.isEmpty() || humHistory.isEmpty()) {
-                Log.warn("Cannot calculate forecast: outdoor temperature or absolute humidity history is empty in DB.");
-                return;
-            }
-
-            // 3. Calculate forecast for next 48 hours in 10-minute intervals
-            List<HoltWinterForecastService.GenericForecastPoint> tempForecast =
-                    holtWinterForecastService.calculateGenericForecast(tempHistory, Duration.ofHours(48), 10);
-            List<HoltWinterForecastService.GenericForecastPoint> humForecast =
-                    holtWinterForecastService.calculateGenericForecast(humHistory, Duration.ofHours(48), 10);
+            // 2. Try to fetch weather forecast from Home Assistant (weather.gosbach or weather.forecast_home)
+            List<HoltWinterForecastService.GenericForecastPoint> tempForecast = fetchForecastFromEntity("weather.gosbach", true);
+            List<HoltWinterForecastService.GenericForecastPoint> humForecast = fetchForecastFromEntity("weather.gosbach", false);
 
             if (tempForecast.isEmpty() || humForecast.isEmpty()) {
-                Log.warn("Holt-Winters forecast calculation returned empty results.");
+                Log.info("weather.gosbach returned no forecast, trying weather.forecast_home...");
+                tempForecast = fetchForecastFromEntity("weather.forecast_home", true);
+                humForecast = fetchForecastFromEntity("weather.forecast_home", false);
+            }
+
+            boolean usedWeatherForecast = !tempForecast.isEmpty() && !humForecast.isEmpty();
+
+            if (!usedWeatherForecast) {
+                Log.info("No weather forecast available from Home Assistant. Falling back to Holt-Winters model...");
+                List<HaStateHistory> tempHistory = homeAssistantService.getHaStateHistory(ENTITY_OUTDOOR_TEMP, null, Duration.ofDays(7));
+                List<HaStateHistory> humHistory = homeAssistantService.getHaStateHistory(ENTITY_OUTDOOR_ABS_HUM, null, Duration.ofDays(7));
+
+                if (tempHistory.isEmpty() || humHistory.isEmpty()) {
+                    Log.warn("Cannot calculate forecast: outdoor temperature or absolute humidity history is empty in DB.");
+                    return;
+                }
+
+                tempForecast = holtWinterForecastService.calculateGenericForecast(tempHistory, Duration.ofHours(48), 10);
+                humForecast = holtWinterForecastService.calculateGenericForecast(humHistory, Duration.ofHours(48), 10);
+            } else {
+                Log.info("Using actual Home Assistant weather forecast for predictions.");
+            }
+
+            if (tempForecast.isEmpty() || humForecast.isEmpty()) {
+                Log.warn("Forecast calculation returned empty results.");
                 return;
             }
 
@@ -155,6 +168,7 @@ public class VentilationForecastService {
             attrs.put("t_aussen_current", round(tAussenCurrent, 1));
             attrs.put("abs_f_aussen_current", round(absFAussenCurrent, 1));
             attrs.put("current_window_state", windowOpen ? "open" : "closed");
+            attrs.put("forecast_method", usedWeatherForecast ? "weather_forecast" : "holt_winters");
             attrs.put("calculated_at", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(ZonedDateTime.now()));
 
             EntityStateUpdateRequest request = new EntityStateUpdateRequest(stateStr, attrs);
@@ -252,5 +266,52 @@ public class VentilationForecastService {
         h.setLastChanged(ts);
         h.setAttributes(attrs);
         em.persist(h);
+    }
+
+    private List<HoltWinterForecastService.GenericForecastPoint> fetchForecastFromEntity(String entityId, boolean temperature) {
+        try {
+            Map<String, Object> body = Map.of(
+                "entity_id", entityId,
+                "type", "hourly"
+            );
+            Map<String, Object> response = homeAssistantClient.getWeatherForecasts("Bearer " + apiToken, body);
+            if (response != null && response.containsKey(entityId)) {
+                Map<String, Object> entityForecast = (Map<String, Object>) response.get(entityId);
+                List<Map<String, Object>> forecastList = (List<Map<String, Object>>) entityForecast.get("forecast");
+
+                if (forecastList != null && !forecastList.isEmpty()) {
+                    List<HoltWinterForecastService.GenericForecastPoint> points = new java.util.ArrayList<>();
+                    for (Map<String, Object> f : forecastList) {
+                        String dtStr = (String) f.get("datetime");
+                        Number tempNum = (Number) f.get("temperature");
+                        Number humNum = (Number) f.get("humidity");
+
+                        if (dtStr != null && tempNum != null) {
+                            ZonedDateTime ts = ZonedDateTime.parse(dtStr, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+                            double temp = tempNum.doubleValue();
+                            double val;
+                            if (temperature) {
+                                val = temp;
+                            } else {
+                                double humidity = (humNum != null) ? humNum.doubleValue() : 50.0;
+                                val = calculateAbsoluteHumidity(temp, humidity);
+                            }
+                            points.add(new HoltWinterForecastService.GenericForecastPoint(ts, val));
+                        }
+                    }
+                    return points;
+                }
+            }
+        } catch (Exception e) {
+            Log.warnf("Failed to fetch forecast from %s: %s", entityId, e.getMessage());
+        }
+        return List.of();
+    }
+
+    private double calculateAbsoluteHumidity(double temp, double relativeHumidity) {
+        // Clausius-Clapeyron / Magnus formula
+        double vaporPressure = (relativeHumidity / 100.0) * 6.112 * Math.exp((17.67 * temp) / (temp + 243.5));
+        double absHum = (216.7 * vaporPressure) / (273.15 + temp);
+        return absHum;
     }
 }
