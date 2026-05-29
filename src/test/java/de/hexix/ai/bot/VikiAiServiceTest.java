@@ -4,6 +4,9 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import java.rmi.ServerException;
@@ -12,9 +15,18 @@ import java.util.stream.Collectors;
 @QuarkusTest
 class VikiAiServiceTest {
 
+    @ConfigProperty(name = "gemini.access.token")
+    String accessToken;
+
+    @BeforeEach
+    public void checkToken() {
+        Assumptions.assumeTrue(accessToken != null && !accessToken.isBlank() && !"key".equals(accessToken),
+                "Aborting test: gemini.access.token is not configured with a valid key.");
+    }
 
     @Inject
     VikiAiService vikiAiService;
+
 
     @Test
     @DisplayName("Should generate a valid VikiResponse for a given topic")

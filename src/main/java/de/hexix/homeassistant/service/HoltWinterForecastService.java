@@ -29,6 +29,69 @@ public class HoltWinterForecastService {
 
     private static final Logger LOG = LoggerFactory.getLogger(HoltWinterForecastService.class);
 
+    public record GenericForecastPoint(ZonedDateTime timestamp, double value) {}
+
+    public List<GenericForecastPoint> calculateGenericForecast(List<HaStateHistory> historyData, Duration forecastDuration, int rasterMinutes) {
+        if (historyData == null || historyData.isEmpty()) {
+            return List.of();
+        }
+
+        String entityId = historyData.getFirst().getEntityId();
+        List<PricePoint> rawData = new ArrayList<>();
+        for (HaStateHistory h : historyData) {
+            if ("unavailable".equalsIgnoreCase(h.getState()) || "unknown".equalsIgnoreCase(h.getState())) {
+                continue;
+            }
+            try {
+                double val = Double.parseDouble(h.getState());
+                rawData.add(new PricePoint(h.getLastChanged(), val));
+            } catch (NumberFormatException e) {
+                // Ignore invalid numbers
+            }
+        }
+
+        if (rawData.isEmpty()) {
+            return List.of();
+        }
+
+        ZonedDateTime now = ZonedDateTime.now();
+        double[] normalizedGrid = normalizeToGrid(rawData, rasterMinutes, now);
+        if (normalizedGrid.length == 0) {
+            return List.of();
+        }
+
+        // 24 hours cycle
+        int zyklusLaenge = (24 * 60) / rasterMinutes;
+        int vorhersageSchritte = (int) (forecastDuration.toMinutes() / rasterMinutes);
+
+        double[] bestParams = optimizeHoltWintersParameters(normalizedGrid, zyklusLaenge, rasterMinutes);
+        double alpha = bestParams[0];
+        double beta = bestParams[1];
+        double gamma = bestParams[2];
+
+        double[] prognose;
+        try {
+             prognose = predictHoltWinters(normalizedGrid, alpha, beta, gamma, zyklusLaenge, vorhersageSchritte);
+        } catch (IllegalArgumentException e) {
+             return List.of();
+        }
+
+        ZonedDateTime firstTimestamp = rawData.getFirst().timestamp;
+        int minuteMod = firstTimestamp.getMinute() % rasterMinutes;
+        ZonedDateTime gridStart = firstTimestamp.minusMinutes(minuteMod).truncatedTo(ChronoUnit.MINUTES);
+
+        int totalSlots = normalizedGrid.length;
+        ZonedDateTime prognoseStart = gridStart.plusMinutes((long) totalSlots * rasterMinutes);
+
+        List<GenericForecastPoint> result = new ArrayList<>();
+        for (int i = 0; i < prognose.length; i++) {
+            ZonedDateTime progTime = prognoseStart.plusMinutes((long) i * rasterMinutes);
+            result.add(new GenericForecastPoint(progTime, prognose[i]));
+        }
+        return result;
+    }
+
+
     private static class CachedParams {
         final double alpha;
         final double beta;

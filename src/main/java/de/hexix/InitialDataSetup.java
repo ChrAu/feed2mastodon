@@ -4,8 +4,10 @@ import de.hexix.ai.PromptEntity;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 
 import org.jboss.logging.Logger;
@@ -15,11 +17,15 @@ public class InitialDataSetup {
 
     final Logger LOG = Logger.getLogger(this.getClass());
 
+    @Inject
+    jakarta.persistence.EntityManager em;
+
     @Transactional
     void onStart(@Observes StartupEvent ev) {
         LOG.info("Anwendung startet, prüfe initiale Daten...");
 
         generatePrompt();
+        generateLueftungDemoData();
 
 
 
@@ -121,5 +127,78 @@ public class InitialDataSetup {
 
     }
 
+    private void generateLueftungDemoData() {
+        try {
+            long tempCount = (long) em.createQuery("SELECT COUNT(h) FROM HaStateHistory h WHERE h.entityId = :entityId")
+                    .setParameter("entityId", "sensor.balkon_thermometer_temperatur")
+                    .getSingleResult();
+            long humCount = (long) em.createQuery("SELECT COUNT(h) FROM HaStateHistory h WHERE h.entityId = :entityId")
+                    .setParameter("entityId", "sensor.thermal_comfort_absolute_luftfeuchtigkeit")
+                    .getSingleResult();
+
+            if (tempCount < 288 || humCount < 288) {
+                LOG.info("Generiere Demo-Historienwerte für Lüftungsvorhersage...");
+                ZonedDateTime start = ZonedDateTime.now().minusDays(8);
+                ZonedDateTime end = ZonedDateTime.now();
+
+                for (ZonedDateTime ts = start; ts.isBefore(end); ts = ts.plusMinutes(30)) {
+                    double hour = ts.getHour() + ts.getMinute() / 60.0;
+
+                    // Temp cycle: min around 5 AM, max around 3 PM (15:00)
+                    double temp = 18.0 + 6.0 * Math.sin(2 * Math.PI * (hour - 9.0) / 24.0) + (Math.random() - 0.5) * 0.5;
+
+                    // Abs Humidity cycle: similar daily pattern
+                    double absHum = 9.0 + 2.0 * Math.sin(2 * Math.PI * (hour - 10.0) / 24.0) + (Math.random() - 0.5) * 0.3;
+
+                    de.hexix.homeassistant.entity.HaStateHistory tHistory = new de.hexix.homeassistant.entity.HaStateHistory();
+                    tHistory.setEntityId("sensor.balkon_thermometer_temperatur");
+                    tHistory.setState(String.format(java.util.Locale.US, "%.1f", temp));
+                    tHistory.setLastChanged(ts);
+                    tHistory.setAttributes("{\"friendly_name\": \"Balkon Thermometer Temperatur\", \"unit_of_measurement\": \"°C\"}");
+                    em.persist(tHistory);
+
+                    de.hexix.homeassistant.entity.HaStateHistory hHistory = new de.hexix.homeassistant.entity.HaStateHistory();
+                    hHistory.setEntityId("sensor.thermal_comfort_absolute_luftfeuchtigkeit");
+                    hHistory.setState(String.format(java.util.Locale.US, "%.1f", absHum));
+                    hHistory.setLastChanged(ts);
+                    hHistory.setAttributes("{\"friendly_name\": \"Balkon absolute Luftfeuchtigkeit\", \"unit_of_measurement\": \"g/m³\"}");
+                    em.persist(hHistory);
+
+                    de.hexix.homeassistant.entity.HaStateHistory wtHistory = new de.hexix.homeassistant.entity.HaStateHistory();
+                    wtHistory.setEntityId("sensor.wohnzimmer_thermometer_temperatur");
+                    wtHistory.setState(String.format(java.util.Locale.US, "%.1f", 21.5 + (Math.random() - 0.5) * 0.2));
+                    wtHistory.setLastChanged(ts);
+                    wtHistory.setAttributes("{\"friendly_name\": \"Wohnzimmer Thermometer Temperatur\", \"unit_of_measurement\": \"°C\"}");
+                    em.persist(wtHistory);
+
+                    de.hexix.homeassistant.entity.HaStateHistory stHistory = new de.hexix.homeassistant.entity.HaStateHistory();
+                    stHistory.setEntityId("sensor.schlafzimmer_thermometer_temperatur");
+                    stHistory.setState(String.format(java.util.Locale.US, "%.1f", 20.0 + (Math.random() - 0.5) * 0.2));
+                    stHistory.setLastChanged(ts);
+                    stHistory.setAttributes("{\"friendly_name\": \"Schlafzimmer Thermometer Temperatur\", \"unit_of_measurement\": \"°C\"}");
+                    em.persist(stHistory);
+
+                    de.hexix.homeassistant.entity.HaStateHistory whHistory = new de.hexix.homeassistant.entity.HaStateHistory();
+                    whHistory.setEntityId("sensor.wohnzimmer_absolute_luftfeuchtigkeit");
+                    whHistory.setState(String.format(java.util.Locale.US, "%.1f", 10.5 + (Math.random() - 0.5) * 0.1));
+                    whHistory.setLastChanged(ts);
+                    whHistory.setAttributes("{\"friendly_name\": \"Wohnzimmer absolute Luftfeuchtigkeit\", \"unit_of_measurement\": \"g/m³\"}");
+                    em.persist(whHistory);
+
+                    de.hexix.homeassistant.entity.HaStateHistory shHistory = new de.hexix.homeassistant.entity.HaStateHistory();
+                    shHistory.setEntityId("sensor.schlafzimmer_absolute_luftfeuchtigkeit");
+                    shHistory.setState(String.format(java.util.Locale.US, "%.1f", 9.8 + (Math.random() - 0.5) * 0.1));
+                    shHistory.setLastChanged(ts);
+                    shHistory.setAttributes("{\"friendly_name\": \"Schlafzimmer absolute Luftfeuchtigkeit\", \"unit_of_measurement\": \"g/m³\"}");
+                    em.persist(shHistory);
+                }
+                LOG.info("Generierung der Demo-Historienwerte abgeschlossen.");
+            }
+        } catch (Exception e) {
+            LOG.error("Fehler beim Generieren der Demo-Lüftungswerte", e);
+        }
+    }
+
     record Feed(String feedUrl, String title, String defaultText, boolean tryAi, boolean isActive){}
 }
+

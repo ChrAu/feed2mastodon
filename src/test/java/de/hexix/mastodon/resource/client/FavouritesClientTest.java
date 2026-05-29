@@ -7,6 +7,8 @@ import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
@@ -16,6 +18,13 @@ import java.util.Map;
 @QuarkusTest
 @TestProfile(FavouritesClientTest.NoSchedulerProfile.class)
 class FavouritesClientTest {
+
+    @BeforeEach
+    public void checkToken() {
+        Assumptions.assumeTrue(privateAccessToken != null && !privateAccessToken.isBlank() && !"key".equals(privateAccessToken),
+                "Aborting test: mastodon.private.access.token is not configured with a valid key.");
+    }
+
 
     public static class NoSchedulerProfile implements io.quarkus.test.junit.QuarkusTestProfile {
         @Override

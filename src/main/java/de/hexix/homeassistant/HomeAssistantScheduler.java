@@ -2,6 +2,7 @@ package de.hexix.homeassistant;
 
 import de.hexix.homeassistant.dto.EntityDto;
 import de.hexix.homeassistant.ignoredentity.IgnoredEntityRepository;
+import de.hexix.homeassistant.service.VentilationForecastService;
 import de.hexix.util.DurationLogger;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -9,10 +10,6 @@ import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @ApplicationScoped
@@ -26,6 +23,10 @@ public class HomeAssistantScheduler {
 
     @Inject
     IgnoredEntityRepository ignoredEntityRepository;
+
+    @Inject
+    VentilationForecastService ventilationForecastService;
+
 
 
     @Scheduled(every = "30s")
@@ -84,4 +85,14 @@ public class HomeAssistantScheduler {
 
         }
     }
+
+    @Scheduled(every = "15m")
+    public void calculateVentilationForecast() {
+        try (DurationLogger d = new DurationLogger("HomeAssistantScheduler.calculateVentilationForecast()", Logger.getLogger(this.getClass()))) {
+            ventilationForecastService.calculateAndPushVentilationForecast();
+        } catch (Exception e) {
+            Logger.getLogger(this.getClass()).error("Fehler bei Berechnung der Lüftungsvorhersage", e);
+        }
+    }
 }
+

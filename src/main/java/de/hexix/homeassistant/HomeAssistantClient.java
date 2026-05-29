@@ -1,8 +1,11 @@
 package de.hexix.homeassistant;
 
 import de.hexix.homeassistant.dto.EntityDto;
+import de.hexix.homeassistant.dto.EntityStateUpdateRequest;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -11,10 +14,12 @@ import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 import java.util.List;
+import java.util.Map;
 
 @Path("/api/")
 @RegisterRestClient(baseUri = "https://homeassistant.codeheap.dev")
 public interface HomeAssistantClient {
+
 
     /**
      * Ruft alle Zustände aller Entitäten ab.
@@ -55,4 +60,17 @@ public interface HomeAssistantClient {
     @Path("/history/period")
     @Produces(MediaType.APPLICATION_JSON)
     List<List<EntityDto>> getHistorySince(@HeaderParam("Authorization") String token, @QueryParam("filter_entity_id") String filterEntityId);
+
+    @POST
+    @Path("/states/{entity_id}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    EntityDto postState(@HeaderParam("Authorization") String token, @PathParam("entity_id") String entityId, EntityStateUpdateRequest body);
+
+    @POST
+    @Path("/services/weather/get_forecasts")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    Map<String, Object> getWeatherForecasts(@HeaderParam("Authorization") String token, Map<String, Object> body);
 }
+
