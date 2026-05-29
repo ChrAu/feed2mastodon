@@ -149,24 +149,27 @@ public class VentilationForecastService {
                 double tInnen = indoorTempForecastMap.getOrDefault(ts, tInnenSchnitt);
                 double absFInnen = indoorHumForecastMap.getOrDefault(ts, absFInnenSchnitt);
 
-                // Logic from automation:
-                // kuehl_und_trocken: t_aussen < (t_innen - 0.5) and t_aussen < 26 and abs_f_aussen < (abs_f_innen - 0.5)
-                boolean kuehlUndTrocken = tAussen < (tInnen - 0.5)
+                // Logic from automation v3.2:
+                // kuehl_und_trocken: 14 < t_aussen < (t_innen - 0.5) and t_aussen < 26 and abs_f_aussen < (abs_f_innen - 0.5)
+                boolean kuehlUndTrocken = tAussen > 14.0
+                        && tAussen < (tInnen - 0.5)
                         && tAussen < 26.0
                         && absFAussen < (absFInnen - 0.5);
 
-                // zu_warm_oder_schwuelfucht: t_aussen >= (t_innen + 0.5) or t_aussen >= 28 or abs_f_aussen >= abs_f_innen
-                boolean zuWarmOderSchwuelfucht = tAussen >= (tInnen + 0.5)
+                // zu_warm_oder_zu_kalt: t_aussen >= (t_innen + 0.5) or t_aussen >= 28 or abs_f_aussen >= abs_f_innen or t_aussen <= 13.5
+                boolean zuWarmOderZuKalt = tAussen >= (tInnen + 0.5)
                         || tAussen >= 28.0
-                        || absFAussen >= absFInnen;
+                        || absFAussen >= absFInnen
+                        || tAussen <= 13.5;
 
                 if (kuehlUndTrocken && nextOpenTime == null) {
                     nextOpenTime = ts;
                 }
 
-                if (zuWarmOderSchwuelfucht && nextCloseTime == null) {
+                if (zuWarmOderZuKalt && nextCloseTime == null) {
                     nextCloseTime = ts;
                 }
+
 
                 if (nextOpenTime != null && nextCloseTime != null) {
                     break;
