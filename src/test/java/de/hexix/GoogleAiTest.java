@@ -13,6 +13,8 @@ import io.quarkus.test.junit.QuarkusTest;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import java.security.SecureRandom;
@@ -22,6 +24,13 @@ import java.util.List;
 
 @QuarkusTest
 public class GoogleAiTest {
+
+    @BeforeEach
+    public void checkToken() {
+        Assumptions.assumeTrue(accessToken != null && !accessToken.isBlank() && !"key".equals(accessToken),
+                "Aborting test: gemini.access.token is not configured with a valid key.");
+    }
+
 
 
     final Logger LOG = Logger.getLogger(this.getClass());
