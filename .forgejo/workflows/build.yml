@@ -90,7 +90,7 @@ jobs:
             git config --global user.email "forgejo-actions[bot]@forgejo.codeheap.dev"
 
             git add pom.xml
-            git commit -m "chore: auto-bump version to $NEW_VERSION [skip ci]"
+            git commit -m "chore: auto-bump version to $NEW_VERSION"
 
             # Push zurück in den Head-Branch des Pull Requests
             git push origin HEAD:${{ github.head_ref }}
