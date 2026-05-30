@@ -300,4 +300,109 @@ class VentilationForecastServiceTest {
         dto.setState(state);
         when(homeAssistantClient.getState(eq("Bearer test-token"), eq(entityId))).thenReturn(dto);
     }
+
+    private void mockStateWithAttributes(String entityId, String state, String nextAction) {
+        EntityDto dto = new EntityDto();
+        dto.setEntityId(entityId);
+        dto.setState(state);
+        
+        de.hexix.homeassistant.dto.AttributesDto attrs = new de.hexix.homeassistant.dto.AttributesDto();
+        attrs.addAdditionalAttribute("next_action", nextAction);
+        dto.setAttributes(attrs);
+        
+        when(homeAssistantClient.getState(eq("Bearer test-token"), eq(entityId))).thenReturn(dto);
+    }
+
+    @Test
+    void testCalculateAndPushForecast_EMASmoothing() {
+        // Current indoor conditions: Temp = 21.0, Abs Hum = 10.0 (Average of Wohn/Schlaf)
+        mockState("sensor.wohnzimmer_thermometer_temperatur", "21.0");
+        mockState("sensor.schlafzimmer_thermometer_temperatur", "21.0");
+        mockState("sensor.wohnzimmer_absolute_luftfeuchtigkeit", "10.0");
+        mockState("sensor.schlafzimmer_absolute_luftfeuchtigkeit", "10.0");
+        mockState("input_boolean.lueftung_fenster_offen", "off");
+        mockState("sensor.balkon_thermometer_temperatur", "15.0");
+        mockState("sensor.thermal_comfort_absolute_luftfeuchtigkeit", "8.0");
+
+        // Mock previous prediction to +140 mins (same action "öffnen")
+        ZonedDateTime now = ZonedDateTime.now().withMinute(0).withSecond(0).withNano(0);
+        ZonedDateTime prevTarget = now.plusHours(2).plusMinutes(20);
+        mockStateWithAttributes("sensor.lueftung_vorhersage", 
+                java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(prevTarget), 
+                "öffnen");
+
+        // Mock outdoor history
+        List<HaStateHistory> mockTempHistory = List.of(new HaStateHistory());
+        List<HaStateHistory> mockHumHistory = List.of(new HaStateHistory());
+        when(homeAssistantService.getHaStateHistory(eq("sensor.balkon_thermometer_temperatur"), any(), any(Duration.class)))
+                .thenReturn(mockTempHistory);
+        when(homeAssistantService.getHaStateHistory(eq("sensor.thermal_comfort_absolute_luftfeuchtigkeit"), any(), any(Duration.class)))
+                .thenReturn(mockHumHistory);
+
+        // Mock indoor history
+        List<HaStateHistory> mockWohnTempHist = List.of(new HaStateHistory());
+        List<HaStateHistory> mockSchlafTempHist = List.of(new HaStateHistory());
+        List<HaStateHistory> mockWohnHumHist = List.of(new HaStateHistory());
+        List<HaStateHistory> mockSchlafHumHist = List.of(new HaStateHistory());
+
+        when(homeAssistantService.getHaStateHistory(eq("sensor.wohnzimmer_thermometer_temperatur"), any(), any(Duration.class)))
+                .thenReturn(mockWohnTempHist);
+        when(homeAssistantService.getHaStateHistory(eq("sensor.schlafzimmer_thermometer_temperatur"), any(), any(Duration.class)))
+                .thenReturn(mockSchlafTempHist);
+        when(homeAssistantService.getHaStateHistory(eq("sensor.wohnzimmer_absolute_luftfeuchtigkeit"), any(), any(Duration.class)))
+                .thenReturn(mockWohnHumHist);
+        when(homeAssistantService.getHaStateHistory(eq("sensor.schlafzimmer_absolute_luftfeuchtigkeit"), any(), any(Duration.class)))
+                .thenReturn(mockSchlafHumHist);
+
+        // New raw prediction target is at +50 mins (e.g. now.plusMinutes(50))
+        ZonedDateTime ts1 = now.plusMinutes(10);
+        ZonedDateTime ts2 = now.plusMinutes(50);
+
+        List<GenericForecastPoint> tempForecast = List.of(
+                new GenericForecastPoint(ts1, 22.0),
+                new GenericForecastPoint(ts2, 20.0)
+        );
+        List<GenericForecastPoint> humForecast = List.of(
+                new GenericForecastPoint(ts1, 10.5),
+                new GenericForecastPoint(ts2, 9.0)
+        );
+
+        List<GenericForecastPoint> wohnTempForecast = List.of(new GenericForecastPoint(ts1, 21.0), new GenericForecastPoint(ts2, 21.0));
+        List<GenericForecastPoint> schlafTempForecast = List.of(new GenericForecastPoint(ts1, 21.0), new GenericForecastPoint(ts2, 21.0));
+        List<GenericForecastPoint> wohnHumForecast = List.of(new GenericForecastPoint(ts1, 10.0), new GenericForecastPoint(ts2, 10.0));
+        List<GenericForecastPoint> schlafHumForecast = List.of(new GenericForecastPoint(ts1, 10.0), new GenericForecastPoint(ts2, 10.0));
+
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockTempHistory), any(Duration.class), eq(10)))
+                .thenReturn(tempForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockHumHistory), any(Duration.class), eq(10)))
+                .thenReturn(humForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockWohnTempHist), any(Duration.class), eq(10)))
+                .thenReturn(wohnTempForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockSchlafTempHist), any(Duration.class), eq(10)))
+                .thenReturn(schlafTempForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockWohnHumHist), any(Duration.class), eq(10)))
+                .thenReturn(wohnHumForecast);
+        when(holtWinterForecastService.calculateGenericForecast(eq(mockSchlafHumHist), any(Duration.class), eq(10)))
+                .thenReturn(schlafHumForecast);
+
+        // Action
+        ventilationForecastService.calculateAndPushVentilationForecast();
+
+        // Capture verification
+        ArgumentCaptor<EntityStateUpdateRequest> requestCaptor = ArgumentCaptor.forClass(EntityStateUpdateRequest.class);
+        verify(homeAssistantClient).postState(eq("Bearer test-token"), eq("sensor.lueftung_vorhersage"), requestCaptor.capture());
+
+        EntityStateUpdateRequest request = requestCaptor.getValue();
+        assertNotNull(request.state());
+        ZonedDateTime stateTime = ZonedDateTime.parse(request.state(), java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+
+        // Expected EMA calculation:
+        // prevTarget = +140 mins (from now)
+        // rawTarget = +50 mins (from now)
+        // delta = rawTarget - prevTarget = -90 mins
+        // smoothedTarget = prevTarget + round(0.3 * -90) = prevTarget - 27 mins = +113 mins from now
+        // Round to nearest 10 mins: +110 mins from now
+        ZonedDateTime expectedTime = now.plusMinutes(110);
+        assertEquals(expectedTime.toEpochSecond() / 60, stateTime.toEpochSecond() / 60);
+    }
 }

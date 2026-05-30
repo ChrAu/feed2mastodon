@@ -183,6 +183,42 @@ public class VentilationForecastService {
                 primaryTargetTime = tempForecast.get(tempForecast.size() - 1).timestamp();
                 Log.infof("No matching time found for action '%s'. Falling back to the end of the forecast period: %s", nextAction, primaryTargetTime);
             }
+
+            // Smooth the forecast target time using EMA if the action is the same
+            if (primaryTargetTime != null) {
+                EntityDto previousPredictionDto = fetchStateSafe(TARGET_PREDICTION_ENTITY);
+                if (previousPredictionDto != null && previousPredictionDto.getState() != null 
+                        && !previousPredictionDto.getState().equalsIgnoreCase("unknown") 
+                        && !previousPredictionDto.getState().equalsIgnoreCase("unavailable")) {
+                    try {
+                        ZonedDateTime previousTargetTime = ZonedDateTime.parse(previousPredictionDto.getState(), DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+                        String prevAction = null;
+                        if (previousPredictionDto.getAttributes() != null && previousPredictionDto.getAttributes().getAdditionalAttributes() != null) {
+                            prevAction = (String) previousPredictionDto.getAttributes().getAdditionalAttributes().get("next_action");
+                        }
+                        if (nextAction.equals(prevAction)) {
+                            long prevEpoch = previousTargetTime.toEpochSecond();
+                            long newEpoch = primaryTargetTime.toEpochSecond();
+                            double alpha = 0.3;
+                            long smoothedEpoch = prevEpoch + Math.round(alpha * (newEpoch - prevEpoch));
+                            ZonedDateTime smoothedTime = ZonedDateTime.ofInstant(java.time.Instant.ofEpochSecond(smoothedEpoch), primaryTargetTime.getZone());
+                            primaryTargetTime = roundToNearest10Minutes(smoothedTime);
+                            
+                            // Align the action-specific times with the smoothed target time
+                            if (windowOpen) {
+                                nextCloseTime = primaryTargetTime;
+                            } else {
+                                nextOpenTime = primaryTargetTime;
+                            }
+                            Log.infof("Smoothed target time for '%s': previous=%s, raw_new=%s -> smoothed=%s", 
+                                    nextAction, previousTargetTime, primaryTargetTime, primaryTargetTime);
+                        }
+                    } catch (Exception e) {
+                        Log.warn("Failed to apply EMA smoothing to ventilation forecast prediction target time", e);
+                    }
+                }
+            }
+
             String stateStr = (primaryTargetTime != null) ? DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(primaryTargetTime) : "unknown";
 
 
@@ -381,5 +417,18 @@ public class VentilationForecastService {
             }
         }
         return resultMap;
+    }
+
+    private ZonedDateTime roundToNearest10Minutes(ZonedDateTime time) {
+        if (time == null) return null;
+        int minute = time.getMinute();
+        int mod = minute % 10;
+        int roundedMinute;
+        if (mod < 5) {
+            roundedMinute = minute - mod;
+        } else {
+            roundedMinute = minute + (10 - mod);
+        }
+        return time.withMinute(0).withSecond(0).withNano(0).plusMinutes(roundedMinute);
     }
 }
