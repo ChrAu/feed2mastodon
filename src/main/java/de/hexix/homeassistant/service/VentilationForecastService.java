@@ -340,38 +340,59 @@ public class VentilationForecastService {
                 "entity_id", entityId,
                 "type", "hourly"
             );
-            Map<String, Object> response = homeAssistantClient.getWeatherForecasts("Bearer " + apiToken, body);
-            if (response != null && response.containsKey(entityId)) {
-                Map<String, Object> entityForecast = (Map<String, Object>) response.get(entityId);
-                List<Map<String, Object>> forecastList = (List<Map<String, Object>>) entityForecast.get("forecast");
+            Map<String, Object> response = homeAssistantClient.getWeatherForecasts("Bearer " + apiToken, true, body);
+            List<Map<String, Object>> forecastList = findForecastList(response);
 
-                if (forecastList != null && !forecastList.isEmpty()) {
-                    List<HoltWinterForecastService.GenericForecastPoint> points = new java.util.ArrayList<>();
-                    for (Map<String, Object> f : forecastList) {
-                        String dtStr = (String) f.get("datetime");
-                        Number tempNum = (Number) f.get("temperature");
-                        Number humNum = (Number) f.get("humidity");
+            if (forecastList != null && !forecastList.isEmpty()) {
+                List<HoltWinterForecastService.GenericForecastPoint> points = new java.util.ArrayList<>();
+                for (Map<String, Object> f : forecastList) {
+                    String dtStr = (String) f.get("datetime");
+                    Number tempNum = (Number) f.get("temperature");
+                    Number humNum = (Number) f.get("humidity");
 
-                        if (dtStr != null && tempNum != null) {
-                            ZonedDateTime ts = ZonedDateTime.parse(dtStr, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-                            double temp = tempNum.doubleValue();
-                            double val;
-                            if (temperature) {
-                                val = temp;
-                            } else {
-                                double humidity = (humNum != null) ? humNum.doubleValue() : 50.0;
-                                val = calculateAbsoluteHumidity(temp, humidity);
-                            }
-                            points.add(new HoltWinterForecastService.GenericForecastPoint(ts, val));
+                    if (dtStr != null && tempNum != null) {
+                        ZonedDateTime ts = ZonedDateTime.parse(dtStr, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+                        double temp = tempNum.doubleValue();
+                        double val;
+                        if (temperature) {
+                            val = temp;
+                        } else {
+                            double humidity = (humNum != null) ? humNum.doubleValue() : 50.0;
+                            val = calculateAbsoluteHumidity(temp, humidity);
                         }
+                        points.add(new HoltWinterForecastService.GenericForecastPoint(ts, val));
                     }
-                    return points;
                 }
+                return points;
             }
         } catch (Exception e) {
             Log.warnf("Failed to fetch forecast from %s: %s", entityId, e.getMessage());
         }
         return List.of();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> findForecastList(Object obj) {
+        if (obj instanceof Map) {
+            Map<?, ?> map = (Map<?, ?>) obj;
+            if (map.containsKey("forecast") && map.get("forecast") instanceof List) {
+                return (List<Map<String, Object>>) map.get("forecast");
+            }
+            for (Object value : map.values()) {
+                List<Map<String, Object>> found = findForecastList(value);
+                if (found != null) {
+                    return found;
+                }
+            }
+        } else if (obj instanceof List) {
+            for (Object item : (List<?>) obj) {
+                List<Map<String, Object>> found = findForecastList(item);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 
     private double calculateAbsoluteHumidity(double temp, double relativeHumidity) {

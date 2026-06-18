@@ -17,6 +17,6 @@ public class IgnoredEntityRepository implements PanacheRepository<IgnoredEntity>
     }
 
     public boolean isEntityIgnored(String entityId) {
-        return find("entityId", entityId).count() > 0;
+        return find("?1 LIKE entityId", entityId).count() > 0;
     }
 }

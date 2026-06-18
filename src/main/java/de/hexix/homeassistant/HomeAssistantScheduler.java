@@ -50,6 +50,15 @@ public class HomeAssistantScheduler {
         }
     }
 
+    @Scheduled(cron = "0 0 3 * * ?") // Täglich um 03:00 Uhr nachts
+    public void cleanupOldHistory() {
+        try (DurationLogger d = new DurationLogger("HomeAssistantScheduler.cleanupOldHistory()", Logger.getLogger(this.getClass()))) {
+            homeAssistantService.cleanupOldHistory(30); // 30 Tage Aufbewahrung
+        } catch (Exception e) {
+            Logger.getLogger(this.getClass()).error("Fehler beim Löschen der alten Historie", e);
+        }
+    }
+
     @Scheduled(cron = "0 0 8,18 * * ?")   // Täglich um 08:00 und 18:00 Uhr
     public void scheduleForecastStorageMorningAndEvening() {
         doScheduleForecastStorage();
