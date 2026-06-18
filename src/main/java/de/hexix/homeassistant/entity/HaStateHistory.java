@@ -72,6 +72,23 @@ import java.time.ZonedDateTime;
                         "(:entityIdPrefix IS NULL OR h.entityId LIKE :entityIdPrefix) AND " +
                         "(h.lastChanged >= :startDate) " +
                         "ORDER BY h.lastChanged DESC"
+        ),
+        @NamedQuery(
+                name = HaStateHistory.DELETE_OLD_UNUSED_RECORDS,
+                query = "DELETE FROM HaStateHistory h " +
+                        "WHERE h.lastChanged < :threshold " +
+                        "AND h.entityId NOT IN :usedIds " +
+                        "AND h.entityId NOT LIKE 'climate.%' " +
+                        "AND h.entityId NOT LIKE 'weather.%'"
+        ),
+        @NamedQuery(
+                name = HaStateHistory.CLEAR_OLD_ATTRIBUTES_FOR_USED_ENTITIES,
+                query = "UPDATE HaStateHistory h " +
+                        "SET h.attributes = NULL " +
+                        "WHERE h.lastChanged < :threshold " +
+                        "AND h.entityId IN :usedIds " +
+                        "AND h.entityId != 'sensor.codeheap_cpu_auslastung' " +
+                        "AND h.attributes IS NOT NULL"
         )
 })
 
@@ -117,6 +134,58 @@ import java.time.ZonedDateTime;
     ORDER BY time_bucket DESC
     """,
                 resultSetMapping = HaStateHistory.SQL_RESULT_SET_MAPPING__TEMPERATURE_BUCKET_MAPPING
+        ),
+        @NamedNativeQuery(
+                name = HaStateHistory.NATIVE_OPTIMIZE_CLIMATE_ATTRIBUTES,
+                query = """
+    UPDATE ha_state_history
+    SET attributes = jsonb_build_object(
+      'friendlyName', (attributes::jsonb ->> 'friendlyName'),
+      'additionalAttributes', jsonb_build_object(
+        'current_temperature', (attributes::jsonb -> 'additionalAttributes' -> 'current_temperature'),
+        'temperature', (attributes::jsonb -> 'additionalAttributes' -> 'temperature')
+      )
+    )::text
+    WHERE entity_id LIKE 'climate.%'
+      AND last_changed < :threshold
+      AND attributes IS NOT NULL
+    """
+        ),
+        @NamedNativeQuery(
+                name = HaStateHistory.NATIVE_OPTIMIZE_WEATHER_ATTRIBUTES,
+                query = """
+    UPDATE ha_state_history
+    SET attributes = jsonb_build_object(
+      'friendlyName', (attributes::jsonb ->> 'friendlyName'),
+      'additionalAttributes', jsonb_build_object(
+        'pressure', (attributes::jsonb -> 'additionalAttributes' -> 'pressure'),
+        'pressure_unit', (attributes::jsonb -> 'additionalAttributes' -> 'pressure_unit'),
+        'temperature', (attributes::jsonb -> 'additionalAttributes' -> 'temperature'),
+        'apparent_temperature', (attributes::jsonb -> 'additionalAttributes' -> 'apparent_temperature'),
+        'temperature_unit', (attributes::jsonb -> 'additionalAttributes' -> 'temperature_unit'),
+        'humidity', (attributes::jsonb -> 'additionalAttributes' -> 'humidity'),
+        'wind_speed', (attributes::jsonb -> 'additionalAttributes' -> 'wind_speed'),
+        'wind_bearing', (attributes::jsonb -> 'additionalAttributes' -> 'wind_bearing'),
+        'wind_speed_unit', (attributes::jsonb -> 'additionalAttributes' -> 'wind_speed_unit'),
+        'precipitation_unit', (attributes::jsonb -> 'additionalAttributes' -> 'precipitation_unit')
+      )
+    )::text
+    WHERE entity_id LIKE 'weather.%'
+      AND last_changed < :threshold
+      AND attributes IS NOT NULL
+    """
+        ),
+        @NamedNativeQuery(
+                name = HaStateHistory.NATIVE_OPTIMIZE_CPU_ATTRIBUTES,
+                query = """
+    UPDATE ha_state_history
+    SET attributes = jsonb_build_object(
+      'friendlyName', (attributes::jsonb ->> 'friendlyName')
+    )::text
+    WHERE entity_id = 'sensor.codeheap_cpu_auslastung'
+      AND last_changed < :threshold
+      AND attributes IS NOT NULL
+    """
         )
 })
 
@@ -136,9 +205,14 @@ public class HaStateHistory {
     public static final String FIND_PREVIOUS_BY_ENTITY_ID_AND_LAST_CHANGED = "HaStateHistory.findPreviousByEntityIdAndLastChanged";
     public static final String DELETE_BY_ENTITY_IDS = "HaStateHistory.deleteByEntityIds";
     public static final String FIND_ALL_FILTERED = "HaStateHistory.findAllFiltered";
+    public static final String DELETE_OLD_UNUSED_RECORDS = "HaStateHistory.deleteOldUnusedRecords";
+    public static final String CLEAR_OLD_ATTRIBUTES_FOR_USED_ENTITIES = "HaStateHistory.clearOldAttributesForUsedEntities";
 
 
     public static final String NATIVE_FIND_AVG_TEMPERATUR_IN_BUCKETS = "HaStateHistory.findAvgTemperatureInBuckets";
+    public static final String NATIVE_OPTIMIZE_CLIMATE_ATTRIBUTES = "HaStateHistory.nativeOptimizeClimateAttributes";
+    public static final String NATIVE_OPTIMIZE_WEATHER_ATTRIBUTES = "HaStateHistory.nativeOptimizeWeatherAttributes";
+    public static final String NATIVE_OPTIMIZE_CPU_ATTRIBUTES = "HaStateHistory.nativeOptimizeCpuAttributes";
 
     public static final String SQL_RESULT_SET_MAPPING__TEMPERATURE_BUCKET_MAPPING = "HaStateHistory.TemperatureBucketMapping";
 

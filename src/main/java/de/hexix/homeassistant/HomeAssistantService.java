@@ -124,6 +124,27 @@ public class HomeAssistantService {
             "sensor.id4_mercatis_gmbh_hv_battery_min_temperature"
     );
 
+    public static final List<String> USED_ENTITY_IDS = getUsedEntityIdsList();
+
+    private static List<String> getUsedEntityIdsList() {
+        List<String> list = new java.util.ArrayList<>();
+        list.addAll(PI_HOLE_IDS);
+        list.addAll(FUEL_PRICE_IDS);
+        list.addAll(ELECTRICITY_PRICE_ENTITY_IDS);
+        list.addAll(CAR_DATA_ENTITY_IDS);
+        list.add("sensor.codeheap_cpu_auslastung");
+        list.add("sensor.balkon_thermometer_temperatur");
+        list.add("sensor.thermal_comfort_absolute_luftfeuchtigkeit");
+        list.add("sensor.wohnzimmer_thermometer_temperatur");
+        list.add("sensor.schlafzimmer_thermometer_temperatur");
+        list.add("sensor.wohnzimmer_absolute_luftfeuchtigkeit");
+        list.add("sensor.schlafzimmer_absolute_luftfeuchtigkeit");
+        list.add("input_boolean.lueftung_fenster_offen");
+        list.add("sensor.lueftung_vorhersage");
+        return list;
+    }
+
+
 
     public List<EntityDto> currentState() {
         List<EntityDto> states = homeAssistantClient.getAllStates("Bearer " + apiToken);
@@ -951,5 +972,42 @@ public class HomeAssistantService {
         // Let's modify HaEntity to have a query without date filter, or just use a very old date for now to keep it simple.
         query.setParameter("startDate", ZonedDateTime.now().minusYears(1)); // Essentially all time
         return query.getResultList();
+    }
+
+    @Transactional
+    public void cleanupOldHistory(int daysRetention) {
+        ZonedDateTime threshold = ZonedDateTime.now().minusDays(daysRetention);
+
+        // 1. Delete rows for unused entities older than retention period
+        int deletedRows = em.createNamedQuery(HaStateHistory.DELETE_OLD_UNUSED_RECORDS)
+            .setParameter("threshold", threshold)
+            .setParameter("usedIds", USED_ENTITY_IDS)
+            .executeUpdate();
+        Log.infof("Cleanup old history: deleted %d rows of unused entities", deletedRows);
+
+        // 2. Prune attributes for climate.% records (keep only friendlyName, current_temperature, temperature)
+        int updatedClimate = em.createNamedQuery(HaStateHistory.NATIVE_OPTIMIZE_CLIMATE_ATTRIBUTES)
+            .setParameter("threshold", threshold)
+            .executeUpdate();
+        Log.infof("Cleanup old history: optimized attributes for %d climate records", updatedClimate);
+
+        // 3. Prune attributes for weather.% records (remove forecast, keep key fields)
+        int updatedWeather = em.createNamedQuery(HaStateHistory.NATIVE_OPTIMIZE_WEATHER_ATTRIBUTES)
+            .setParameter("threshold", threshold)
+            .executeUpdate();
+        Log.infof("Cleanup old history: optimized attributes for %d weather records", updatedWeather);
+
+        // 4. Prune attributes for CPU sensor (keep only friendlyName)
+        int updatedCpu = em.createNamedQuery(HaStateHistory.NATIVE_OPTIMIZE_CPU_ATTRIBUTES)
+            .setParameter("threshold", threshold)
+            .executeUpdate();
+        Log.infof("Cleanup old history: optimized attributes for %d cpu records", updatedCpu);
+
+        // 5. Clear attributes completely (set to NULL) for all other used entities older than retention period
+        int clearedOther = em.createNamedQuery(HaStateHistory.CLEAR_OLD_ATTRIBUTES_FOR_USED_ENTITIES)
+            .setParameter("threshold", threshold)
+            .setParameter("usedIds", USED_ENTITY_IDS)
+            .executeUpdate();
+        Log.infof("Cleanup old history: cleared attributes for %d other records", clearedOther);
     }
 }
