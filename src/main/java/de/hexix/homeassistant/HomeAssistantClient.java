@@ -71,6 +71,10 @@ public interface HomeAssistantClient {
     @Path("/services/weather/get_forecasts")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    Map<String, Object> getWeatherForecasts(@HeaderParam("Authorization") String token, Map<String, Object> body);
+    Map<String, Object> getWeatherForecasts(
+            @HeaderParam("Authorization") String token,
+            @QueryParam("return_response") boolean returnResponse,
+            Map<String, Object> body
+    );
 }
 
