@@ -128,6 +128,9 @@ public class MastodonStreamProcessor {
     }
 
     private Uni<?> processDirectPayload(String dataPayload) {
+        if (dataPayload == null || dataPayload.isBlank()) {
+            return Uni.createFrom().voidItem();
+        }
         try {
             MastodonDtos.DirectStatus directStatus = objectMapper.readValue(dataPayload, MastodonDtos.DirectStatus.class);
             final String replyId = directStatus.lastStatus().inReplyToId();
@@ -213,6 +216,9 @@ public class MastodonStreamProcessor {
      * @return Ein Uni<Void>, das den Abschluss der Verarbeitung anzeigt.
      */
     private Uni<Void> processDataPayload(String dataPayload) {
+        if (dataPayload == null || dataPayload.isBlank()) {
+            return Uni.createFrom().voidItem();
+        }
         try {
 
 
