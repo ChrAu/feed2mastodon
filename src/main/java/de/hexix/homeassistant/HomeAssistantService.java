@@ -126,7 +126,69 @@ public class HomeAssistantService {
 
 
     public List<EntityDto> currentState() {
-        return homeAssistantClient.getAllStates("Bearer " + apiToken);
+        List<EntityDto> states = homeAssistantClient.getAllStates("Bearer " + apiToken);
+        if (states != null) {
+            for (EntityDto entity : states) {
+                if (entity.getEntityId() != null && entity.getEntityId().startsWith("weather.")) {
+                    try {
+                        List<Map<String, Object>> forecastList = null;
+
+                        // Try hourly first
+                        try {
+                            Map<String, Object> body = Map.of(
+                                    "entity_id", entity.getEntityId(),
+                                    "type", "hourly"
+                            );
+                            Map<String, Object> response = homeAssistantClient.getWeatherForecasts("Bearer " + apiToken, true, body);
+                            forecastList = findForecastList(response);
+                        } catch (Exception e) {
+                            Log.debugf("Failed to fetch hourly weather forecast for %s, trying daily... Error: %s", entity.getEntityId(), e.getMessage());
+                            // Fallback to daily
+                            Map<String, Object> body = Map.of(
+                                    "entity_id", entity.getEntityId(),
+                                    "type", "daily"
+                            );
+                            Map<String, Object> response = homeAssistantClient.getWeatherForecasts("Bearer " + apiToken, true, body);
+                            forecastList = findForecastList(response);
+                        }
+
+                        if (forecastList != null) {
+                            if (entity.getAttributes() == null) {
+                                entity.setAttributes(new AttributesDto());
+                            }
+                            entity.getAttributes().getAdditionalAttributes().put("forecast", forecastList);
+                        }
+                    } catch (Exception e) {
+                        Log.warnf("Failed to fetch weather forecast during currentState for %s: %s", entity.getEntityId(), e.getMessage());
+                    }
+                }
+            }
+        }
+        return states;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> findForecastList(Object obj) {
+        if (obj instanceof Map) {
+            Map<?, ?> map = (Map<?, ?>) obj;
+            if (map.containsKey("forecast") && map.get("forecast") instanceof List) {
+                return (List<Map<String, Object>>) map.get("forecast");
+            }
+            for (Object value : map.values()) {
+                List<Map<String, Object>> found = findForecastList(value);
+                if (found != null) {
+                    return found;
+                }
+            }
+        } else if (obj instanceof List) {
+            for (Object item : (List<?>) obj) {
+                List<Map<String, Object>> found = findForecastList(item);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 
 

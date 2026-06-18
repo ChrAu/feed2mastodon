@@ -51,7 +51,7 @@ import java.time.ZonedDateTime;
         ),
         @NamedQuery(
                 name = HaStateHistory.FIND_ALL_WEATHER_DATA,
-                query = "SELECT h FROM HaStateHistory h where entityId ilike 'weather.gosbach' and h.lastChanged > :startDate ORDER BY h.lastChanged ASC"
+                query = "SELECT h FROM HaStateHistory h where entityId ilike 'weather.%' and h.lastChanged > :startDate ORDER BY h.lastChanged ASC"
         ),
         @NamedQuery(
                 name = HaStateHistory.FIND_BY_ENTITY_ID_AND_DATE_RANGE,
