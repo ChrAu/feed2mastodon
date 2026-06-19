@@ -47,3 +47,4 @@ nb-configuration.xml
 # Quinoa
 .quinoa/
 /src/main/webui/node_modules
+/src/main/webui/dist/
