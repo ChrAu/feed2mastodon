@@ -6,21 +6,7 @@ on:
   pull_request:
 
 jobs:
-  cleanup:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Docker Cleanup
-        run: |
-          if command -v docker >/dev/null 2>&1; then
-            echo "Stopping and removing all Docker containers..."
-            docker stop $(docker ps -aq) || true
-            docker rm $(docker ps -aq) || true
-          else
-            echo "Docker not found, skipping cleanup."
-          fi
-
   build:
-    needs: cleanup
     runs-on: ubuntu-latest
 
     services:
@@ -31,7 +17,7 @@ jobs:
           POSTGRES_USER: quarkus_test
           POSTGRES_PASSWORD: quarkus_test
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U quarkus_test -d quarkus_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5

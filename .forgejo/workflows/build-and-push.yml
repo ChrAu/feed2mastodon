@@ -7,21 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  cleanup:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Docker Cleanup
-        run: |
-          if command -v docker >/dev/null 2>&1; then
-            echo "Stopping and removing all Docker containers..."
-            docker stop $(docker ps -aq) || true
-            docker rm $(docker ps -aq) || true
-          else
-            echo "Docker not found, skipping cleanup."
-          fi
-
   build-and-push:
-    needs: cleanup
     runs-on: ubuntu-latest
 
     steps:
