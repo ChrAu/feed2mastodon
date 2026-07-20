@@ -72,7 +72,7 @@ jobs:
 
       # Schritt 3: Node.js einrichten
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 'latest'
           cache: 'npm'
