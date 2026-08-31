@@ -36,7 +36,7 @@ jobs:
     # Java Setup: Nur ausführen, wenn der aktuelle Matrix-Job Java ist
     - name: Set up JDK 25
       if: matrix.language == 'java-kotlin'
-      uses: actions/setup-java@v5
+      uses: actions/setup-java@v6
       with:
         java-version: '25'
         distribution: 'corretto'
