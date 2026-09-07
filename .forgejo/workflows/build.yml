@@ -6,41 +6,7 @@ on:
   pull_request:
 
 jobs:
-  cleanup:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Cleanup stale Docker containers
-        run: |
-          if ! command -v docker >/dev/null 2>&1; then
-            echo "Installing Docker CLI..."
-            apt-get update -qq && apt-get install -y -qq docker.io >/dev/null 2>&1 || true
-          fi
-
-          if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-            echo "Checking running Docker containers..."
-            CURRENT_ID=$(cat /etc/hostname 2>/dev/null || hostname)
-            for cid in $(docker ps -q); do
-              if [ "$cid" = "$CURRENT_ID" ] || [[ "$CURRENT_ID" == "$cid"* ]] || [[ "$cid" == "$CURRENT_ID"* ]]; then
-                continue
-              fi
-              cname=$(docker inspect --format '{{.Name}}' "$cid" 2>/dev/null | sed 's/^\///')
-              if echo "$cname" | grep -qiE "runner|forgejo"; then
-                echo "Skipping runner/forgejo container: $cname ($cid)"
-                continue
-              fi
-              echo "Stopping unnecessary container: $cname ($cid)"
-              docker stop "$cid" || true
-              docker rm "$cid" || true
-            done
-            echo "Pruning exited containers..."
-            docker container prune -f || true
-            echo "Docker cleanup completed."
-          else
-            echo "Docker daemon or CLI not available, skipping cleanup."
-          fi
-
   build:
-    needs: cleanup
     runs-on: ubuntu-latest
 
     services:
