@@ -131,7 +131,7 @@ jobs:
           HOMEASSISTANT_API_TOKEN: ${{ secrets.HOMEASSISTANT_API_TOKEN }}
         run: |
           chmod +x mvnw
-          ./mvnw -B package -Dquarkus.profile=prod --file pom.xml
+          ./mvnw -B -U package -Dquarkus.profile=prod -Daether.connector.http.retryHandler.count=5 -Dmaven.wagon.http.retryHandler.count=5 --file pom.xml
 
       - name: Stop and Cleanup PostgreSQL
         if: always()
