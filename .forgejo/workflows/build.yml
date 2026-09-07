@@ -9,19 +9,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: pgvector/pgvector:pg17
-        env:
-          POSTGRES_DB: quarkus_test
-          POSTGRES_USER: quarkus_test
-          POSTGRES_PASSWORD: quarkus_test
-        options: >-
-          --health-cmd "pg_isready -U quarkus_test -d quarkus_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     # Berechtigungen für Gitea/Forgejo Token
     permissions:
       contents: write
@@ -38,6 +25,54 @@ jobs:
         with:
           java-version: '25'
           distribution: 'corretto'
+
+      - name: Install Docker CLI
+        run: |
+          if ! command -v docker >/dev/null 2>&1; then
+            echo "Installing Docker CLI..."
+            if ! curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.3.1.tgz | tar xzvf - --strip-components=1 -C /usr/local/bin docker/docker 2>/dev/null; then
+              apt-get update -qq && apt-get install -y -qq docker.io >/dev/null 2>&1 || true
+            fi
+          fi
+          docker --version || true
+
+      - name: Clean up old PostgreSQL instances
+        run: |
+          echo "Checking for stale PostgreSQL containers on this runner..."
+          OLD_CONTAINERS=$(docker ps -q --filter "ancestor=pgvector/pgvector:pg17" 2>/dev/null || true)
+          if [ -n "$OLD_CONTAINERS" ]; then
+            echo "Stopping stale pgvector containers: $OLD_CONTAINERS"
+            docker stop $OLD_CONTAINERS || true
+            docker rm $OLD_CONTAINERS || true
+          fi
+          docker stop postgres-ci-feed2mastodon 2>/dev/null || true
+          docker rm postgres-ci-feed2mastodon 2>/dev/null || true
+
+      - name: Start PostgreSQL (pgvector)
+        run: |
+          echo "Starting PostgreSQL container with pgvector..."
+          docker run -d \
+            --name postgres-ci-feed2mastodon \
+            --network host \
+            -e POSTGRES_DB=quarkus_test \
+            -e POSTGRES_USER=quarkus_test \
+            -e POSTGRES_PASSWORD=quarkus_test \
+            pgvector/pgvector:pg17
+
+          echo "Waiting for PostgreSQL to become ready..."
+          TIMEOUT=60
+          until docker exec postgres-ci-feed2mastodon pg_isready -U quarkus_test -d quarkus_test >/dev/null 2>&1 || [ $TIMEOUT -le 0 ]; do
+            echo "PostgreSQL starting... ($TIMEOUT s remaining)"
+            sleep 2
+            TIMEOUT=$((TIMEOUT - 2))
+          done
+
+          if [ $TIMEOUT -le 0 ]; then
+            echo "PostgreSQL failed to become healthy. Logs:"
+            docker logs postgres-ci-feed2mastodon
+            exit 1
+          fi
+          echo "PostgreSQL is ready and accepting connections."
 
 #      - name: Set up Node.js
 #        uses: actions/setup-node@v4
@@ -96,4 +131,13 @@ jobs:
           HOMEASSISTANT_API_TOKEN: ${{ secrets.HOMEASSISTANT_API_TOKEN }}
         run: |
           chmod +x mvnw
-          ./mvnw -B package -Dquarkus.profile=prod --file pom.xml
+          ./mvnw -B -U package -Dquarkus.profile=prod -Daether.connector.http.retryHandler.count=5 -Dmaven.wagon.http.retryHandler.count=5 --file pom.xml
+
+      - name: Stop and Cleanup PostgreSQL
+        if: always()
+        run: |
+          echo "Cleaning up PostgreSQL container..."
+          docker stop postgres-ci-feed2mastodon 2>/dev/null || true
+          docker rm postgres-ci-feed2mastodon 2>/dev/null || true
+          docker container prune -f 2>/dev/null || true
+          echo "Post-run cleanup completed."
