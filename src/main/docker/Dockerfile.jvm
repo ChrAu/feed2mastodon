@@ -1,5 +1,5 @@
 # 1. Basis-Image von Red Hat auf Amazon Corretto ändern
-FROM amazoncorretto:26-headless
+FROM amazoncorretto:27-headless
 
 # 2. Metadaten und Sprache beibehalten
 ENV LANGUAGE='de_DE:de'
