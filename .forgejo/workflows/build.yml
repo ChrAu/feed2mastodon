@@ -5,19 +5,19 @@ on:
     branches: [ '**' ]
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    # Berechtigungen für Gitea/Forgejo Token
-    permissions:
-      contents: write
-      packages: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref || github.ref }}
           fetch-depth: 0 # Wichtig für den Vergleich mit dem main-branch
 
       - name: Set up JDK 25
@@ -91,18 +91,26 @@ jobs:
         run: |
           chmod +x mvnw
 
-          # Aktuelle Version im PR-Branch auslesen
-          PR_VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
-
-          # Version im Ziel-Branch (meist main) holen
-          # In Forgejo/Gitea ist github.base_ref der Name des Ziel-Branches
+          # Version im Ziel-Branch (meist main) und Quell-Branch (PR) vom Remote holen
           git fetch origin ${{ github.base_ref }}
+          git fetch origin ${{ github.head_ref }}
+
           MAIN_VERSION=$(git show origin/${{ github.base_ref }}:pom.xml | grep -oPm1 "(?<=<version>)[^<]+" | head -n 1)
+          REMOTE_PR_VERSION=$(git show origin/${{ github.head_ref }}:pom.xml | grep -oPm1 "(?<=<version>)[^<]+" | head -n 1)
 
-          if [ "$PR_VERSION" == "$MAIN_VERSION" ]; then
-            echo "Versionen sind identisch ($PR_VERSION). Erhöhe Patch-Level..."
+          echo "Main Version: $MAIN_VERSION"
+          echo "Remote PR Version: $REMOTE_PR_VERSION"
 
-            IFS='.' read -r major minor patch <<< "$PR_VERSION"
+          if [ "$REMOTE_PR_VERSION" != "$MAIN_VERSION" ]; then
+            echo "Version auf Remote-Branch wurde bereits erhöht ($REMOTE_PR_VERSION)."
+            # Lokalen Stand auf den aktuellen Remote-Branch bringen
+            git checkout -B ${{ github.head_ref }} origin/${{ github.head_ref }}
+          else
+            echo "Versionen sind identisch ($REMOTE_PR_VERSION). Erhöhe Patch-Level..."
+
+            git checkout -B ${{ github.head_ref }} origin/${{ github.head_ref }}
+
+            IFS='.' read -r major minor patch <<< "$REMOTE_PR_VERSION"
             NEW_VERSION="$major.$minor.$((patch + 1))"
 
             ./mvnw versions:set -DnewVersion=$NEW_VERSION -DgenerateBackupPoms=false
@@ -111,12 +119,21 @@ jobs:
             git config --global user.email "forgejo-actions[bot]@forgejo.codeheap.dev"
 
             git add pom.xml
-            git commit -m "chore: auto-bump version to $NEW_VERSION"
+            git commit -m "chore: auto-bump version to $NEW_VERSION [skip ci]"
 
             # Push zurück in den Head-Branch des Pull Requests
-            git push origin HEAD:${{ github.head_ref }}
-          else
-            echo "Version wurde bereits manuell erhöht ($PR_VERSION)."
+            if ! git push origin ${{ github.head_ref }}; then
+              echo "Warnung: Push fehlgeschlagen (mögliche Race Condition). Prüfe Remote-Stand..."
+              git fetch origin ${{ github.head_ref }}
+              LATEST_REMOTE_VERSION=$(git show origin/${{ github.head_ref }}:pom.xml | grep -oPm1 "(?<=<version>)[^<]+" | head -n 1)
+              if [ "$LATEST_REMOTE_VERSION" != "$MAIN_VERSION" ]; then
+                echo "Remote-Branch hat bereits die erhöhte Version ($LATEST_REMOTE_VERSION). Fahre mit Build fort."
+                git checkout -B ${{ github.head_ref }} origin/${{ github.head_ref }}
+              else
+                echo "Push fehlgeschlagen und Version auf Remote ist noch nicht erhöht. Breche ab."
+                exit 1
+              fi
+            fi
           fi
 
       - name: Build with Maven Wrapper
