@@ -14,6 +14,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Docker Cleanup
+        run: |
+          if command -v docker >/dev/null 2>&1; then
+            echo "Stopping and removing all Docker containers..."
+            docker stop $(docker ps -aq) || true
+            docker rm $(docker ps -aq) || true
+          else
+            echo "Docker not found, skipping cleanup."
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -148,13 +158,15 @@ jobs:
           HOMEASSISTANT_API_TOKEN: ${{ secrets.HOMEASSISTANT_API_TOKEN }}
         run: |
           chmod +x mvnw
-          ./mvnw -B -U package -Dquarkus.profile=prod -Daether.connector.http.retryHandler.count=5 -Dmaven.wagon.http.retryHandler.count=5 --file pom.xml
+          ./mvnw -B -U clean package -Dquarkus.profile=prod -Daether.connector.http.retryHandler.count=5 -Dmaven.wagon.http.retryHandler.count=5 --file pom.xml
 
-      - name: Stop and Cleanup PostgreSQL
+      - name: Docker Cleanup (Post-Build)
         if: always()
         run: |
-          echo "Cleaning up PostgreSQL container..."
-          docker stop postgres-ci-feed2mastodon 2>/dev/null || true
-          docker rm postgres-ci-feed2mastodon 2>/dev/null || true
-          docker container prune -f 2>/dev/null || true
-          echo "Post-run cleanup completed."
+          if command -v docker >/dev/null 2>&1; then
+            echo "Stopping and removing all Docker containers..."
+            docker stop $(docker ps -aq) || true
+            docker rm $(docker ps -aq) || true
+          else
+            echo "Docker not found, skipping cleanup."
+          fi
