@@ -27,9 +27,29 @@ jobs:
       - name: Docker Cleanup
         run: |
           if command -v docker >/dev/null 2>&1; then
-            echo "Stopping and removing all Docker containers..."
-            docker stop $(docker ps -aq) || true
-            docker rm $(docker ps -aq) || true
+            echo "Stopping stale containers (protecting runner and system containers)..."
+            CURRENT_ID=$(cat /etc/hostname 2>/dev/null || hostname 2>/dev/null || true)
+            for cid in $(docker ps -q 2>/dev/null); do
+              if [ -n "$CURRENT_ID" ]; then
+                case "$cid" in
+                  *"$CURRENT_ID"*) echo "Skipping current job container ($cid)"; continue ;;
+                esac
+                case "$CURRENT_ID" in
+                  *"$cid"*) echo "Skipping current job container ($cid)"; continue ;;
+                esac
+              fi
+              cname=$(docker inspect --format '{{.Name}}' "$cid" 2>/dev/null | sed 's/^\///')
+              if echo "$cname" | grep -qiE "runner|forgejo|gitea|act-"; then
+                echo "Skipping runner container: $cname ($cid)"
+                continue
+              fi
+              echo "Stopping and removing container: $cname ($cid)"
+              docker stop "$cid" 2>/dev/null || true
+              docker rm "$cid" 2>/dev/null || true
+            done
+            echo "Pruning exited containers and dangling images..."
+            docker container prune -f 2>/dev/null || true
+            docker image prune -f 2>/dev/null || true
           else
             echo "Docker not found, skipping cleanup."
           fi
@@ -85,9 +105,29 @@ jobs:
         if: always()
         run: |
           if command -v docker >/dev/null 2>&1; then
-            echo "Stopping and removing all Docker containers..."
-            docker stop $(docker ps -aq) || true
-            docker rm $(docker ps -aq) || true
+            echo "Stopping stale containers (protecting runner and system containers)..."
+            CURRENT_ID=$(cat /etc/hostname 2>/dev/null || hostname 2>/dev/null || true)
+            for cid in $(docker ps -q 2>/dev/null); do
+              if [ -n "$CURRENT_ID" ]; then
+                case "$cid" in
+                  *"$CURRENT_ID"*) echo "Skipping current job container ($cid)"; continue ;;
+                esac
+                case "$CURRENT_ID" in
+                  *"$cid"*) echo "Skipping current job container ($cid)"; continue ;;
+                esac
+              fi
+              cname=$(docker inspect --format '{{.Name}}' "$cid" 2>/dev/null | sed 's/^\///')
+              if echo "$cname" | grep -qiE "runner|forgejo|gitea|act-"; then
+                echo "Skipping runner container: $cname ($cid)"
+                continue
+              fi
+              echo "Stopping and removing container: $cname ($cid)"
+              docker stop "$cid" 2>/dev/null || true
+              docker rm "$cid" 2>/dev/null || true
+            done
+            echo "Pruning exited containers and dangling images..."
+            docker container prune -f 2>/dev/null || true
+            docker image prune -f 2>/dev/null || true
           else
             echo "Docker not found, skipping cleanup."
           fi
