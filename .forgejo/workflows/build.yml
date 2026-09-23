@@ -14,6 +14,46 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Install Docker CLI
+        run: |
+          if ! command -v docker >/dev/null 2>&1; then
+            echo "Installing Docker CLI..."
+            if ! curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.3.1.tgz | tar xzvf - --strip-components=1 -C /usr/local/bin docker/docker 2>/dev/null; then
+              apt-get update -qq && apt-get install -y -qq docker.io >/dev/null 2>&1 || true
+            fi
+          fi
+          docker --version || true
+
+      - name: Docker Cleanup
+        run: |
+          if command -v docker >/dev/null 2>&1; then
+            echo "Stopping stale containers (protecting runner and system containers)..."
+            CURRENT_ID=$(cat /etc/hostname 2>/dev/null || hostname 2>/dev/null || true)
+            for cid in $(docker ps -q 2>/dev/null); do
+              if [ -n "$CURRENT_ID" ]; then
+                case "$cid" in
+                  *"$CURRENT_ID"*) echo "Skipping current job container ($cid)"; continue ;;
+                esac
+                case "$CURRENT_ID" in
+                  *"$cid"*) echo "Skipping current job container ($cid)"; continue ;;
+                esac
+              fi
+              cname=$(docker inspect --format '{{.Name}}' "$cid" 2>/dev/null | sed 's/^\///')
+              if echo "$cname" | grep -qiE "runner|forgejo|gitea|act-"; then
+                echo "Skipping runner container: $cname ($cid)"
+                continue
+              fi
+              echo "Stopping and removing container: $cname ($cid)"
+              docker stop "$cid" 2>/dev/null || true
+              docker rm "$cid" 2>/dev/null || true
+            done
+            echo "Pruning exited containers and dangling images..."
+            docker container prune -f 2>/dev/null || true
+            docker image prune -f 2>/dev/null || true
+          else
+            echo "Docker not found, skipping cleanup."
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -25,16 +65,6 @@ jobs:
         with:
           java-version: '25'
           distribution: 'corretto'
-
-      - name: Install Docker CLI
-        run: |
-          if ! command -v docker >/dev/null 2>&1; then
-            echo "Installing Docker CLI..."
-            if ! curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.3.1.tgz | tar xzvf - --strip-components=1 -C /usr/local/bin docker/docker 2>/dev/null; then
-              apt-get update -qq && apt-get install -y -qq docker.io >/dev/null 2>&1 || true
-            fi
-          fi
-          docker --version || true
 
       - name: Clean up old PostgreSQL instances
         run: |
@@ -148,13 +178,35 @@ jobs:
           HOMEASSISTANT_API_TOKEN: ${{ secrets.HOMEASSISTANT_API_TOKEN }}
         run: |
           chmod +x mvnw
-          ./mvnw -B -U package -Dquarkus.profile=prod -Daether.connector.http.retryHandler.count=5 -Dmaven.wagon.http.retryHandler.count=5 --file pom.xml
+          ./mvnw -B -U clean package -Dquarkus.profile=prod -Daether.connector.http.retryHandler.count=5 -Dmaven.wagon.http.retryHandler.count=5 --file pom.xml
 
-      - name: Stop and Cleanup PostgreSQL
+      - name: Docker Cleanup (Post-Build)
         if: always()
         run: |
-          echo "Cleaning up PostgreSQL container..."
-          docker stop postgres-ci-feed2mastodon 2>/dev/null || true
-          docker rm postgres-ci-feed2mastodon 2>/dev/null || true
-          docker container prune -f 2>/dev/null || true
-          echo "Post-run cleanup completed."
+          if command -v docker >/dev/null 2>&1; then
+            echo "Stopping stale containers (protecting runner and system containers)..."
+            CURRENT_ID=$(cat /etc/hostname 2>/dev/null || hostname 2>/dev/null || true)
+            for cid in $(docker ps -q 2>/dev/null); do
+              if [ -n "$CURRENT_ID" ]; then
+                case "$cid" in
+                  *"$CURRENT_ID"*) echo "Skipping current job container ($cid)"; continue ;;
+                esac
+                case "$CURRENT_ID" in
+                  *"$cid"*) echo "Skipping current job container ($cid)"; continue ;;
+                esac
+              fi
+              cname=$(docker inspect --format '{{.Name}}' "$cid" 2>/dev/null | sed 's/^\///')
+              if echo "$cname" | grep -qiE "runner|forgejo|gitea|act-"; then
+                echo "Skipping runner container: $cname ($cid)"
+                continue
+              fi
+              echo "Stopping and removing container: $cname ($cid)"
+              docker stop "$cid" 2>/dev/null || true
+              docker rm "$cid" 2>/dev/null || true
+            done
+            echo "Pruning exited containers and dangling images..."
+            docker container prune -f 2>/dev/null || true
+            docker image prune -f 2>/dev/null || true
+          else
+            echo "Docker not found, skipping cleanup."
+          fi
