@@ -61,7 +61,7 @@ jobs:
           fetch-depth: 0 # Wichtig für den Vergleich mit dem main-branch
 
       - name: Set up JDK 25
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: '25'
           distribution: 'corretto'
