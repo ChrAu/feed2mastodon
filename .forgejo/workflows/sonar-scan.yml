@@ -84,7 +84,7 @@ jobs:
 
       - name: SonarQube Scan ausführen
         # Aktualisiert auf v6 für Sicherheit und bessere Performance
-        uses: https://github.com/sonarsource/sonarqube-scan-action@v6
+        uses: https://github.com/sonarsource/sonarqube-scan-action@v8
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
