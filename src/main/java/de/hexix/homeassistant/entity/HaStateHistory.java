@@ -140,7 +140,7 @@ import java.time.ZonedDateTime;
                 query = """
     UPDATE ha_state_history
     SET attributes = jsonb_build_object(
-      'friendlyName', (attributes::jsonb ->> 'friendlyName'),
+      'friendly_name', COALESCE(attributes::jsonb ->> 'friendly_name', attributes::jsonb ->> 'friendlyName'),
       'additionalAttributes', jsonb_build_object(
         'current_temperature', (attributes::jsonb -> 'additionalAttributes' -> 'current_temperature'),
         'temperature', (attributes::jsonb -> 'additionalAttributes' -> 'temperature')
@@ -149,6 +149,7 @@ import java.time.ZonedDateTime;
     WHERE entity_id LIKE 'climate.%'
       AND last_changed < :threshold
       AND attributes IS NOT NULL
+      AND attributes LIKE '%"supported_features"%'
     """
         ),
         @NamedNativeQuery(
@@ -156,7 +157,7 @@ import java.time.ZonedDateTime;
                 query = """
     UPDATE ha_state_history
     SET attributes = jsonb_build_object(
-      'friendlyName', (attributes::jsonb ->> 'friendlyName'),
+      'friendly_name', COALESCE(attributes::jsonb ->> 'friendly_name', attributes::jsonb ->> 'friendlyName'),
       'additionalAttributes', jsonb_build_object(
         'pressure', (attributes::jsonb -> 'additionalAttributes' -> 'pressure'),
         'pressure_unit', (attributes::jsonb -> 'additionalAttributes' -> 'pressure_unit'),
@@ -173,6 +174,7 @@ import java.time.ZonedDateTime;
     WHERE entity_id LIKE 'weather.%'
       AND last_changed < :threshold
       AND attributes IS NOT NULL
+      AND attributes LIKE '%"supported_features"%'
     """
         ),
         @NamedNativeQuery(
@@ -180,11 +182,12 @@ import java.time.ZonedDateTime;
                 query = """
     UPDATE ha_state_history
     SET attributes = jsonb_build_object(
-      'friendlyName', (attributes::jsonb ->> 'friendlyName')
+      'friendly_name', COALESCE(attributes::jsonb ->> 'friendly_name', attributes::jsonb ->> 'friendlyName')
     )::text
     WHERE entity_id = 'sensor.codeheap_cpu_auslastung'
       AND last_changed < :threshold
       AND attributes IS NOT NULL
+      AND attributes LIKE '%"supported_features"%'
     """
         )
 })

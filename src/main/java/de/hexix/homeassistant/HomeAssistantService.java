@@ -21,6 +21,7 @@ import de.hexix.homeassistant.entity.HaTemperatureHistory;
 import de.hexix.homeassistant.ignoredentity.IgnoredEntityRepository;
 import de.hexix.homeassistant.service.HoltWinterForecastService;
 import io.quarkus.logging.Log;
+import io.quarkus.narayana.jta.runtime.TransactionConfiguration;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
@@ -239,7 +240,18 @@ public class HomeAssistantService {
             haStateHistory.setEntityId(haEntity.getEntityId());
             haStateHistory.setLastChanged(haEntity.getLastUpdated());
             haStateHistory.setState(haEntity.getState());
-            haStateHistory.setAttributes(haEntity.getAttributes());
+            if (entityDto.getEntityId() != null && entityDto.getEntityId().startsWith("weather.") && entityDto.getAttributes() != null) {
+                Object removedForecast = entityDto.getAttributes().getAdditionalAttributes().remove("forecast");
+                try {
+                    haStateHistory.setAttributes(attributeMapperHelper.attributesToString(entityDto.getAttributes()));
+                } finally {
+                    if (removedForecast != null) {
+                        entityDto.getAttributes().getAdditionalAttributes().put("forecast", removedForecast);
+                    }
+                }
+            } else {
+                haStateHistory.setAttributes(haEntity.getAttributes());
+            }
 
             em.persist(haStateHistory);
         }
@@ -975,6 +987,7 @@ public class HomeAssistantService {
     }
 
     @Transactional
+    @TransactionConfiguration(timeout = 600)
     public void cleanupOldHistory(int daysRetention) {
         ZonedDateTime threshold = ZonedDateTime.now().minusDays(daysRetention);
 
