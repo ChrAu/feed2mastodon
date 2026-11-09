@@ -18,7 +18,7 @@ public class MailReceiverScheduler {
      * Der Cron-Ausdruck "0 5 * * * ?" bedeutet:
      * Jede Stunde zur Minute 5.
      */
-    @Scheduled(cron = "0 5 * * * ?")
+    @Scheduled(cron = "0 5 * * * ?", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void checkReceivedEmails() {
         LOG.info("Starting scheduled fallback check for received emails...");
         mailReceiverService.checkAllMailboxesForReceivedEmails();

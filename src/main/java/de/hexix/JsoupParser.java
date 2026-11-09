@@ -98,7 +98,7 @@ public class JsoupParser {
 
 
 
-            doc = Jsoup.connect(url).get();
+            doc = Jsoup.connect(url).timeout(10_000).get();
             LOG.debug(doc.title());
             Elements article = doc.select(cssQuery);
             StringJoiner sj = new StringJoiner("\n");

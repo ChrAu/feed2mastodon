@@ -29,7 +29,7 @@ public class HomeAssistantScheduler {
 
 
 
-    @Scheduled(every = "30s")
+    @Scheduled(every = "30s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     public void saveState() {
         try (DurationLogger d = new DurationLogger("HomeAssistantScheduler.saveState()", Logger.getLogger(this.getClass()))) {
             final List<EntityDto> entityDtos = homeAssistantService.currentState();
@@ -38,7 +38,7 @@ public class HomeAssistantScheduler {
         }
     }
 
-    @Scheduled(every = "1h") // Läuft einmal pro Stunde
+    @Scheduled(every = "1h", concurrentExecution = Scheduled.ConcurrentExecution.SKIP) // Läuft einmal pro Stunde
     public void cleanupOldForecasts() {
         try (DurationLogger d = new DurationLogger("HomeAssistantScheduler.cleanupOldForecasts()", Logger.getLogger(this.getClass()))) {
             int deleted = homeAssistantService.cleanupOldForecasts(Duration.ofDays(7).toHours());
@@ -95,7 +95,7 @@ public class HomeAssistantScheduler {
         }
     }
 
-    @Scheduled(every = "15m")
+    @Scheduled(every = "15m", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     public void calculateVentilationForecast() {
         try (DurationLogger d = new DurationLogger("HomeAssistantScheduler.calculateVentilationForecast()", Logger.getLogger(this.getClass()))) {
             ventilationForecastService.calculateAndPushVentilationForecast();
