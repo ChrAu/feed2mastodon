@@ -23,7 +23,7 @@ public class MailTimeoutScheduler {
      * Jede Stunde 0, Minute 0, alle 6 Stunden (00:00, 06:00, 12:00, 18:00 Uhr).
      * Dies entspricht 4 Überprüfungen pro Tag.
      */
-    @Scheduled(cron = "0 0 */6 * * ?")
+    @Scheduled(cron = "0 0 */6 * * ?", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void checkMailTimeouts() {
         LOG.info("Starting scheduled check for mail timeouts...");
 

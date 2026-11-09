@@ -2,17 +2,14 @@ package de.hexix.traffic;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import io.quarkus.logging.Log;
-import io.quarkus.runtime.StartupEvent;
+import io.quarkus.scheduler.Scheduled;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
-import java.time.Duration;
-import java.util.Objects;
 
 @ApplicationScoped
 public class TrafficService {
@@ -33,22 +30,18 @@ public class TrafficService {
     // Cache für die letzten Metriken
     private volatile ServerMetrics lastMetrics;
 
-    void onStart(@Observes StartupEvent ev) {
-        // Use the event parameter to avoid it being considered unused by static analysis
-        Objects.requireNonNull(ev);
-
-        Multi.createFrom().ticks().every(Duration.ofSeconds(2))
-                .subscribe().with(tick -> {
-                    try {
-                        ServerMetrics metrics = fetchAllMetrics();
-                        processor.onNext(metrics);
-                        lastMetrics = metrics; // Update the cache
-                    } catch (Exception e) {
-                        // Falls der Client noch nicht bereit ist oder Proxmox zickt
-                        Log.error("Fehler beim Abruf: " + e.getMessage(), e);
-                    }
-                });
+    @Scheduled(every = "2s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    void pollMetrics() {
+        try {
+            ServerMetrics metrics = fetchAllMetrics();
+            processor.onNext(metrics);
+            lastMetrics = metrics; // Update the cache
+        } catch (Exception e) {
+            // Falls der Client noch nicht bereit ist oder Proxmox zickt
+            Log.error("Fehler beim Abruf: " + e.getMessage(), e);
+        }
     }
+
     public Multi<ServerMetrics> getSharedStream() {
         if (lastMetrics != null) {
             return Multi.createBy().concatenating()
@@ -61,7 +54,7 @@ public class TrafficService {
     }
 
 
-    private synchronized ServerMetrics fetchAllMetrics() {
+    private ServerMetrics fetchAllMetrics() {
         try {
 
             // 1. Status (CPU/RAM Snapshot)

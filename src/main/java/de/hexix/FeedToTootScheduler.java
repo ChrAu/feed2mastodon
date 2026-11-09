@@ -234,21 +234,37 @@ public class FeedToTootScheduler {
         starredMastodonPosts.generateLocalEmbeddings();
     }
 
-    @Transactional
     @Scheduled(every = "24h", delay = 60, delayUnit = TimeUnit.SECONDS, concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void calcEmbeddingsArticles() {
-
-
+        // Download außerhalb der Transaktion, nur das Speichern ist transaktional
         final List<Embedding> embeddings = Embedding.<Embedding>find("text is null").list();
 
-        embeddings.stream().filter(embedding -> embedding.getText() ==null).filter(embedding -> embedding.getUrl() != null).forEach(embedding -> {
-            final String article = JsoupParser.getArticle(embedding.getUrl());
-            final TextEntity textEntity = new TextEntity(article);
-            if(textEntity.getText() != null && !textEntity.getText().isBlank()){
-                textEntityRepository.persist(textEntity);
-                embedding.setText(textEntity);
+        for (Embedding embedding : embeddings) {
+            if (embedding.getText() != null || embedding.getUrl() == null) {
+                continue;
             }
-        });
+            try {
+                final String article = JsoupParser.getArticle(embedding.getUrl());
+                if (article != null && !article.isBlank()) {
+                    saveArticleText(embedding.getId(), article);
+                }
+            } catch (Exception e) {
+                LOG.errorf(e, "Fehler beim Laden des Artikels: %s", embedding.getUrl());
+            }
+        }
+    }
+
+    @Transactional
+    void saveArticleText(final Long embeddingId, final String article) {
+        final Embedding embedding = Embedding.findById(embeddingId);
+        if (embedding == null) {
+            return;
+        }
+        final TextEntity textEntity = new TextEntity(article);
+        if (textEntity.getText() != null && !textEntity.getText().isBlank()) {
+            textEntityRepository.persist(textEntity);
+            embedding.setText(textEntity);
+        }
     }
 
 
@@ -366,58 +382,74 @@ public class FeedToTootScheduler {
         }
 
     }
-    @Transactional
+    /**
+     * Ablauf in drei Schritten, damit keine DB-Transaktion/-Connection während Netzwerk-Downloads offen bleibt:
+     * 1. (Tx) Text setzen und URLs ermitteln, 2. (ohne Tx) Artikel laden, 3. (Tx) URL-Text speichern.
+     */
     void readStatusAndLinkText(final PublicMastodonPostEntity p, final MastodonDtos.MastodonStatus mastodonStatus) {
-        final PublicMastodonPostEntity post = publicMastodonPostRepository.findById(p.id).orElseThrow();
+        final List<String> urls = prepareStatusText(p.id, mastodonStatus);
+        if (urls == null || urls.isEmpty()) {
+            return;
+        }
+        String urlText = null;
         try {
-            if(p.getPostText() == null && mastodonStatus != null){
-                final String text = Jsoup.parse(mastodonStatus.content()).text();
-                final TextEntity textEntity = new TextEntity(text);
-                if(textEntity.getText() != null && !textEntity.getText().isBlank()){
-                    textEntityRepository.persist(textEntity);
-                    post.setPostText(textEntity);
-                }
-
-            }
-
-
-            if (post.getPostText() == null || post.getPostText().getText().isBlank() || post.getPostText().getText().isEmpty()) {
-                if(post.getNegativeWeight() == null) {
-                    publicMastodonPostRepository.delete(post);
-                    return;
+            StringJoiner sj = new StringJoiner("\n\n");
+            for (String url : urls) {
+                final String article = JsoupParser.getArticle(url);
+                if (article != null) {
+                    sj.add(article);
                 }
             }
-
-            final Boolean noURL = post.isNoURL();
-            if (noURL == null || !noURL) {
-
-                final List<String> urls = MastodonDtos.MastodonStatus.extractLinksFromHtml(post.getPostText().getText());
-
-                if (!urls.isEmpty()) {
-                    StringJoiner sj = new StringJoiner("\n\n");
-                    for (String url : urls) {
-                        // Annahme: JsoupParser.getArticle ist synchron und blockierend.
-                        // Wenn dies auch asynchron sein sollte, müsste es ebenfalls in ein Uni gewickelt werden.
-                        final String article = JsoupParser.getArticle(url);
-                        if (article != null) {
-                            sj.add(article);
-                        }
-                    }
-                    if (sj.length() > 0) {
-                        final String text = sj.toString();
-                        final TextEntity textEntity = new TextEntity(text);
-                        if(textEntity.getText() != null && !textEntity.getText().isBlank()){
-                            textEntityRepository.persist(textEntity);
-                            post.setUrlText(textEntity);
-                        }
-
-                    }
-                }
+            if (sj.length() > 0) {
+                urlText = sj.toString();
             }
-        }catch (Exception e){
-            post.setUrlText(null);
+        } catch (Exception e) {
+            LOG.errorf(e, "Fehler beim Laden der URL-Texte für Post %s", p.getMastodonId());
+        }
+        saveUrlText(p.id, urlText);
+    }
+
+    @Transactional
+    List<String> prepareStatusText(final Long postId, final MastodonDtos.MastodonStatus mastodonStatus) {
+        final PublicMastodonPostEntity post = publicMastodonPostRepository.findById(postId).orElseThrow();
+        if (post.getPostText() == null && mastodonStatus != null) {
+            final String text = Jsoup.parse(mastodonStatus.content()).text();
+            final TextEntity textEntity = new TextEntity(text);
+            if (textEntity.getText() != null && !textEntity.getText().isBlank()) {
+                textEntityRepository.persist(textEntity);
+                post.setPostText(textEntity);
+            }
         }
 
+        if (post.getPostText() == null || post.getPostText().getText().isBlank()) {
+            if (post.getNegativeWeight() == null) {
+                publicMastodonPostRepository.delete(post);
+            }
+            return null;
+        }
+
+        final Boolean noURL = post.isNoURL();
+        if (noURL != null && noURL) {
+            return null;
+        }
+        return MastodonDtos.MastodonStatus.extractLinksFromHtml(post.getPostText().getText());
+    }
+
+    @Transactional
+    void saveUrlText(final Long postId, final String urlText) {
+        final PublicMastodonPostEntity post = publicMastodonPostRepository.findById(postId).orElse(null);
+        if (post == null) {
+            return;
+        }
+        if (urlText == null || urlText.isBlank()) {
+            post.setUrlText(null);
+            return;
+        }
+        final TextEntity textEntity = new TextEntity(urlText);
+        if (textEntity.getText() != null && !textEntity.getText().isBlank()) {
+            textEntityRepository.persist(textEntity);
+            post.setUrlText(textEntity);
+        }
     }
 
     @Transactional
